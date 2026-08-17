@@ -6,8 +6,12 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { ENV, type ApiEnv } from './platform/config/env.module';
+import { loadDotenv } from './platform/config/load-dotenv';
 
 async function bootstrap(): Promise<void> {
+  // Antes de construir nada: el módulo de entorno valida contra `process.env`.
+  loadDotenv();
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ trustProxy: true, bodyLimit: 1_048_576 }),

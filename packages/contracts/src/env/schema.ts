@@ -45,8 +45,15 @@ export const sharedEnvSchema = z.object({
   API_URL: z.url(),
 });
 
-/** Las dos apps mandan correo, así que comparten estas cinco variables. */
+/** Las dos apps mandan correo, así que comparten estas variables. */
 const mailEnv = {
+  /**
+   * `log` escribe el enlace de verificación en la consola en vez de mandarlo.
+   * Es cómodo en desarrollo y peligroso en cualquier otro lado: ese enlace
+   * permite tomar la cuenta. Por eso hay que pedirlo a mano y el valor por
+   * defecto es mandar correo de verdad.
+   */
+  MAIL_TRANSPORT: z.enum(['smtp', 'log']).default('smtp'),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: port.default(1025),
   SMTP_USER: optional(z.string()),

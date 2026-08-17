@@ -1,5 +1,10 @@
 // Los modelos entran junto con su contexto, no todos de golpe: identity en la
 // fase 1, libraries en la 2, y así.
+//
+// Las columnas van en snake_case con @map. Prisma las expone en camelCase al
+// código igual, pero del lado de Postgres una columna camelCase obliga a
+// entrecomillarla en cada consulta suelta, y basta olvidarse una vez para que
+// falle.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +13,66 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String @id @db.Uuid
+  email        String @unique
+  passwordHash String @map("password_hash")
+  displayName  String @map("display_name")
+
+  /// Zona IANA. Define a qué hora real llega cada envío programado.
+  timezone String
+
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  refreshTokens     RefreshToken[]
+  verificationCodes EmailVerification[]
+
+  @@map("users")
+}
+
+/// Un refresh token vivo. Se guarda el hash, nunca el valor: si alguien lee la
+/// tabla no puede hacerse pasar por nadie.
+///
+/// `familyId` agrupa toda la cadena de rotaciones que nació de un mismo login.
+/// Si aparece un token ya rotado, la familia entera cae.
+model RefreshToken {
+  id        String @id @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  familyId  String @map("family_id") @db.Uuid
+  tokenHash String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  /// Se sella cuando el token se canjea por uno nuevo.
+  rotatedAt DateTime? @map("rotated_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model EmailVerification {
+  id        String @id @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  tokenHash String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
 }

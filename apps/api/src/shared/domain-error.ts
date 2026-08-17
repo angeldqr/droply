@@ -3,7 +3,14 @@
  * código de estado la hace `platform/http/domain-error.filter.ts`.
  */
 export type DomainErrorKind =
-  'not_found' | 'conflict' | 'invalid_input' | 'forbidden' | 'precondition_failed';
+  | 'not_found'
+  | 'conflict'
+  | 'invalid_input'
+  /** No quedó probado quién sos: falta la credencial o venció. */
+  | 'unauthenticated'
+  /** Sé quién sos, pero esto no es tuyo. */
+  | 'forbidden'
+  | 'precondition_failed';
 
 export class DomainError extends Error {
   readonly kind: DomainErrorKind;
@@ -40,6 +47,12 @@ export class ConflictError extends DomainError {
 export class InvalidInputError extends DomainError {
   constructor(code: string, message: string, details?: Record<string, unknown>) {
     super('invalid_input', code, message, details);
+  }
+}
+
+export class UnauthenticatedError extends DomainError {
+  constructor(code: string, message: string) {
+    super('unauthenticated', code, message);
   }
 }
 

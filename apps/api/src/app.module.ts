@@ -6,6 +6,7 @@ import { ENV, EnvModule, type ApiEnv } from './platform/config/env.module';
 import { DomainErrorFilter } from './platform/http/domain-error.filter';
 import { loggerConfig } from './platform/logging/logger.config';
 import { PlatformModule } from './platform/platform.module';
+import { IdentityModule } from './identity/presentation/identity.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PlatformModule } from './platform/platform.module';
       { name: 'medium', ttl: 60_000, limit: 120 },
     ]),
     PlatformModule,
+    IdentityModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -23,3 +23,16 @@ export function ok<T>(value?: T): Result<T | undefined, never> {
 export function err<E>(error: E): Result<never, E> {
   return { ok: false, error };
 }
+
+/**
+ * Convierte un fallo esperable en una excepción. Es el puente en el borde HTTP:
+ * los casos de uso devuelven `Result`, y el filtro de errores de Nest necesita
+ * algo lanzado para traducirlo a un código de estado.
+ *
+ * Solo en `presentation`. Dentro del núcleo se trabaja con el `Result`.
+ */
+export function orThrow<T, E extends Error>(result: Result<T, E>): T {
+  if (!result.ok) throw result.error;
+
+  return result.value;
+}

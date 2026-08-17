@@ -51,3 +51,13 @@ export const ScheduleId = identifier<'ScheduleId', ScheduleId>('ScheduleId');
 export const DeliveryAttemptId = identifier<'DeliveryAttemptId', DeliveryAttemptId>(
   'DeliveryAttemptId',
 );
+
+/**
+ * El dominio no llama a `crypto` directamente: pide un id por acá, y así los
+ * tests pueden fijar la secuencia y quedar deterministas.
+ */
+export interface IdGenerator {
+  generate(): string;
+}
+
+export const ID_GENERATOR = Symbol('IdGenerator');

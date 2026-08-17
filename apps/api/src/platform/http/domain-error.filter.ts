@@ -6,6 +6,7 @@ const STATUS_BY_KIND: Record<DomainErrorKind, number> = {
   not_found: HttpStatus.NOT_FOUND,
   conflict: HttpStatus.CONFLICT,
   invalid_input: HttpStatus.BAD_REQUEST,
+  unauthenticated: HttpStatus.UNAUTHORIZED,
   forbidden: HttpStatus.FORBIDDEN,
   precondition_failed: HttpStatus.PRECONDITION_FAILED,
 };
