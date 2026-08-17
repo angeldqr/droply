@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
 /**
- * El largo mínimo se define acá y lo respetan los dos lados: el front avisa
- * mientras se escribe, el dominio vuelve a comprobarlo antes de guardar. Que
- * el número viva en un solo lugar evita que se separen.
+ * Los límites de la contraseña, para el borde HTTP y para el front.
+ *
+ * El dominio los repite en `PlainPassword` en vez de importarlos de acá,
+ * porque el núcleo no depende de ningún paquete externo. Que no se separen lo
+ * cuida un test en `apps/api/src/identity/domain/password.spec.ts`, que falla
+ * si los números dejan de coincidir.
  */
 export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 200;
@@ -31,8 +34,11 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(1, 'Escribí tu contraseña.'),
+  // El tope importa más acá que en el registro: login es el único endpoint sin
+  // autenticar donde argon2 corre en cada intento, y argon2 procesa la entrada
+  // entera. Sin techo, un cuerpo de varios megas ocupa la CPU del servidor.
+  email: z.email().max(254),
+  password: z.string().min(1, 'Escribí tu contraseña.').max(PASSWORD_MAX_LENGTH),
 });
 
 export const verifyEmailSchema = z.object({

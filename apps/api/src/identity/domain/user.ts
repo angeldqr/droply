@@ -3,9 +3,15 @@ import type { UserId } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import type { Email } from './email';
 
+/**
+ * El estado plano del usuario, tal como entra y sale del repositorio. El
+ * correo va como `Email` y no como string: al reconstruir desde la base, si
+ * viniera suelto habría dos fuentes para el mismo dato y nada impediría que
+ * se contradigan.
+ */
 export interface UserSnapshot {
   readonly id: UserId;
-  readonly email: string;
+  readonly email: Email;
   readonly passwordHash: string;
   readonly displayName: string;
   readonly timezone: string;
@@ -64,10 +70,10 @@ export class User {
     );
   }
 
-  static fromSnapshot(snapshot: UserSnapshot, email: Email): User {
+  static fromSnapshot(snapshot: UserSnapshot): User {
     return new User(
       snapshot.id,
-      email,
+      snapshot.email,
       snapshot.passwordHash,
       snapshot.displayName,
       snapshot.timezone,
@@ -114,7 +120,7 @@ export class User {
   toSnapshot(): UserSnapshot {
     return {
       id: this.id,
-      email: this.email.value,
+      email: this.email,
       passwordHash: this.passwordHash,
       displayName: this.displayName,
       timezone: this.timezone,

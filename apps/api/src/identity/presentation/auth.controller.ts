@@ -86,6 +86,8 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  // Sin techo, este endpoint sirve para probar cookies robadas a discreción.
+  @Throttle({ medium: { limit: 30, ttl: 60_000 } })
   async refresh(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,

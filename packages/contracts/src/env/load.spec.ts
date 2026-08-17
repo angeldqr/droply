@@ -18,7 +18,6 @@ const validEnv = {
   WEB_URL: 'http://localhost:3000',
   API_URL: 'http://localhost:3001',
   JWT_ACCESS_SECRET: 'x'.repeat(48),
-  JWT_REFRESH_SECRET: 'y'.repeat(48),
   TELEGRAM_WEBHOOK_SECRET: 'z'.repeat(48),
   SMTP_HOST: 'localhost',
   MAIL_FROM: 'no-responder@droply.app',

@@ -18,7 +18,7 @@ export class JwtAccessTokenIssuer implements AccessTokenIssuer {
   async issue(claims: AccessTokenClaims): Promise<{ token: string; expiresInSeconds: number }> {
     const issuedAt = Math.floor(Date.now() / 1000);
 
-    const token = await new SignJWT({ ev: claims.emailVerified })
+    const token = await new SignJWT({})
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(claims.userId)
       .setIssuer(ISSUER)
@@ -40,7 +40,7 @@ export class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
       if (!payload.sub || !UserId.is(payload.sub)) return null;
 
-      return { userId: payload.sub, emailVerified: payload['ev'] === true };
+      return { userId: payload.sub };
     } catch {
       // Firma inválida, vencido, emisor equivocado: para quien llama es todo
       // lo mismo, un token que no sirve.

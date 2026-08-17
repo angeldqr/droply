@@ -66,8 +66,10 @@ export const apiEnvSchema = sharedEnvSchema.extend({
 
   API_PORT: port.default(3001),
 
+  // Solo el token de acceso se firma. El de refresco son 32 bytes aleatorios
+  // guardados como hash en la base, así que no hay nada que firmar y pedir un
+  // secreto para eso sería pedir algo que no protege nada.
   JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
-  JWT_REFRESH_SECRET: secret('JWT_REFRESH_SECRET'),
   JWT_ACCESS_TTL: duration.default('15m'),
   JWT_REFRESH_TTL: duration.default('30d'),
 

@@ -64,10 +64,7 @@ export class SessionIssuer {
       }),
     );
 
-    const access = await this.accessTokens.issue({
-      userId: user.id,
-      emailVerified: user.isEmailVerified,
-    });
+    const access = await this.accessTokens.issue({ userId: user.id });
 
     return {
       accessToken: access.token,

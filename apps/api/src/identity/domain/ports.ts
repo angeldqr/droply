@@ -53,9 +53,16 @@ export interface SecretTokenFactory {
   hash(value: string): string;
 }
 
+/**
+ * Solo la identidad, nada más.
+ *
+ * Se probó llevar acá si el correo estaba verificado y se sacó: el token vive
+ * quince minutos, así que quien acabara de confirmar su correo seguiría
+ * cargando un `false` viejo hasta el siguiente refresco. Todo lo que cambia
+ * durante la sesión se consulta contra la base en el momento de decidir.
+ */
 export interface AccessTokenClaims {
   readonly userId: UserId;
-  readonly emailVerified: boolean;
 }
 
 export interface AccessTokenIssuer {

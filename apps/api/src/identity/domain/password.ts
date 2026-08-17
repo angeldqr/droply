@@ -1,10 +1,18 @@
 import { InvalidInputError } from '../../shared/domain-error';
 import { err, ok, type Result } from '../../shared/result';
 
+/** El hook que usa `util.inspect`, alcanzable sin importar `node:util`. */
+const inspectCustom = Symbol.for('nodejs.util.inspect.custom');
+
 /**
  * Una contraseña en claro que ya pasó la política, camino al hasher. Nunca se
- * persiste ni se loguea: `toJSON` y `toString` la tapan para que no se escape
- * por un `console.log` o por el serializador de un error.
+ * persiste ni se loguea.
+ *
+ * El valor va en un campo privado de JavaScript, no en uno `private` de
+ * TypeScript: `private` desaparece al compilar y `console.log` imprime el
+ * objeto entero igual. Con `#` el campo es invisible para `util.inspect`, que
+ * es por donde loguean tanto Node como Nest. El hook de inspección y los dos
+ * serializadores están para cerrar los caminos restantes.
  *
  * La política premia el largo por sobre los símbolos raros. Exigir mayúscula,
  * número y símbolo produce contraseñas cortas y predecibles como "Perro1!",
@@ -14,7 +22,11 @@ export class PlainPassword {
   static readonly minimumLength = 12;
   static readonly maximumLength = 200;
 
-  private constructor(private readonly secret: string) {}
+  readonly #secret: string;
+
+  private constructor(secret: string) {
+    this.#secret = secret;
+  }
 
   static create(raw: string): Result<PlainPassword, InvalidInputError> {
     if (raw.length < PlainPassword.minimumLength) {
@@ -48,7 +60,7 @@ export class PlainPassword {
 
   /** El único punto por donde sale el valor: se lo pasa al hasher y nada más. */
   reveal(): string {
-    return this.secret;
+    return this.#secret;
   }
 
   toString(): string {
@@ -56,6 +68,10 @@ export class PlainPassword {
   }
 
   toJSON(): string {
+    return '[contraseña]';
+  }
+
+  [inspectCustom](): string {
     return '[contraseña]';
   }
 }

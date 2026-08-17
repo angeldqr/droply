@@ -31,7 +31,7 @@ export class PrismaUserRepository implements UserRepository {
       await this.prisma.user.create({
         data: {
           id: snapshot.id,
-          email: snapshot.email,
+          email: snapshot.email.value,
           passwordHash: snapshot.passwordHash,
           displayName: snapshot.displayName,
           timezone: snapshot.timezone,
@@ -82,16 +82,13 @@ function toDomain(row: UserRow): User {
     throw new Error(`El usuario ${row.id} tiene un correo inválido en la base.`);
   }
 
-  return User.fromSnapshot(
-    {
-      id: UserId.from(row.id),
-      email: row.email,
-      passwordHash: row.passwordHash,
-      displayName: row.displayName,
-      timezone: row.timezone,
-      emailVerifiedAt: row.emailVerifiedAt,
-      createdAt: row.createdAt,
-    },
-    email.value,
-  );
+  return User.fromSnapshot({
+    id: UserId.from(row.id),
+    email: email.value,
+    passwordHash: row.passwordHash,
+    displayName: row.displayName,
+    timezone: row.timezone,
+    emailVerifiedAt: row.emailVerifiedAt,
+    createdAt: row.createdAt,
+  });
 }

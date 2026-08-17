@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { Sha256SecretTokenFactory } from './sha256-secret-token-factory';
 
@@ -10,11 +11,13 @@ describe('Sha256SecretTokenFactory', () => {
     expect(emitidos.size).toBe(500);
   });
 
-  it('el hash guardado no permite reconstruir el token', () => {
+  it('guarda un SHA-256 y no el token', () => {
     const { value, hash } = factory.create();
 
-    expect(hash).not.toContain(value);
-    expect(hash).toHaveLength(64);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    // Comparar substrings no probaría nada: uno es hexadecimal y el otro
+    // base64url, así que nunca se contendrían aunque el hash fuera el valor.
+    expect(hash).toBe(createHash('sha256').update(value).digest('hex'));
   });
 
   it('hashea de forma estable, que es lo que permite buscarlo después', () => {
@@ -27,8 +30,11 @@ describe('Sha256SecretTokenFactory', () => {
     expect(factory.create().value).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 
-  it('entrega al menos 256 bits de aleatoriedad', () => {
-    // base64url sin relleno: 32 bytes entran en 43 caracteres.
-    expect(factory.create().value).toHaveLength(43);
+  it('entrega 32 bytes de aleatoriedad', () => {
+    const { value } = factory.create();
+
+    // El largo del texto solo insinúa el tamaño; lo que importa es cuántos
+    // bytes decodifica.
+    expect(Buffer.from(value, 'base64url')).toHaveLength(32);
   });
 });
