@@ -1,0 +1,42 @@
+{
+  "name": "droply",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "deploy:up": "docker compose --env-file .env -f infra/compose.yml --profile apps up -d --build",
+    "deploy:down": "docker compose --env-file .env -f infra/compose.yml --profile apps down",
+    "deploy:logs": "docker compose --env-file .env -f infra/compose.yml --profile apps logs -f",
+    "secrets:scan": "gitleaks detect --no-banner --redact",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@droply/tooling": "workspace:*",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "argon2",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
+  }
+}

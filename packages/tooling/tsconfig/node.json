@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // emitDecoratorMetadata necesita ver los imports de tipos para resolver la
+    // inyección de dependencias, así que acá no se puede usar verbatimModuleSyntax.
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false,
+
+    "types": ["node"]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@droply/tooling/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "moduleResolution": "Bundler",
+    "module": "ESNext"
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,155 @@
+name: droply
+
+# Este archivo es el mecanismo de deploy en la máquina virtual.
+#
+# Regla de exposición: solo salen a la red pública los puertos que un navegador
+# necesita alcanzar. Postgres, Redis y la consola de MinIO quedan atados a
+# 127.0.0.1, así que para entrar hay que pasar por un túnel SSH.
+#
+# Pendiente antes de producción: un proxy inverso con TLS delante de web, api y
+# el puerto S3 de MinIO. Hoy los tres hablan HTTP en claro.
+
+services:
+  postgres:
+    # Igualada a la 18 que corre en desarrollo: una diferencia de major entre
+    # ambos entornos se paga tarde y con una migración que no aplica.
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-droply}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-droply}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-droply} -d ${POSTGRES_DB:-droply}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # appendonly para que los jobs encolados sobrevivan a un reinicio.
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:?falta REDIS_PASSWORD en .env}
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:?falta STORAGE_ACCESS_KEY en .env}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:?falta STORAGE_SECRET_KEY en .env}
+    ports:
+      # El puerto S3 sí es público: el navegador sube los archivos directo acá
+      # con una URL firmada, sin pasar por el API.
+      - '9000:9000'
+      # La consola de administración, no.
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Crea el bucket una vez y se apaga. Queda privado: el contenido solo sale
+  # por URL firmada.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-droply-media}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$STORAGE_ACCESS_KEY $$STORAGE_SECRET_KEY &&
+      mc mb --ignore-existing local/$$STORAGE_BUCKET &&
+      mc anonymous set none local/$$STORAGE_BUCKET
+      "
+
+  # Bandeja de correo de mentira, solo para probar. En la VM el correo sale por
+  # un SMTP real, así que este servicio no se levanta salvo que lo pidas:
+  #   docker compose --profile dev up -d mailpit
+  mailpit:
+    profiles: ['dev']
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
+  api:
+    profiles: ['apps']
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: api
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      # Dentro de la red de compose los servicios se llaman por su nombre, no
+      # por localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-droply}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-droply}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  worker:
+    profiles: ['apps']
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-droply}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-droply}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    profiles: ['apps']
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

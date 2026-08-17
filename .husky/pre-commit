@@ -1,0 +1,15 @@
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks no está instalado y este hook no deja pasar un commit sin escanear."
+  echo "Instalalo con:  winget install gitleaks"
+  echo "Si necesitás saltearlo por única vez:  git commit --no-verify"
+  exit 1
+fi
+
+gitleaks protect --staged --no-banner --redact || {
+  echo ""
+  echo "Se detectó un posible secreto en lo que ibas a commitear."
+  echo "Revisá lo de arriba. Si es un falso positivo, agregá una regla en .gitleaks.toml."
+  exit 1
+}
+
+pnpm exec lint-staged

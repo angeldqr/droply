@@ -1,0 +1,20 @@
+# Normaliza a LF en el repositorio sin importar el sistema de quien commitee.
+* text=auto eol=lf
+
+# Los scripts de shell rompen si les entra CRLF.
+*.sh text eol=lf
+.husky/* text eol=lf
+
+# Binarios: que git no los toque.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.mp4 binary
+
+pnpm-lock.yaml linguist-generated=true

@@ -1,0 +1,135 @@
+# ---------------------------------------------------------------------------
+# Secretos y configuración local
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.local
+
+# Archivos de entorno con nombre propio, que es como se suelen pasar a
+# `env_file:` en un deploy (prod.env, staging.env).
+*.env
+
+# Claves, certificados y material criptográfico
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.asc
+*.gpg
+secrets/
+infra/docker/secrets/
+
+# Claves SSH, que no llevan extensión y se escapan de los patrones de arriba.
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+known_hosts
+
+# Certificados que emite el proxy inverso: acme.json guarda la clave privada
+# de TLS en texto plano.
+acme.json
+letsencrypt/
+
+# Override local del compose: cada máquina tiene el suyo y suele llevar
+# puertos, rutas o credenciales propias del entorno.
+compose.override.yml
+compose.override.yaml
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# ---------------------------------------------------------------------------
+# Datos y archivos que genera la aplicación
+# ---------------------------------------------------------------------------
+postgres-data/
+redis-data/
+minio-data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Volcados de base: suelen llevar datos reales de usuarios.
+*.sql
+*.dump
+*.sql.gz
+!apps/*/prisma/migrations/**/*.sql
+
+# Media subida por usuarios: vive en el almacenamiento de objetos, no acá.
+uploads/
+storage/
+apps/*/uploads/
+
+# ---------------------------------------------------------------------------
+# Dependencias y artefactos de build
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+dist/
+build/
+out/
+.next/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+
+# ---------------------------------------------------------------------------
+# Pruebas
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+.playwright/
+
+# ---------------------------------------------------------------------------
+# Herramientas de asistencia: son del entorno de quien programa, no del
+# proyecto. Sin esto la mitad de los archivos del repositorio serían tooling.
+# ---------------------------------------------------------------------------
+.claude/
+.agents/
+skills-lock.json
+CLAUDE.md
+AGENTS.md
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.continue/
+
+# ---------------------------------------------------------------------------
+# Logs y procesos
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+logs/
+*.pid
+*.seed
+
+# ---------------------------------------------------------------------------
+# Editores y sistema operativo
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+.history/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Restos de merges y respaldos
+*.orig
+*.rej
+*.bak
