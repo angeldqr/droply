@@ -175,6 +175,22 @@
  */
 [data-blendy-to] {
   animation: none !important;
+
+  /*
+   * Y esta línea es la que deja el diálogo usable.
+   *
+   * Radix apaga los eventos de puntero en el `body` mientras hay un diálogo
+   * modal, y devuelve `pointer-events: auto` **en un estilo en línea** sobre el
+   * contenido: eso es lo único que hace clicable lo de adentro. Blendy, al
+   * arrancar, hace `style.pointerEvents = ''` sobre ese mismo elemento y borra
+   * el permiso, así que el diálogo quedaba a la vista pero muerto: ni los
+   * campos ni los botones respondían.
+   *
+   * Puesto por CSS ya no depende de que ese estilo en línea sobreviva. Durante
+   * el cierre Blendy escribe `none` en línea, que gana sobre esta regla, y así
+   * el diálogo deja de responder mientras se va, que es lo que corresponde.
+   */
+  pointer-events: auto;
 }
 
 /*

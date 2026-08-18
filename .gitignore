@@ -133,3 +133,6 @@ $RECYCLE.BIN/
 *.orig
 *.rej
 *.bak
+
+# Traspaso de contexto entre sesiones, no es parte del proyecto
+HANDOFF.md
