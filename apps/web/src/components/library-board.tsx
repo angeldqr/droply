@@ -145,7 +145,7 @@ function Column({
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         {items.length === 0 ? (
-          <p className="text-muted-foreground flex-1 px-2 pt-6 text-center text-sm">
+          <p className="text-muted-foreground px-2 pt-6 text-center text-sm">
             {EMPTY_COLUMN[kind]}
           </p>
         ) : null}
