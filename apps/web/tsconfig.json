@@ -5,7 +5,14 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "incremental": true
+    "incremental": true,
+
+    // Los componentes que baja el registro de shadcn reenvían props de Radix y
+    // de sonner, y esas librerías declaran sus opcionales sin `| undefined`.
+    // Con la regla activa el chequeo falla en código de terceros que no
+    // conviene editar a mano, porque se pisa en cada actualización.
+    // El backend, que es todo código propio, la conserva.
+    "exactOptionalPropertyTypes": false
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

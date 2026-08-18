@@ -1,68 +1,57 @@
 /*
  * Paleta de droply.
  *
- * Dos familias frías y una cálida. El azul brumoso sostiene el fondo, el hueso
- * levanta las superficies y la terracota aparece poco: solo en lo accionable.
- * Si el acento empieza a estar en todas partes, deja de marcar nada.
+ * Cinco pasteles: lila, dos rosas y dos azules. Ninguno de los cinco aguanta
+ * texto encima, así que la escala se completa con una tinta ciruela oscura y
+ * con los pasos claros y oscuros que hacen falta para bordes, estados y foco.
+ * Los cinco originales se reservan para lo que se ve: el color de cada
+ * columna, el botón principal y la selección de texto.
  */
 
 @theme {
-  /* Azul brumoso: fondo, bordes, texto secundario */
-  --color-mist-50: #f4f9fc;
-  --color-mist-100: #e1edf5;
-  --color-mist-200: #cbdce8;
-  --color-mist-300: #a9c1d2;
-  --color-mist-400: #8fa6b8;
-  --color-mist-500: #6b8199;
-  --color-mist-600: #4e6377;
-  --color-mist-700: #35475a;
-  --color-mist-800: #1e2e3e;
-  --color-mist-900: #0f1b26;
+  /* Lila: fondo de la aplicación, tonos apagados y el foco */
+  --color-lila-50: #f7f1fb;
+  --color-lila-100: #ece0f2;
+  --color-lila-300: #cdb4db;
+  --color-lila-600: #7d5992;
 
-  /* Hueso: tarjetas y superficies elevadas */
-  --color-bone-50: #fdfcfa;
-  --color-bone-100: #faf8f4;
-  --color-bone-200: #f2ede4;
-  --color-bone-300: #e5ddd0;
+  /* Rosa: la acción principal, lo resaltado y la selección */
+  --color-rosa-200: #ffc8dd;
+  --color-rosa-300: #ffafcc;
 
-  /* Terracota: acciones, foco, estados activos */
-  --color-clay-300: #e9a48d;
-  --color-clay-400: #da7c61;
-  --color-clay-500: #c75a3e;
-  --color-clay-600: #a8462e;
-  --color-clay-700: #853520;
+  /* Azul: lo secundario y las superficies frías */
+  --color-cielo-200: #bde0fe;
+  --color-cielo-300: #a2d2ff;
 
-  /* Estados */
-  --color-moss-500: #4c7a5a;
-  --color-amber-signal: #b8863b;
-  --color-danger-500: #a33529;
+  /* Tinta: todo el texto sale de acá */
+  --color-tinta-500: #6d6484;
+  --color-tinta-900: #2a2438;
+
+  --color-papel: #ffffff;
+  --color-alerta-500: #b8324a;
+
+  /*
+   * Una columna por color. El tono no decora: dice de qué columna se trata sin
+   * tener que leer el encabezado, y es el mismo en la tarjeta y en el tablero.
+   */
+  --color-columna-audio: var(--color-cielo-300);
+  --color-columna-video: var(--color-lila-300);
+  --color-columna-imagen: var(--color-rosa-300);
+  --color-columna-texto: var(--color-cielo-200);
 
   /* Las dos primeras variables las inyecta next/font en el <html>. */
-  --font-display: var(--font-instrument-serif), Georgia, 'Times New Roman', serif;
-  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-quicksand), ui-rounded, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
-
-  /* El boceto son trazos, no cajas blandas: bordes finos en vez de sombras. */
-  --radius-card: 0.25rem;
-  --radius-control: 0.375rem;
-  --radius-pill: 9999px;
-
-  --shadow-lift: 0 1px 0 0 rgb(15 27 38 / 0.06), 0 8px 24px -12px rgb(15 27 38 / 0.18);
 }
 
+/*
+ * Acá solo va lo que shadcn no cubre: la tipografía de la marca y los dos
+ * detalles que ningún componente define. El resto de los colores se asigna en
+ * `globals.css`, que es donde viven las variables semánticas de shadcn.
+ */
 @layer base {
   :root {
-    --surface-page: var(--color-mist-100);
-    --surface-raised: var(--color-bone-100);
-    --surface-sunken: var(--color-mist-200);
-    --border-hairline: var(--color-mist-900);
-    --text-primary: var(--color-mist-900);
-    --text-secondary: var(--color-mist-600);
-    --text-faint: var(--color-mist-400);
-    --accent: var(--color-clay-500);
-    --accent-hover: var(--color-clay-600);
-    --focus-ring: var(--color-clay-500);
-
     color-scheme: light;
   }
 
@@ -72,8 +61,6 @@
   }
 
   body {
-    background-color: var(--surface-page);
-    color: var(--text-primary);
     font-family: var(--font-sans);
     font-feature-settings: 'cv05', 'ss01';
   }
@@ -82,27 +69,42 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 400;
+    /* Quicksand en 400 se ve endeble en tamaños grandes; 600 le da cuerpo. */
+    font-weight: 600;
     letter-spacing: -0.01em;
   }
 
-  :focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-  }
-
   ::selection {
-    background-color: var(--color-clay-300);
-    color: var(--color-mist-900);
+    background-color: var(--color-rosa-200);
+    color: var(--color-tinta-900);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /*
+   * `animation: none` y no una duración diminuta.
+   *
+   * El truco habitual de poner `0.01ms` deja la animación existiendo, y las
+   * librerías que esperan `animationend` para desmontar un nodo —Radix, y por
+   * lo tanto todo diálogo de shadcn— se pierden el evento porque termina antes
+   * de que alcancen a escucharlo. El diálogo queda cerrado por dentro pero
+   * visible por fuera, con su overlay tapando la página entera.
+   *
+   * Con `none` no hay animación que esperar y el desmontaje es inmediato.
+   */
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  /*
+   * El indicador de carga es la excepción: no es decoración sino la única
+   * señal de que algo está pasando. Congelado, no comunica nada.
+   */
+  [data-slot='spinner'] {
+    animation: var(--animate-spin, spin 1s linear infinite) !important;
   }
 }

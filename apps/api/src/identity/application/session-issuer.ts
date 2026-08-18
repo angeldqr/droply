@@ -17,7 +17,7 @@ export interface IssuedSession {
 
 /**
  * Los tokens y de quién son. Quien atiende el HTTP necesita las dos cosas para
- * responder, y buscar al usuario de nuevo sería una consulta al pedo cuando el
+ * responder, y buscar al usuario de nuevo sería una consulta de más, cuando el
  * caso de uso ya lo tenía en la mano.
  */
 export interface AuthenticatedSession {

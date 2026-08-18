@@ -1,17 +1,26 @@
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif, Inter_Tight } from 'next/font/google';
+import { Nunito, Quicksand } from 'next/font/google';
 import './globals.css';
+import { Providers } from './providers';
 
-const display = Instrument_Serif({
+/*
+ * Dos redondeadas que se complementan sin competir.
+ *
+ * Quicksand es geométrica y de terminaciones circulares: funciona en títulos
+ * grandes y ahí se le nota el carácter. En cuerpo pequeño pierde legibilidad,
+ * así que todo lo demás va en Nunito, que es redondeada pero con formas más
+ * abiertas y aguanta bien los 14 y 16 píxeles de la interfaz.
+ */
+const display = Quicksand({
   subsets: ['latin'],
-  weight: '400',
-  variable: '--font-instrument-serif',
+  weight: ['500', '600', '700'],
+  variable: '--font-quicksand',
   display: 'swap',
 });
 
-const sans = Inter_Tight({
+const sans = Nunito({
   subsets: ['latin'],
-  variable: '--font-inter-tight',
+  variable: '--font-nunito',
   display: 'swap',
 });
 
@@ -21,13 +30,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#e1edf5',
+  themeColor: '#f7f1fb',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${display.variable} ${sans.variable}`}>
-      <body className="min-h-dvh antialiased">{children}</body>
+      <body className="min-h-dvh antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

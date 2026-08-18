@@ -41,7 +41,9 @@ export class User {
     const displayName = input.displayName.trim();
 
     if (displayName.length < 2) {
-      return err(new InvalidInputError('display_name.too_short', 'Poné al menos dos caracteres.'));
+      return err(
+        new InvalidInputError('display_name.too_short', 'Escribe al menos dos caracteres.'),
+      );
     }
 
     if (displayName.length > 80) {
@@ -52,7 +54,7 @@ export class User {
       return err(
         new InvalidInputError(
           'timezone.invalid',
-          'Necesito una zona horaria IANA, por ejemplo America/Bogota.',
+          'Elige una zona horaria válida, por ejemplo America/Bogota.',
         ),
       );
     }
@@ -95,7 +97,7 @@ export class User {
       return err(
         new PreconditionFailedError(
           'email.not_verified',
-          'Verificá tu correo antes de programar envíos.',
+          'Verifica tu correo antes de programar envíos.',
         ),
       );
     }

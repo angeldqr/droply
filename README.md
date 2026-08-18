@@ -1,22 +1,22 @@
 # droply
 
-Armá bibliotecas de audios, videos, imágenes y textos, y dejá que un bot le envíe uno al azar a quien vos digas, en el horario que elijas.
+Arma bibliotecas de audios, videos, imágenes y textos, y deja que un bot envíe uno al azar a quien indiques, en el horario que elijas.
 
 ## Cómo levantarlo
 
-Necesitás Node 22 o superior, pnpm y Docker.
+Necesitas Node 22 o superior, pnpm y Docker.
 
 ```bash
 pnpm install
 ```
 
-Copiá el archivo de ejemplo y completá los valores:
+Copia el archivo de ejemplo y completa los valores:
 
 ```bash
 cp .env.example .env
 ```
 
-Los secretos los generás así:
+Los secretos se generan así:
 
 ```bash
 openssl rand -base64 48
@@ -28,11 +28,11 @@ openssl rand -base64 48
 openssl rand -base64 32
 ```
 
-El token del bot te lo da [@BotFather](https://t.me/BotFather) con `/newbot`.
+El token del bot lo entrega [@BotFather](https://t.me/BotFather) con `/newbot`.
 
-Necesitás Postgres 18, un Redis y un almacenamiento compatible con S3 corriendo y alcanzables desde las URLs que pusiste en el `.env`. En Windows, [Memurai](https://www.memurai.com/) hace de Redis.
+Necesitas Postgres 18, un Redis y un almacenamiento compatible con S3 en ejecución, alcanzables desde las URL que configuraste en el `.env`. En Windows, [Memurai](https://www.memurai.com/) hace de Redis.
 
-Creá la base y el rol una sola vez, tomando la contraseña del propio `.env` para no tipearla en ningún lado:
+Crea la base y el rol una sola vez, tomando la contraseña del propio `.env` para no escribirla en ningún lado:
 
 ```bash
 psql -U postgres -h 127.0.0.1 -v pw="$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)" -c "CREATE ROLE droply LOGIN PASSWORD :'pw';" -c "CREATE DATABASE droply OWNER droply;"
@@ -94,7 +94,7 @@ Falta poner un proxy inverso con TLS delante. Hoy los tres puertos públicos hab
 
 El `.env` no se commitea nunca. Hay un hook de `pre-commit` con [gitleaks](https://github.com/gitleaks/gitleaks) que revisa lo que estás por subir y corta el commit si encuentra algo que parezca una clave.
 
-Instalalo con:
+Se instala con:
 
 ```bash
 winget install gitleaks

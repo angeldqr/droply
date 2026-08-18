@@ -1,15 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Inject,
-  Post,
-  Req,
-  Res,
-  UsePipes,
-} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   loginSchema,
@@ -22,8 +11,9 @@ import {
   type VerifyEmailInput,
 } from '@droply/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { Public } from '../../platform/http/public.decorator';
-import { ZodValidationPipe } from '../../platform/http/zod-validation.pipe';
+import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { NotFoundError } from '../../shared/domain-error';
 import type { UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
@@ -35,7 +25,6 @@ import type { AuthenticatedSession } from '../application/session-issuer';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import { USER_REPOSITORY, type UserRepository } from '../domain/ports';
 import type { User } from '../domain/user';
-import { CurrentUserId } from './current-user.decorator';
 import { IS_PRODUCTION } from './tokens';
 
 const REFRESH_COOKIE = 'droply_refresh';
@@ -66,8 +55,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   // Crear cuentas es caro: cada intento hashea con argon2 y manda un correo.
   @Throttle({ medium: { limit: 5, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(registerSchema))
-  async register(@Body() body: RegisterInput): Promise<{ userId: string }> {
+  async register(@ZodBody(registerSchema) body: RegisterInput): Promise<{ userId: string }> {
     return orThrow(await this.registerUser.execute(body));
   }
 
@@ -75,9 +63,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle({ medium: { limit: 10, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(loginSchema))
   async signIn(
-    @Body() body: LoginInput,
+    @ZodBody(loginSchema) body: LoginInput,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<SessionResponse> {
     return this.respond(orThrow(await this.login.execute(body)), reply);
@@ -113,8 +100,7 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Throttle({ medium: { limit: 10, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(verifyEmailSchema))
-  async verify(@Body() body: VerifyEmailInput): Promise<void> {
+  async verify(@ZodBody(verifyEmailSchema) body: VerifyEmailInput): Promise<void> {
     orThrow(await this.verifyEmail.execute(body.token));
   }
 

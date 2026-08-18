@@ -17,7 +17,7 @@ export function loadEnv<T extends z.ZodType>(schema: T, source: NodeJS.ProcessEn
 
     throw new Error(
       `No se pudo leer la configuración del entorno:\n${problems}\n\n` +
-        'Compará tu .env contra .env.example.',
+        'Compara tu .env contra .env.example.',
     );
   }
 

@@ -6,9 +6,9 @@ export type DomainErrorKind =
   | 'not_found'
   | 'conflict'
   | 'invalid_input'
-  /** No quedó probado quién sos: falta la credencial o venció. */
+  /** No quedó probada la identidad: falta la credencial o venció. */
   | 'unauthenticated'
-  /** Sé quién sos, pero esto no es tuyo. */
+  /** La identidad es válida, pero el recurso es de otra cuenta. */
   | 'forbidden'
   | 'precondition_failed';
 
@@ -57,7 +57,7 @@ export class UnauthenticatedError extends DomainError {
 }
 
 export class ForbiddenError extends DomainError {
-  constructor(code = 'forbidden', message = 'No tenés acceso a este recurso.') {
+  constructor(code = 'forbidden', message = 'No tienes acceso a este recurso.') {
     super('forbidden', code, message);
   }
 }

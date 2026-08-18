@@ -23,7 +23,7 @@ export class InvalidCredentials extends UnauthenticatedError {
 
 export class SessionExpired extends UnauthenticatedError {
   constructor() {
-    super('auth.session_expired', 'Tu sesión venció, volvé a entrar.');
+    super('auth.session_expired', 'Tu sesión venció, vuelve a entrar.');
   }
 }
 
@@ -40,6 +40,6 @@ export class SessionCompromised extends SessionExpired {}
 
 export class VerificationLinkInvalid extends PreconditionFailedError {
   constructor() {
-    super('email.verification_invalid', 'Ese enlace ya no sirve. Pedí uno nuevo.');
+    super('email.verification_invalid', 'Ese enlace ya no sirve. Pide uno nuevo.');
   }
 }

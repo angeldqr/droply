@@ -1,0 +1,45 @@
+import { FixedClock } from '../../shared/clock';
+import { UserId, type IdGenerator } from '../../shared/identifiers';
+import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
+import {
+  CreateLibrary,
+  DeleteLibrary,
+  GetLibrary,
+  ListLibraries,
+  RenameLibrary,
+} from '../application/library-use-cases';
+import { InMemoryLibraryItemRepository, InMemoryLibraryRepository } from './fakes';
+
+class SequentialIds implements IdGenerator {
+  private counter = 0;
+
+  generate(): string {
+    this.counter += 1;
+
+    return `00000000-0000-4000-8000-${String(this.counter).padStart(12, '0')}`;
+  }
+}
+
+export const ana = UserId.from('00000000-0000-4000-8000-00000000aaaa');
+export const beto = UserId.from('00000000-0000-4000-8000-00000000bbbb');
+
+export function buildLibraries(startingAt = new Date('2026-08-17T09:00:00.000Z')) {
+  const items = new InMemoryLibraryItemRepository();
+  const libraries = new InMemoryLibraryRepository(items);
+  const ids = new SequentialIds();
+  const clock = new FixedClock(startingAt);
+
+  return {
+    libraries,
+    items,
+    clock,
+    create: new CreateLibrary(libraries, ids, clock),
+    list: new ListLibraries(libraries),
+    get: new GetLibrary(libraries, items),
+    rename: new RenameLibrary(libraries, clock),
+    remove: new DeleteLibrary(libraries),
+    addText: new AddTextItem(libraries, items, ids, clock),
+    removeItem: new RemoveItem(libraries, items, clock),
+    move: new MoveItem(libraries, items, clock),
+  };
+}

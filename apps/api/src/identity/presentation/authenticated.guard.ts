@@ -1,19 +1,10 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
+import '../../platform/http/current-user.decorator';
 import { IS_PUBLIC } from '../../platform/http/public.decorator';
 import { UnauthenticatedError } from '../../shared/domain-error';
-import {
-  ACCESS_TOKEN_ISSUER,
-  type AccessTokenClaims,
-  type AccessTokenIssuer,
-} from '../domain/ports';
-
-declare module 'fastify' {
-  interface FastifyRequest {
-    claims?: AccessTokenClaims;
-  }
-}
+import { ACCESS_TOKEN_ISSUER, type AccessTokenIssuer } from '../domain/ports';
 
 /**
  * Se registra como guard global: las rutas nacen cerradas y hay que abrirlas a
@@ -39,16 +30,16 @@ export class AuthenticatedGuard implements CanActivate {
     const token = bearerToken(request.headers.authorization);
 
     if (!token) {
-      throw new UnauthenticatedError('auth.missing_token', 'Iniciá sesión para continuar.');
+      throw new UnauthenticatedError('auth.missing_token', 'Inicia sesión para continuar.');
     }
 
     const claims = await this.accessTokens.verify(token);
 
     if (!claims) {
-      throw new UnauthenticatedError('auth.invalid_token', 'Tu sesión venció, volvé a entrar.');
+      throw new UnauthenticatedError('auth.invalid_token', 'Tu sesión venció, vuelve a entrar.');
     }
 
-    request.claims = claims;
+    request.userId = claims.userId;
 
     return true;
   }

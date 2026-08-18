@@ -12,15 +12,15 @@ export function verificationEmail(mail: VerificationMail): {
   text: string;
   html: string;
 } {
-  const subject = 'Confirmá tu correo en Droply';
+  const subject = 'Confirma tu correo en Droply';
 
   const text = [
     `Hola ${mail.displayName},`,
     '',
-    'Para terminar de crear tu cuenta en Droply, abrí este enlace:',
+    'Para terminar de crear tu cuenta en Droply, abre este enlace:',
     mail.verificationUrl,
     '',
-    'Vence en una hora. Si no fuiste vos, ignorá este mensaje: sin abrirlo, la cuenta no se activa.',
+    'Vence en una hora. Si no fuiste tú, ignora este mensaje: sin abrirlo, la cuenta no se activa.',
   ].join('\n');
 
   const html = `<!doctype html>
@@ -30,7 +30,7 @@ export function verificationEmail(mail: VerificationMail): {
       <p style="margin:0 0 24px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#6b8199">Droply</p>
       <p style="margin:0 0 16px;font-size:16px">Hola ${escapeHtml(mail.displayName)},</p>
       <p style="margin:0 0 24px;font-size:16px;line-height:1.6">
-        Para terminar de crear tu cuenta, confirmá que este correo es tuyo.
+        Para terminar de crear tu cuenta, confirma que este correo es tuyo.
       </p>
       <p style="margin:0 0 24px">
         <a href="${escapeHtml(mail.verificationUrl)}"
@@ -39,7 +39,7 @@ export function verificationEmail(mail: VerificationMail): {
         </a>
       </p>
       <p style="margin:0;font-size:14px;line-height:1.6;color:#4e6377">
-        El enlace vence en una hora. Si no fuiste vos, ignorá este mensaje: sin abrirlo, la cuenta no se activa.
+        El enlace vence en una hora. Si no fuiste tú, ignora este mensaje: sin abrirlo, la cuenta no se activa.
       </p>
     </div>
   </body>

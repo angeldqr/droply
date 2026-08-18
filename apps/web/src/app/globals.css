@@ -1,4 +1,186 @@
 @import 'tailwindcss';
 @import '@droply/ui/tokens.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
 
 @source '../../../../packages/ui/src';
+
+@theme inline {
+  /*
+   * shadcn escribe acá `--font-sans: var(--font-sans)`, que se referencia a sí
+   * misma y resuelve a vacío: la interfaz entera cae a la fuente por defecto
+   * del navegador. Sus componentes piden `font-heading`, así que ese nombre se
+   * apunta a la fuente de títulos del paquete de tokens; `--font-sans` sale del
+   * mismo lugar y no hace falta repetirla acá.
+   */
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/*
+ * ---------------------------------------------------------------------------
+ * Droply sobre shadcn
+ * ---------------------------------------------------------------------------
+ *
+ * `shadcn init` deja su paleta neutra: todo gris. Acá se reasignan sus
+ * variables semánticas a las de `packages/ui/src/tokens.css`, así cada
+ * componente que baje del registro sale ya vestido y no hay que corregirlo
+ * clase por clase.
+ *
+ * Va al final del archivo a propósito: misma especificidad que el `:root` de
+ * shadcn, y en un empate gana el último.
+ */
+:root {
+  --background: var(--color-lila-50);
+  --foreground: var(--color-tinta-900);
+
+  --card: var(--color-papel);
+  --card-foreground: var(--color-tinta-900);
+  --popover: var(--color-papel);
+  --popover-foreground: var(--color-tinta-900);
+
+  /*
+   * El rosa es el botón principal, y lleva la tinta encima en vez de blanco:
+   * un pastel no da contraste suficiente para texto claro, pero con la tinta
+   * pasa de largo el mínimo y además conserva el color tal como viene de la
+   * paleta, sin oscurecerlo para que "funcione".
+   */
+  --primary: var(--color-rosa-300);
+  --primary-foreground: var(--color-tinta-900);
+
+  --secondary: var(--color-cielo-200);
+  --secondary-foreground: var(--color-tinta-900);
+  --muted: var(--color-lila-100);
+  --muted-foreground: var(--color-tinta-500);
+  --accent: var(--color-rosa-200);
+  --accent-foreground: var(--color-tinta-900);
+
+  --destructive: var(--color-alerta-500);
+
+  /* Un borde con algo de opacidad de la tinta lee como trazo, no como caja. */
+  --border: color-mix(in oklab, var(--color-tinta-900) 14%, transparent);
+  --input: color-mix(in oklab, var(--color-tinta-900) 22%, transparent);
+
+  /* El lila oscuro es el único de la familia que se ve sobre el fondo claro. */
+  --ring: var(--color-lila-600);
+
+  --radius: 0.75rem;
+}
+
+/*
+ * shadcn deja también un bloque `.dark` con la paleta oscura. Acá no está: la
+ * aplicación es de un solo tema —`color-scheme: light` en el paquete de
+ * tokens— y ese bloque quedaba tapado por este, que va después y tiene la
+ * misma especificidad. Se conserva en cambio el `@custom-variant dark` de
+ * arriba: mientras la clase `dark` no se ponga en ningún lado, las variantes
+ * `dark:` que traen los componentes del registro no se activan nunca. Sin él,
+ * Tailwind vuelve a su variante por defecto y se encenderían solas en cuanto
+ * el sistema operativo esté en oscuro.
+ */
+
+/*
+ * Blendy y Radix no pueden animar el mismo elemento a la vez.
+ *
+ * El contenido del diálogo entra y sale con las clases `animate-in` /
+ * `animate-out` de shadcn, que escalan y desvanecen desde el centro. Cuando la
+ * transición la maneja Blendy —que lo hace crecer desde el botón que lo
+ * abrió— las dos peleaban por el mismo `transform` y el resultado era un
+ * salto. Acá se apaga la animación propia solo en los diálogos que llevan
+ * transición: el resto sigue con la de shadcn.
+ */
+[data-blendy-to] {
+  animation: none !important;
+}
+
+/*
+ * Blendy escala el contenido desde su esquina superior izquierda; el hijo
+ * hace la escala inversa para que el texto no se deforme durante el camino.
+ */
+[data-blendy-to] > * {
+  transform-origin: top left;
+}

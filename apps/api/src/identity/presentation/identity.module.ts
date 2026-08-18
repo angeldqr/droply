@@ -2,7 +2,7 @@ import { Logger, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
-import { CLOCK, SystemClock, type Clock } from '../../shared/clock';
+import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { LoginUseCase } from '../application/login.use-case';
 import { LogoutUseCase } from '../application/logout.use-case';
@@ -34,7 +34,6 @@ import { PrismaRefreshTokenRepository } from '../infrastructure/prisma-refresh-t
 import { PrismaUserRepository } from '../infrastructure/prisma-user.repository';
 import { Sha256SecretTokenFactory } from '../infrastructure/sha256-secret-token-factory';
 import { SmtpMailer } from '../infrastructure/smtp-mailer';
-import { UuidGenerator } from '../infrastructure/uuid-generator';
 import { AuthController } from './auth.controller';
 import { AuthenticatedGuard } from './authenticated.guard';
 import { IS_PRODUCTION } from './tokens';
@@ -48,8 +47,6 @@ import { IS_PRODUCTION } from './tokens';
 @Module({
   controllers: [AuthController],
   providers: [
-    { provide: CLOCK, useClass: SystemClock },
-    { provide: ID_GENERATOR, useClass: UuidGenerator },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: SECRET_TOKEN_FACTORY, useClass: Sha256SecretTokenFactory },
 

@@ -2,15 +2,15 @@ import { z } from 'zod';
 
 /** Un secreto generado con `openssl rand -base64 N` no baja de 32 caracteres. */
 const secret = (label: string) =>
-  z.string().min(32, `${label} es demasiado corto, generalo con: openssl rand -base64 48`);
+  z.string().min(32, `${label} es demasiado corto, genéralo con: openssl rand -base64 48`);
 
 /** Clave de 32 bytes exactos en base64, que es lo que pide AES-256-GCM. */
 const aesKey = z.string().refine((value) => Buffer.from(value, 'base64').length === 32, {
-  message: 'ENCRYPTION_KEY debe ser 32 bytes en base64. Generala con: openssl rand -base64 32',
+  message: 'ENCRYPTION_KEY debe ser 32 bytes en base64. Genérala con: openssl rand -base64 32',
 });
 
 /** Acepta 15m, 2h, 30d y también un número plano de segundos. */
-const duration = z.string().regex(/^\d+[smhd]?$/, 'Usá un formato como 15m, 24h, 30d o 900');
+const duration = z.string().regex(/^\d+[smhd]?$/, 'Usa un formato como 15m, 24h, 30d o 900');
 
 const port = z.coerce.number().int().min(1).max(65535);
 

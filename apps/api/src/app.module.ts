@@ -7,6 +7,7 @@ import { DomainErrorFilter } from './platform/http/domain-error.filter';
 import { loggerConfig } from './platform/logging/logger.config';
 import { PlatformModule } from './platform/platform.module';
 import { IdentityModule } from './identity/presentation/identity.module';
+import { LibrariesModule } from './libraries/presentation/libraries.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { IdentityModule } from './identity/presentation/identity.module';
     ]),
     PlatformModule,
     IdentityModule,
+    LibrariesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  // Los tests se chequean con `pnpm typecheck`, pero no tienen por qué viajar
+  // dentro del artefacto que se despliega.
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/__tests__/**"]
+}

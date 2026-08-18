@@ -20,7 +20,7 @@ export const timezoneSchema = z.string().refine(
       return false;
     }
   },
-  { message: 'Elegí una zona horaria válida.' },
+  { message: 'Elige una zona horaria válida.' },
 );
 
 export const registerSchema = z.object({
@@ -29,7 +29,7 @@ export const registerSchema = z.object({
     .string()
     .min(PASSWORD_MIN_LENGTH, `Necesita al menos ${PASSWORD_MIN_LENGTH} caracteres.`)
     .max(PASSWORD_MAX_LENGTH),
-  displayName: z.string().trim().min(2, 'Poné al menos dos caracteres.').max(80),
+  displayName: z.string().trim().min(2, 'Escribe al menos dos caracteres.').max(80),
   timezone: timezoneSchema,
 });
 
@@ -38,7 +38,7 @@ export const loginSchema = z.object({
   // autenticar donde argon2 corre en cada intento, y argon2 procesa la entrada
   // entera. Sin techo, un cuerpo de varios megas ocupa la CPU del servidor.
   email: z.email().max(254),
-  password: z.string().min(1, 'Escribí tu contraseña.').max(PASSWORD_MAX_LENGTH),
+  password: z.string().min(1, 'Escribe tu contraseña.').max(PASSWORD_MAX_LENGTH),
 });
 
 export const verifyEmailSchema = z.object({
