@@ -3,7 +3,16 @@
 import { Archive, LibraryBig, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Fragment } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +40,12 @@ import {
 } from '@/components/ui/sidebar';
 import { useSession } from '@/lib/session';
 
+/** Un escalón del rastro. El último no lleva enlace: ya estás ahí. */
+export interface Crumb {
+  readonly label: string;
+  readonly href?: string;
+}
+
 /**
  * El armazón de la aplicación: panel lateral fijo a la izquierda y el resto de
  * la pantalla para el contenido.
@@ -38,7 +54,7 @@ import { useSession } from '@/lib/session';
  * columnas se comía alto justo donde hace falta. De lado no cuesta nada: se
  * pliega a un carril de iconos, y en móvil se convierte solo en un cajón.
  */
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <DroplySidebar />
@@ -48,12 +64,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           La cabecera se queda pegada arriba porque el disparador del panel es
           la única forma de recuperarlo cuando está plegado, y en el tablero se
           baja mucho.
+
+          Lleva el rastro y no el nombre de la aplicación: dentro de una
+          biblioteca, "Droply" no decía nada que no dijera ya el panel lateral.
         */}
         <header className="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-4 backdrop-blur-sm md:px-6">
           <SidebarTrigger />
-          <span className="text-muted-foreground font-mono text-xs uppercase tracking-[0.2em]">
-            Droply
-          </span>
+          <Separator orientation="vertical" className="mr-1 !h-4" />
+
+          <Breadcrumb>
+            <BreadcrumbList>
+              {crumbs.map((crumb, index) => (
+                <Fragment key={crumb.label}>
+                  {index > 0 ? <BreadcrumbSeparator /> : null}
+                  <BreadcrumbItem className="min-w-0">
+                    {crumb.href ? (
+                      <BreadcrumbLink asChild>
+                        <Link href={crumb.href}>{crumb.label}</Link>
+                      </BreadcrumbLink>
+                    ) : (
+                      <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                </Fragment>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
         </header>
 
         {children}

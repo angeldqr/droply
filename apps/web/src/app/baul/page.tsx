@@ -21,7 +21,7 @@ import { useVault } from '@/lib/libraries';
 export default function VaultPage() {
   return (
     <RequireSession>
-      <AppShell>
+      <AppShell crumbs={[{ label: 'Baúl' }]}>
         <Contents />
       </AppShell>
     </RequireSession>

@@ -47,7 +47,7 @@ import { useMorphDialog } from '@/lib/morph-dialog';
 export default function LibrariesPage() {
   return (
     <RequireSession>
-      <AppShell>
+      <AppShell crumbs={[{ label: 'Bibliotecas' }]}>
         <Content />
       </AppShell>
     </RequireSession>

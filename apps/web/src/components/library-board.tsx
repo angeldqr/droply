@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
@@ -90,6 +91,14 @@ export function LibraryBoard({
  * dibujaba su borde encima del borde del contenedor y quedaba una línea el
  * doble de gruesa.
  */
+/** Qué decir cuando una columna está vacía. Una invitación, no un lamento. */
+const EMPTY_COLUMN: Readonly<Record<ItemKind, string>> = {
+  AUDIO: 'Sube una canción, una nota de voz, lo que quieras que suene.',
+  VIDEO: 'Sube un video para que llegue tal cual.',
+  IMAGE: 'Sube una foto y aparecerá acá con su vista previa.',
+  TEXT: 'Escribe un mensaje o trae un archivo de texto.',
+};
+
 const COLUMN_BORDERS = [
   '',
   'border-t sm:border-t-0 sm:border-l',
@@ -121,11 +130,26 @@ function Column({
       aria-label={COLUMN_LABELS[kind]}
       className={`border-border flex min-h-[28rem] flex-col ${className}`}
     >
-      <h2 className={`border-border border-b px-4 py-4 text-center text-xl ${COLUMN_TINT[kind]}`}>
+      {/* La cuenta vive en el encabezado y no en una etiqueta aparte: es el
+          dato que se busca al mirar una columna, y ahí no ocupa nada. */}
+      <h2
+        className={`border-border flex items-center justify-center gap-2 border-b px-4 py-4 text-xl ${COLUMN_TINT[kind]}`}
+      >
         {COLUMN_LABELS[kind]}
+        {items.length > 0 ? (
+          <span className="bg-background/50 rounded-full px-2 py-0.5 text-sm tabular-nums">
+            {items.length}
+          </span>
+        ) : null}
       </h2>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
+        {items.length === 0 ? (
+          <p className="text-muted-foreground flex-1 px-2 pt-6 text-center text-sm">
+            {EMPTY_COLUMN[kind]}
+          </p>
+        ) : null}
+
         {items.map((item, index) => (
           <StackedItem
             key={item.id}
@@ -398,41 +422,81 @@ function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
           className="w-full"
         />
       ) : (
-        // La caja se reserva antes de que llegue el archivo, así la tarjeta no
-        // pega un salto ni empuja a las de abajo cuando termina de cargar.
-        <AspectRatio ratio={16 / 9} className="bg-muted overflow-hidden rounded-sm">
-          {kind === 'IMAGE' ? (
-            /*
-             * `<img>` a propósito, no `next/image`. El optimizador descarga la
-             * imagen desde el servidor y deja el resultado en su caché de
-             * disco, donde sobreviviría a la firma que la protege: el bucket es
-             * privado y la URL caduca justamente para que el archivo no quede
-             * accesible.
-             *
-             * ponytail: se muestra el original encogido y no una miniatura de
-             * verdad; generarlas pide un worker con sharp, y hasta que una
-             * biblioteca grande se sienta lenta no compensa.
-             */
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={media.url}
-              alt={media.fileName}
-              loading="lazy"
-              onError={() => setFailed(true)}
-              className="size-full object-cover"
-            />
-          ) : (
-            // `metadata` y no `auto`: una columna con diez videos no tiene por
-            // qué descargar medio giga antes de que nadie le dé al play.
-            <video
-              src={media.url}
-              controls
-              preload="metadata"
-              onError={() => setFailed(true)}
-              className="size-full object-contain"
-            />
-          )}
-        </AspectRatio>
+        <Dialog>
+          {/*
+            La tarjeta recorta para que la columna no se descuadre, así que en
+            ella no se ve la foto entera. Un clic la abre completa: es el gesto
+            que ya se espera de una miniatura, y evita tener que bajar el
+            archivo para saber qué hay dentro.
+          */}
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Ver ${media.fileName}`}
+              className="focus-visible:outline-ring block w-full cursor-zoom-in rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              {/* La caja se reserva antes de que llegue el archivo, así la
+                  tarjeta no pega un salto ni empuja a las de abajo. */}
+              <AspectRatio ratio={16 / 9} className="bg-muted overflow-hidden rounded-sm">
+                {kind === 'IMAGE' ? (
+                  /*
+                   * `<img>` a propósito, no `next/image`. El optimizador
+                   * descarga la imagen desde el servidor y deja el resultado en
+                   * su caché de disco, donde sobreviviría a la firma que la
+                   * protege: el bucket es privado y la URL caduca justamente
+                   * para que el archivo no quede accesible.
+                   *
+                   * ponytail: se muestra el original encogido y no una
+                   * miniatura de verdad; generarlas pide un worker con sharp, y
+                   * hasta que una biblioteca grande se sienta lenta no compensa.
+                   */
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={media.url}
+                    alt={media.fileName}
+                    loading="lazy"
+                    onError={() => setFailed(true)}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  /*
+                   * Sin controles y silenciado en la tarjeta: acá solo hace
+                   * falta el primer fotograma para reconocerlo, y `metadata` en
+                   * vez de `auto` para que una columna con diez videos no baje
+                   * medio giga antes de que nadie le dé al play.
+                   */
+                  <video
+                    src={media.url}
+                    muted
+                    preload="metadata"
+                    onError={() => setFailed(true)}
+                    className="size-full object-contain"
+                  />
+                )}
+              </AspectRatio>
+            </button>
+          </DialogTrigger>
+
+          <DialogContent className="sm:max-w-4xl">
+            <DialogTitle className="truncate pr-8">{media.fileName}</DialogTitle>
+
+            {kind === 'IMAGE' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={media.url}
+                alt={media.fileName}
+                className="max-h-[70vh] w-full rounded-md object-contain"
+              />
+            ) : (
+              <video
+                src={media.url}
+                controls
+                autoPlay
+                className="max-h-[70vh] w-full rounded-md object-contain"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );
