@@ -7,7 +7,7 @@ import {
   type UserId,
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
-import { LibraryNotFound } from '../domain/errors';
+import { LibraryNotFound, VaultNotEditable } from '../domain/errors';
 import type { ItemKind } from '../domain/item-kind';
 import { Library } from '../domain/library';
 import type { LibraryItem } from '../domain/library-item';
@@ -81,17 +81,28 @@ export class GetLibrary {
     if (!library) return err(new LibraryNotFound());
 
     const items = await this.items.listOf(libraryId);
-    const mediaLinks = new Map<LibraryItemId, string>();
 
-    // Firmar es criptografía local, no una ida y vuelta por cada elemento.
-    for (const item of items) {
-      if (item.storageKey && item.isReady) {
-        mediaLinks.set(item.id, await this.storage.linkTo(item.storageKey));
-      }
-    }
-
-    return ok({ library, items, mediaLinks });
+    return ok({ library, items, mediaLinks: await signLinks(items, this.storage) });
   }
+}
+
+/**
+ * Una URL firmada por cada elemento verificado. Firmar es criptografía local,
+ * no una ida y vuelta por cada uno.
+ */
+export async function signLinks(
+  items: readonly LibraryItem[],
+  storage: MediaStorage,
+): Promise<ReadonlyMap<LibraryItemId, string>> {
+  const links = new Map<LibraryItemId, string>();
+
+  for (const item of items) {
+    if (item.storageKey && item.isReady) {
+      links.set(item.id, await storage.linkTo(item.storageKey));
+    }
+  }
+
+  return links;
 }
 
 export class RenameLibrary {
@@ -104,9 +115,10 @@ export class RenameLibrary {
     ownerId: UserId,
     libraryId: LibraryId,
     fields: LibraryFields,
-  ): Promise<Result<Library, LibraryNotFound | InvalidInputError>> {
+  ): Promise<Result<Library, LibraryNotFound | VaultNotEditable | InvalidInputError>> {
     const library = await this.libraries.findOwned(libraryId, ownerId);
     if (!library) return err(new LibraryNotFound());
+    if (library.isVault) return err(new VaultNotEditable());
 
     const renamed = library.rename(fields.name, fields.description, this.clock.now());
     if (!renamed.ok) return renamed;
@@ -123,9 +135,13 @@ export class DeleteLibrary {
     private readonly storage: MediaStorage,
   ) {}
 
-  async execute(ownerId: UserId, libraryId: LibraryId): Promise<Result<void, LibraryNotFound>> {
+  async execute(
+    ownerId: UserId,
+    libraryId: LibraryId,
+  ): Promise<Result<void, LibraryNotFound | VaultNotEditable>> {
     const library = await this.libraries.findOwned(libraryId, ownerId);
     if (!library) return err(new LibraryNotFound());
+    if (library.isVault) return err(new VaultNotEditable());
 
     // La cascada de la clave foránea limpia Postgres, pero no sabe nada del
     // almacenamiento: sin esto, los archivos de la biblioteca quedarían ahí

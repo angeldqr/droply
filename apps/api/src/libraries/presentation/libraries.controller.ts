@@ -11,11 +11,13 @@ import {
 } from '@nestjs/common';
 import {
   addTextItemSchema,
+  copyFromVaultSchema,
   createLibrarySchema,
   moveItemSchema,
   renameLibrarySchema,
   requestUploadSchema,
   type AddTextItemInput,
+  type CopyFromVaultInput,
   type CreateLibraryInput,
   type LibraryDetail,
   type LibraryItemView,
@@ -32,6 +34,7 @@ import { LibraryId, LibraryItemId, type UserId } from '../../shared/identifiers'
 import { orThrow } from '../../shared/result';
 import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
 import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
+import { CopyFromVault, OpenVault } from '../application/vault-use-cases';
 import {
   CreateLibrary,
   DeleteLibrary,
@@ -56,6 +59,8 @@ export class LibrariesController {
     @Inject(MoveItem) private readonly moveItem: MoveItem,
     @Inject(RequestMediaUpload) private readonly requestMediaUpload: RequestMediaUpload,
     @Inject(ConfirmMediaUpload) private readonly confirmMediaUpload: ConfirmMediaUpload,
+    @Inject(OpenVault) private readonly openVault: OpenVault,
+    @Inject(CopyFromVault) private readonly copyFromVault: CopyFromVault,
   ) {}
 
   @Get()
@@ -74,6 +79,23 @@ export class LibrariesController {
     const library = orThrow(await this.createLibrary.execute(userId, body));
 
     return toSummary(library, emptyCounts());
+  }
+
+  /**
+   * El baúl de la cuenta, que se crea solo la primera vez que se pide.
+   *
+   * Va **antes** de `:libraryId`: Nest prueba las rutas en el orden en que están
+   * escritas, y al revés esta la comería el comodín y `vault` pasaría por un
+   * identificador mal escrito.
+   */
+  @Get('vault')
+  async vault(@CurrentUserId() userId: UserId): Promise<LibraryDetail> {
+    const found = await this.openVault.execute(userId);
+
+    return {
+      ...toSummary(found.library, countByKind(found.items)),
+      items: found.items.map((item) => toItemView(item, found.mediaLinks.get(item.id) ?? null)),
+    };
   }
 
   @Get(':libraryId')
@@ -159,6 +181,21 @@ export class LibrariesController {
     orThrow(
       await this.confirmMediaUpload.execute(userId, toLibraryId(libraryId), toItemId(itemId)),
     );
+  }
+
+  /** Trae a esta biblioteca una copia de algo que ya está en el baúl. */
+  @Post(':libraryId/items/copy')
+  @HttpCode(HttpStatus.CREATED)
+  async copyFromTheVault(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @ZodBody(copyFromVaultSchema) body: CopyFromVaultInput,
+  ): Promise<LibraryItemView> {
+    const item = orThrow(
+      await this.copyFromVault.execute(userId, toLibraryId(libraryId), toItemId(body.sourceItemId)),
+    );
+
+    return toItemView(item, null);
   }
 
   @Patch(':libraryId/items/:itemId/position')

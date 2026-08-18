@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -7,11 +8,13 @@ import {
 } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Logger } from '@nestjs/common';
 import type { ApiEnv } from '../../platform/config/env.module';
 import { SIGNATURE_BYTES } from '../domain/media-signature';
 import type { MediaStorage, UploadTicket } from '../domain/ports';
 
 export class S3MediaStorage implements MediaStorage {
+  private readonly logger = new Logger(S3MediaStorage.name);
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly ttlSeconds: number;
@@ -84,17 +87,51 @@ export class S3MediaStorage implements MediaStorage {
     }
   }
 
+  async copy(fromKey: string, toKey: string): Promise<void> {
+    // El objeto se duplica dentro del almacenamiento; los bytes no pasan por
+    // acá. `CopySource` va codificado porque es una ruta dentro de una URL.
+    await this.client.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        Key: toKey,
+        CopySource: encodeURI(`${this.bucket}/${fromKey}`),
+      }),
+    );
+  }
+
   linkTo(key: string): Promise<string> {
     return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
       expiresIn: this.ttlSeconds,
     });
   }
 
+  /*
+   * Borrar el archivo es "lo mejor que se pueda", nunca una condición para
+   * borrar el elemento.
+   *
+   * Si el almacenamiento no responde y esto propagara el error, quitar una
+   * tarjeta o una biblioteca devolvería un 500 y el usuario se quedaría con
+   * elementos que no puede sacar de la pantalla. Un archivo huérfano es basura
+   * que se recoge después; un elemento que no se deja borrar es un callejón sin
+   * salida. Queda registrado en el log para poder barrerlo.
+   */
   async remove(key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    try {
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    } catch (caught) {
+      this.logger.error(`No se pudo borrar el objeto ${key}; queda huérfano.`, caught);
+    }
   }
 
   async removeUnder(prefix: string): Promise<void> {
+    try {
+      await this.deleteEverythingUnder(prefix);
+    } catch (caught) {
+      this.logger.error(`No se pudo vaciar ${prefix}; quedan objetos huérfanos.`, caught);
+    }
+  }
+
+  private async deleteEverythingUnder(prefix: string): Promise<void> {
     let continuationToken: string | undefined;
 
     do {

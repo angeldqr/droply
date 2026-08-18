@@ -10,10 +10,11 @@ import {
   type MediaView,
   type UploadableKind,
 } from '@droply/contracts';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { AddTextDialog } from '@/components/add-text-dialog';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
+import { VaultPickerDialog } from '@/components/vault-picker-dialog';
 import { ApiError } from '@/lib/api';
 import { COLUMN_TINT } from '@/lib/columns';
 import { useMoveItem, useRemoveItem, useUploadMedia } from '@/lib/libraries';
@@ -37,13 +39,18 @@ import { useMorphDialog } from '@/lib/morph-dialog';
  * Que el botón esté abajo y no arriba no es un capricho: es lo que hace que la
  * pila crezca hacia donde está la mano, y que agregar dos cosas seguidas no
  * obligue a volver a subir.
+ *
+ * El mismo tablero sirve para el baúl. Lo único que cambia ahí es que no se
+ * ofrece traer del baúl, que sería traerse cosas de sí mismo.
  */
 export function LibraryBoard({
   libraryId,
   items,
+  isVault = false,
 }: {
   libraryId: string;
   items: readonly LibraryItemView[];
+  isVault?: boolean;
 }) {
   const dialog = useMorphDialog('agregar-texto');
 
@@ -56,6 +63,7 @@ export function LibraryBoard({
             libraryId={libraryId}
             kind={kind}
             items={items.filter((item) => item.kind === kind)}
+            isVault={isVault}
             onAddText={dialog.openDialog}
             addButtonProps={dialog.fromProps}
             className={COLUMN_BORDERS[index] ?? ''}
@@ -93,6 +101,7 @@ function Column({
   libraryId,
   kind,
   items,
+  isVault,
   onAddText,
   addButtonProps,
   className,
@@ -100,10 +109,13 @@ function Column({
   libraryId: string;
   kind: ItemKind;
   items: readonly LibraryItemView[];
+  isVault: boolean;
   onAddText: () => void;
   addButtonProps: { 'data-blendy-from': string };
   className: string;
 }) {
+  const picker = useMorphDialog(`baul-${kind.toLowerCase()}`);
+
   return (
     <section
       aria-label={COLUMN_LABELS[kind]}
@@ -128,8 +140,8 @@ function Column({
           El botón queda al final de la pila y baja solo a medida que se agregan
           elementos, que es exactamente el gesto del boceto.
         */}
-        {kind === 'TEXT' ? (
-          <div className="flex justify-center pt-2">
+        <div className="flex flex-col items-center gap-2 pt-2">
+          {kind === 'TEXT' ? (
             <Button
               variant="ghost"
               onClick={onAddText}
@@ -142,10 +154,36 @@ function Column({
                 <Plus className="size-8" strokeWidth={1.25} />
               </span>
             </Button>
-          </div>
-        ) : (
-          <UploadButton libraryId={libraryId} kind={kind} />
-        )}
+          ) : (
+            <UploadButton libraryId={libraryId} kind={kind} />
+          )}
+
+          {isVault ? null : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={picker.openDialog}
+                className="text-muted-foreground hover:text-foreground"
+                {...picker.fromProps}
+              >
+                {/* Blendy necesita que el contenido cuelgue de un solo elemento. */}
+                <span className="flex items-center gap-2">
+                  <Archive className="size-4" /> Del baúl
+                </span>
+              </Button>
+
+              <VaultPickerDialog
+                libraryId={libraryId}
+                kind={kind}
+                open={picker.open}
+                onOpenChange={picker.onOpenChange}
+                onPicked={picker.close}
+                toProps={picker.toProps}
+              />
+            </>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -203,7 +241,7 @@ function UploadButton({ libraryId, kind }: { libraryId: string; kind: Uploadable
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 pt-2">
+    <>
       <input
         ref={input}
         type="file"
@@ -229,7 +267,7 @@ function UploadButton({ libraryId, kind }: { libraryId: string; kind: Uploadable
           className="w-full"
         />
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -262,11 +300,16 @@ function StackedItem({
 
   return (
     <Item variant="outline" size="sm" className="bg-card items-start">
-      <ItemContent>
+      {/*
+        `min-w-0` porque esto es un hijo de flex, y sin eso no puede encogerse
+        por debajo de su contenido: un nombre de archivo largo ensancha la
+        tarjeta entera en vez de recortarse.
+      */}
+      <ItemContent className="min-w-0">
         {item.media ? (
           <MediaContent kind={item.kind} media={item.media} />
         ) : (
-          <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap">
+          <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap break-words">
             {item.text}
           </ItemDescription>
         )}
@@ -316,36 +359,89 @@ function StackedItem({
  * menú de siempre sirve para quitarla.
  */
 function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
+  /*
+   * La URL viene firmada y caduca. Si el almacenamiento no está levantado, o si
+   * la pestaña llevaba abierta más tiempo que la firma, el reproductor se queda
+   * en negro sin decir por qué. `onError` lo cuenta y pide recargar, que es lo
+   * que vuelve a firmar.
+   */
+  const [failed, setFailed] = useState(false);
+
+  if (media.url === null) {
+    return (
+      <>
+        <FileName media={media} />
+        <ItemDescription>Se quedó a medias. Quítalo y vuelve a subirlo.</ItemDescription>
+      </>
+    );
+  }
+
+  if (failed) {
+    return (
+      <>
+        <FileName media={media} />
+        <ItemDescription>No se pudo cargar el archivo. Recarga la página.</ItemDescription>
+      </>
+    );
+  }
+
   return (
     <>
-      <ItemTitle className="truncate">{media.fileName}</ItemTitle>
+      <FileName media={media} />
 
-      {media.url === null ? (
-        <ItemDescription>Se quedó a medias. Quítalo y vuelve a subirlo.</ItemDescription>
-      ) : kind === 'IMAGE' ? (
-        /*
-         * `<img>` a propósito, no `next/image`. El optimizador descarga la
-         * imagen desde el servidor y deja el resultado en su caché de disco,
-         * donde sobreviviría a la firma que la protege: el bucket es privado y
-         * la URL caduca justamente para que el archivo no quede accesible.
-         */
-        // ponytail: se muestra el original reducido por CSS y no una
-        // miniatura de verdad; generarlas pide un worker con sharp, y hasta
-        // que una biblioteca grande se sienta lenta no compensa.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+      {kind === 'AUDIO' ? (
+        <audio
           src={media.url}
-          alt={media.fileName}
-          loading="lazy"
-          className="max-h-40 w-full rounded-sm object-cover"
+          controls
+          preload="metadata"
+          onError={() => setFailed(true)}
+          className="w-full"
         />
-      ) : kind === 'VIDEO' ? (
-        // `metadata` y no `auto`: una columna con diez videos no tiene por qué
-        // descargar quinientos megas antes de que nadie le dé al play.
-        <video src={media.url} controls preload="metadata" className="max-h-40 w-full rounded-sm" />
       ) : (
-        <audio src={media.url} controls preload="metadata" className="w-full" />
+        // La caja se reserva antes de que llegue el archivo, así la tarjeta no
+        // pega un salto ni empuja a las de abajo cuando termina de cargar.
+        <AspectRatio ratio={16 / 9} className="bg-muted overflow-hidden rounded-sm">
+          {kind === 'IMAGE' ? (
+            /*
+             * `<img>` a propósito, no `next/image`. El optimizador descarga la
+             * imagen desde el servidor y deja el resultado en su caché de
+             * disco, donde sobreviviría a la firma que la protege: el bucket es
+             * privado y la URL caduca justamente para que el archivo no quede
+             * accesible.
+             *
+             * ponytail: se muestra el original encogido y no una miniatura de
+             * verdad; generarlas pide un worker con sharp, y hasta que una
+             * biblioteca grande se sienta lenta no compensa.
+             */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={media.url}
+              alt={media.fileName}
+              loading="lazy"
+              onError={() => setFailed(true)}
+              className="size-full object-cover"
+            />
+          ) : (
+            // `metadata` y no `auto`: una columna con diez videos no tiene por
+            // qué descargar medio giga antes de que nadie le dé al play.
+            <video
+              src={media.url}
+              controls
+              preload="metadata"
+              onError={() => setFailed(true)}
+              className="size-full object-contain"
+            />
+          )}
+        </AspectRatio>
       )}
     </>
+  );
+}
+
+function FileName({ media }: { media: MediaView }) {
+  return (
+    <ItemTitle className="w-full truncate" title={media.fileName}>
+      {media.fileName}
+    </ItemTitle>
   );
 }

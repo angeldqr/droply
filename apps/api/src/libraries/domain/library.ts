@@ -10,6 +10,7 @@ export interface LibrarySnapshot {
   readonly ownerId: UserId;
   readonly name: string;
   readonly description: string | null;
+  readonly isVault: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -20,6 +21,7 @@ export class Library {
     readonly ownerId: UserId,
     private currentName: string,
     private currentDescription: string | null,
+    readonly isVault: boolean,
     readonly createdAt: Date,
     private currentUpdatedAt: Date,
   ) {}
@@ -40,10 +42,19 @@ export class Library {
         input.ownerId,
         fields.value.name,
         fields.value.description,
+        false,
         input.now,
         input.now,
       ),
     );
+  }
+
+  /**
+   * El baúl de una cuenta. No pasa por `normalize` porque su nombre es fijo y
+   * no lo escribe nadie: no hay nada que validar ni un error que devolver.
+   */
+  static vault(input: { id: LibraryId; ownerId: UserId; now: Date }): Library {
+    return new Library(input.id, input.ownerId, 'Baúl', null, true, input.now, input.now);
   }
 
   static fromSnapshot(snapshot: LibrarySnapshot): Library {
@@ -52,6 +63,7 @@ export class Library {
       snapshot.ownerId,
       snapshot.name,
       snapshot.description,
+      snapshot.isVault,
       snapshot.createdAt,
       snapshot.updatedAt,
     );
@@ -95,6 +107,7 @@ export class Library {
       ownerId: this.ownerId,
       name: this.currentName,
       description: this.currentDescription,
+      isVault: this.isVault,
       createdAt: this.createdAt,
       updatedAt: this.currentUpdatedAt,
     };

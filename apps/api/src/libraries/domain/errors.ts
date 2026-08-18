@@ -14,6 +14,17 @@ export class LibraryNotFound extends NotFoundError {
   }
 }
 
+/**
+ * El baúl no es una biblioteca que el usuario haya creado: no se renombra ni se
+ * borra. Vaciarlo, en cambio, es quitar sus elementos uno a uno, como en
+ * cualquier otra.
+ */
+export class VaultNotEditable extends PreconditionFailedError {
+  constructor() {
+    super('library.vault_not_editable', 'El baúl no se puede renombrar ni borrar.');
+  }
+}
+
 export class ItemNotFound extends NotFoundError {
   constructor() {
     super('el elemento', 'item.not_found');

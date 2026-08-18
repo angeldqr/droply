@@ -1,3 +1,4 @@
+import type { SessionResponse } from '@droply/contracts';
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 /**
@@ -42,7 +43,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
    * ahí sí es una sesión terminada de verdad.
    */
   if (response.status === 401 && options.retryOnExpired !== false && path !== '/auth/refresh') {
-    const renewed = await renew();
+    const renewed = await renewSession();
 
     if (renewed) return api<T>(path, { ...options, retryOnExpired: false });
   }
@@ -73,7 +74,7 @@ function send(path: string, options: RequestOptions): Promise<Response> {
  * token ya canjeado, o sea un reuso, y por diseño revoca la familia entera: el
  * usuario queda afuera por haber tenido dos pestañas cargando.
  */
-let renewal: Promise<boolean> | null = null;
+let renewal: Promise<SessionResponse | null> | null = null;
 
 /** Se avisa cuando la sesión se termina de verdad, para no dejar la interfaz
  *  mostrando a un usuario que ya no existe. */
@@ -83,7 +84,20 @@ export function setSessionLostHandler(handler: (() => void) | null): void {
   onSessionLost = handler;
 }
 
-function renew(): Promise<boolean> {
+/**
+ * Canjea la cookie de refresco por una sesión nueva, compartiendo el intento en
+ * vuelo con quien lo pida a la vez.
+ *
+ * Tiene que pasar **todo el mundo** por acá, incluida la restauración al abrir
+ * la aplicación. Dos canjes simultáneos mandan la misma cookie: el servidor rota
+ * el token con el primero, lee el segundo como un token ya usado y revoca la
+ * familia entera, que es su defensa contra un token robado. El usuario aparece
+ * deslogueado sin haber hecho nada.
+ *
+ * Pasa de verdad en desarrollo: con `reactStrictMode` React monta los efectos
+ * dos veces, así que la restauración se dispara dos veces en el mismo instante.
+ */
+export function renewSession(): Promise<SessionResponse | null> {
   renewal ??= (async () => {
     try {
       const response = await send('/auth/refresh', { method: 'POST' });
@@ -92,15 +106,15 @@ function renew(): Promise<boolean> {
         accessToken = null;
         onSessionLost?.();
 
-        return false;
+        return null;
       }
 
-      const session = (await response.json()) as { accessToken: string };
+      const session = (await response.json()) as SessionResponse;
       accessToken = session.accessToken;
 
-      return true;
+      return session;
     } catch {
-      return false;
+      return null;
     } finally {
       renewal = null;
     }

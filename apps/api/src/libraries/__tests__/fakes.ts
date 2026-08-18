@@ -16,7 +16,7 @@ export class InMemoryLibraryRepository implements LibraryRepository {
 
   listOwnedBy(ownerId: UserId): Promise<{ library: Library; counts: Record<ItemKind, number> }[]> {
     const owned = [...this.rows.values()]
-      .filter((library) => library.ownerId === ownerId)
+      .filter((library) => library.ownerId === ownerId && !library.isVault)
       .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
 
     return Promise.resolve(
@@ -31,7 +31,24 @@ export class InMemoryLibraryRepository implements LibraryRepository {
     return Promise.resolve(library?.ownerId === ownerId ? library : null);
   }
 
+  findVaultOf(ownerId: UserId): Promise<Library | null> {
+    const vault = [...this.rows.values()].find(
+      (library) => library.ownerId === ownerId && library.isVault,
+    );
+
+    return Promise.resolve(vault ?? null);
+  }
+
   add(library: Library): Promise<void> {
+    // El índice único parcial del esquema real: uno solo por cuenta.
+    if (library.isVault) {
+      for (const existing of this.rows.values()) {
+        if (existing.ownerId === library.ownerId && existing.isVault) {
+          return Promise.reject(new Error('ya hay un baúl para esta cuenta'));
+        }
+      }
+    }
+
     this.rows.set(library.id, library);
 
     return Promise.resolve();
@@ -159,6 +176,13 @@ export class InMemoryMediaStorage implements MediaStorage {
     const bytes = this.objects.get(key);
 
     return Promise.resolve(bytes ? { sizeBytes: bytes.length, head: bytes } : null);
+  }
+
+  copy(fromKey: string, toKey: string): Promise<void> {
+    const bytes = this.objects.get(fromKey);
+    if (bytes) this.objects.set(toKey, bytes);
+
+    return Promise.resolve();
   }
 
   linkTo(key: string): Promise<string> {

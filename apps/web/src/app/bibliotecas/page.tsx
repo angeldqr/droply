@@ -11,7 +11,8 @@ import { LibraryBig, Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
-import { AppHeader } from '@/components/app-header';
+import { AppShell } from '@/components/app-shell';
+import { LibraryActions } from '@/components/library-actions';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -46,8 +47,9 @@ import { useMorphDialog } from '@/lib/morph-dialog';
 export default function LibrariesPage() {
   return (
     <RequireSession>
-      <AppHeader />
-      <Content />
+      <AppShell>
+        <Content />
+      </AppShell>
     </RequireSession>
   );
 }
@@ -56,7 +58,7 @@ function Content() {
   const { data, isPending, error } = useLibraries();
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl">Tus bibliotecas</h1>
@@ -101,39 +103,52 @@ function Content() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 
 function LibraryCard({ library }: { library: LibrarySummary }) {
   const filled = COLUMN_ORDER.filter((kind) => library.counts[kind] > 0);
 
+  /*
+   * El enlace es una capa que cubre la tarjeta, no un envoltorio.
+   *
+   * Envolviendo, el menú de opciones quedaría dentro del enlace: un botón
+   * dentro de un `<a>` no es HTML válido y, en la práctica, tocar el menú
+   * navegaría a la biblioteca. Así la tarjeta entera sigue siendo clicable y el
+   * menú, que va por encima, se queda con sus propios clics.
+   */
   return (
-    <Link
-      href={`/bibliotecas/${library.id}`}
-      className="focus-visible:outline-ring rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
-    >
-      <Card className="border-border hover:border-foreground/40 h-full border transition-colors">
-        <CardHeader>
-          <CardTitle className="text-2xl">{library.name}</CardTitle>
-          <CardDescription className="line-clamp-2">
-            {library.description ?? 'Sin descripción'}
-          </CardDescription>
-        </CardHeader>
+    <Card className="border-border hover:border-foreground/40 relative h-full border transition-colors">
+      <CardHeader className="pr-12">
+        <CardTitle className="text-2xl">{library.name}</CardTitle>
+        <CardDescription className="line-clamp-2">
+          {library.description ?? 'Sin descripción'}
+        </CardDescription>
+      </CardHeader>
 
-        <div className="flex flex-wrap gap-2 px-6 pb-6">
-          {filled.length === 0 ? (
-            <span className="text-muted-foreground text-sm">Vacía</span>
-          ) : (
-            filled.map((kind) => (
-              <Badge key={kind} variant="secondary" className={COLUMN_TINT[kind]}>
-                {countLabel(kind, library.counts[kind])}
-              </Badge>
-            ))
-          )}
-        </div>
-      </Card>
-    </Link>
+      <div className="flex flex-wrap gap-2 px-6 pb-6">
+        {filled.length === 0 ? (
+          <span className="text-muted-foreground text-sm">Vacía</span>
+        ) : (
+          filled.map((kind) => (
+            <Badge key={kind} variant="secondary" className={COLUMN_TINT[kind]}>
+              {countLabel(kind, library.counts[kind])}
+            </Badge>
+          ))
+        )}
+      </div>
+
+      <Link
+        href={`/bibliotecas/${library.id}`}
+        aria-label={`Abrir ${library.name}`}
+        className="focus-visible:outline-ring absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2"
+      />
+
+      <div className="absolute right-2 top-2 z-10">
+        <LibraryActions library={library} />
+      </div>
+    </Card>
   );
 }
 

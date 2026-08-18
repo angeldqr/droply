@@ -1,33 +1,35 @@
 'use client';
 
 import { COLUMN_ORDER, countLabel } from '@droply/contracts';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { LibraryActions } from '@/components/library-actions';
 import { LibraryBoard } from '@/components/library-board';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { COLUMN_TINT } from '@/lib/columns';
-import { useLibrary } from '@/lib/libraries';
+import { useVault } from '@/lib/libraries';
 
-export default function LibraryPage() {
-  const params = useParams<{ libraryId: string }>();
-
+/**
+ * El baúl: todo lo que la cuenta tiene guardado, sin pertenecer todavía a
+ * ninguna biblioteca.
+ *
+ * Es el mismo tablero de una biblioteca porque por dentro es una biblioteca
+ * más, solo que marcada. Así subir, escribir, ordenar y quitar funcionan igual
+ * sin una segunda mitad de la aplicación que mantener en paralelo.
+ */
+export default function VaultPage() {
   return (
     <RequireSession>
       <AppShell>
-        <Board libraryId={params.libraryId} />
+        <Contents />
       </AppShell>
     </RequireSession>
   );
 }
 
-function Board({ libraryId }: { libraryId: string }) {
-  const router = useRouter();
-  const { data, isPending, error } = useLibrary(libraryId);
+function Contents() {
+  const { data, isPending, error } = useVault();
 
   if (isPending) {
     return (
@@ -43,13 +45,8 @@ function Board({ libraryId }: { libraryId: string }) {
     return (
       <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
         <Alert variant="destructive">
-          <AlertTitle>No pudimos abrir esta biblioteca</AlertTitle>
-          <AlertDescription>
-            {error.message}{' '}
-            <Link href="/bibliotecas" className="underline underline-offset-4">
-              Volver al listado
-            </Link>
-          </AlertDescription>
+          <AlertTitle>No pudimos abrir tu baúl</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       </div>
     );
@@ -59,22 +56,13 @@ function Board({ libraryId }: { libraryId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
-      <Link
-        href="/bibliotecas"
-        className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-      >
-        ← Bibliotecas
-      </Link>
-
-      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="min-w-0 break-words text-4xl">{data.name}</h1>
-            <LibraryActions library={data} onDeleted={() => router.push('/bibliotecas')} />
-          </div>
-          {data.description ? (
-            <p className="text-muted-foreground mt-2 max-w-2xl break-words">{data.description}</p>
-          ) : null}
+          <h1 className="text-4xl">Baúl</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Lo que guardas acá no se envía: queda a mano para meterlo en cualquier biblioteca sin
+            volver a subirlo desde tu equipo.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -88,12 +76,12 @@ function Board({ libraryId }: { libraryId: string }) {
 
       <p className="text-muted-foreground mt-6 text-sm">
         {total === 0
-          ? 'Todavía está vacía. Agrega lo primero desde el signo de más.'
-          : `${total} ${total === 1 ? 'elemento' : 'elementos'}. El bot elige uno al azar en cada envío.`}
+          ? 'Todavía está vacío. Sube lo primero desde el signo de más.'
+          : `${total} ${total === 1 ? 'elemento' : 'elementos'} guardados.`}
       </p>
 
       <div className="mt-6">
-        <LibraryBoard libraryId={libraryId} items={data.items} />
+        <LibraryBoard libraryId={data.id} items={data.items} isVault />
       </div>
     </div>
   );

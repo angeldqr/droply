@@ -2,11 +2,13 @@
 
 import type {
   AddTextItemInput,
+  CopyFromVaultInput,
   CreateLibraryInput,
   LibraryDetail,
   LibraryItemView,
   LibrarySummary,
   MoveItemInput,
+  RenameLibraryInput,
   StartUploadResult,
   UploadableKind,
 } from '@droply/contracts';
@@ -17,10 +19,32 @@ import { uploadToStorage } from './upload';
 const listKey = ['libraries'] as const;
 const detailKey = (id: string) => ['libraries', id] as const;
 
+/**
+ * El baúl se pide por su nombre y no por su identificador, porque el navegador
+ * no lo sabe hasta que responde: es el servidor quien lo crea la primera vez.
+ */
+const vaultKey = ['libraries', 'vault'] as const;
+
+/**
+ * Tocar un elemento invalida el prefijo entero y no una biblioteca sola.
+ *
+ * Copiar del baúl cambia dos pantallas a la vez, y los contadores del listado
+ * cambian con cada elemento que entra o sale. Invalidar el prefijo solo vuelve
+ * a pedir lo que está en pantalla, así que la vuelta de más no se nota.
+ */
+const everything = { queryKey: listKey } as const;
+
 export function useLibraries() {
   return useQuery({
     queryKey: listKey,
     queryFn: () => api<LibrarySummary[]>('/libraries'),
+  });
+}
+
+export function useVault() {
+  return useQuery({
+    queryKey: vaultKey,
+    queryFn: () => api<LibraryDetail>('/libraries/vault'),
   });
 }
 
@@ -41,6 +65,30 @@ export function useCreateLibrary() {
   });
 }
 
+export function useRenameLibrary(libraryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: RenameLibraryInput) =>
+      api<LibrarySummary>(`/libraries/${encodeURIComponent(libraryId)}`, {
+        method: 'PATCH',
+        body: input,
+      }),
+    // El nombre sale en las dos pantallas, así que las dos se quedaron viejas.
+    onSuccess: () => queryClient.invalidateQueries(everything),
+  });
+}
+
+export function useDeleteLibrary() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (libraryId: string) =>
+      api<void>(`/libraries/${encodeURIComponent(libraryId)}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listKey }),
+  });
+}
+
 export function useAddTextItem(libraryId: string) {
   const queryClient = useQueryClient();
 
@@ -50,7 +98,7 @@ export function useAddTextItem(libraryId: string) {
         method: 'POST',
         body: input,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: detailKey(libraryId) }),
+    onSuccess: () => queryClient.invalidateQueries(everything),
   });
 }
 
@@ -62,7 +110,7 @@ export function useRemoveItem(libraryId: string) {
       api<void>(`/libraries/${encodeURIComponent(libraryId)}/items/${encodeURIComponent(itemId)}`, {
         method: 'DELETE',
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: detailKey(libraryId) }),
+    onSuccess: () => queryClient.invalidateQueries(everything),
   });
 }
 
@@ -78,7 +126,21 @@ export function useMoveItem(libraryId: string) {
           body: target,
         },
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: detailKey(libraryId) }),
+    onSuccess: () => queryClient.invalidateQueries(everything),
+  });
+}
+
+/** Trae a esta biblioteca una copia de algo que ya está guardado en el baúl. */
+export function useCopyFromVault(libraryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CopyFromVaultInput) =>
+      api<LibraryItemView>(`/libraries/${encodeURIComponent(libraryId)}/items/copy`, {
+        method: 'POST',
+        body: input,
+      }),
+    onSuccess: () => queryClient.invalidateQueries(everything),
   });
 }
 
@@ -117,6 +179,6 @@ export function useUploadMedia(libraryId: string) {
     },
     // Se recarga pase lo que pase: si la verificación rechazó el archivo, el
     // servidor ya borró el elemento, y la pantalla tiene que enterarse.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: detailKey(libraryId) }),
+    onSettled: () => queryClient.invalidateQueries(everything),
   });
 }

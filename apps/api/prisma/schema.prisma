@@ -73,6 +73,12 @@ model Library {
   name        String
   description String?
 
+  /// El baul es una biblioteca mas, solo que marcada: subir, ordenar y quitar
+  /// funcionan igual sin una segunda tabla. Lo unico distinto es que no sale en
+  /// el listado y no se puede renombrar ni borrar. Un indice unico parcial
+  /// (en la migracion) deja uno solo por cuenta.
+  isVault     Boolean @default(false) @map("is_vault")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

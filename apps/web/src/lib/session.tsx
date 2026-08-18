@@ -3,7 +3,7 @@
 import type { AuthenticatedUser, LoginInput, SessionResponse } from '@droply/contracts';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api, setAccessToken, setSessionLostHandler } from './api';
+import { api, renewSession, setAccessToken, setSessionLostHandler } from './api';
 
 interface SessionState {
   readonly user: AuthenticatedUser | null;
@@ -22,24 +22,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   /*
    * Al abrir la aplicación no hay token en memoria, pero puede quedar la cookie
-   * de refresco de una visita anterior. Se intenta canjearla una vez: si sale,
-   * la sesión sigue viva sin pedir la contraseña de nuevo.
+   * de refresco de una visita anterior. Se canjea para seguir sin pedir la
+   * contraseña otra vez.
+   *
+   * Va por `renewSession()` y no por una llamada suelta: ese canje comparte el
+   * intento en vuelo. Con `reactStrictMode` este efecto se monta dos veces, y
+   * dos canjes con la misma cookie hacen que el servidor lea el segundo como un
+   * token reusado y revoque la sesión entera.
    */
   useEffect(() => {
     let cancelled = false;
 
     const restore = async () => {
-      try {
-        const session = await api<SessionResponse>('/auth/refresh', { method: 'POST' });
-        if (cancelled) return;
+      const session = await renewSession();
 
-        setAccessToken(session.accessToken);
-        setUser(session.user);
-      } catch {
-        if (!cancelled) setUser(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      if (cancelled) return;
+
+      setUser(session?.user ?? null);
+      setLoading(false);
     };
 
     void restore();

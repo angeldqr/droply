@@ -30,7 +30,13 @@ openssl rand -base64 32
 
 El token del bot lo entrega [@BotFather](https://t.me/BotFather) con `/newbot`.
 
-Necesitas Postgres 18, un Redis y un almacenamiento compatible con S3 en ejecución, alcanzables desde las URL que configuraste en el `.env`. En Windows, [Memurai](https://www.memurai.com/) hace de Redis.
+Necesitas Postgres 18 y un Redis en ejecución, alcanzables desde las URL que configuraste en el `.env`. En Windows, [Memurai](https://www.memurai.com/) hace de Redis.
+
+El almacenamiento compatible con S3 lo da el binario de [MinIO](https://dl.min.io/server/minio/release/windows-amd64/minio.exe), y **no hace falta lanzarlo a mano**: `pnpm --filter @droply/api dev` lo levanta suelto antes de arrancar, crea el bucket si falta y no lo vuelve a tocar. Deja el binario en `.tools/minio.exe` dentro del repositorio o en `%USERPROFILE%\minio\minio.exe`, o apunta a él con `MINIO_BINARY` en el `.env`. Para levantarlo por separado: `pnpm run dev:storage`.
+
+La consola de administración queda en http://localhost:9001. El bucket se llama como diga `STORAGE_BUCKET` y se deja privado: el contenido solo sale por URL firmada.
+
+Docker no hace falta en desarrollo, solo para el despliegue.
 
 Crea la base y el rol una sola vez, tomando la contraseña del propio `.env` para no escribirla en ningún lado:
 

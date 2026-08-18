@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
 import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
+import { CopyFromVault, OpenVault } from '../application/vault-use-cases';
 import {
   CreateLibrary,
   DeleteLibrary,
@@ -124,6 +125,29 @@ import { LibrariesController } from './libraries.controller';
         storage: MediaStorage,
         clock: Clock,
       ) => new ConfirmMediaUpload(libraries, items, storage, clock),
+    },
+
+    {
+      provide: OpenVault,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, ID_GENERATOR, CLOCK],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new OpenVault(libraries, items, storage, ids, clock),
+    },
+    {
+      provide: CopyFromVault,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, ID_GENERATOR, CLOCK],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new CopyFromVault(libraries, items, storage, ids, clock),
     },
   ],
 })

@@ -149,6 +149,21 @@
   /* El lila oscuro es el único de la familia que se ve sobre el fondo claro. */
   --ring: var(--color-lila-600);
 
+  /*
+   * El panel lateral es el lomo de la aplicación: lila apagado contra el fondo
+   * lila claro, de modo que se lee como una franja y no como otra tarjeta. La
+   * página elegida se marca con el rosa de la acción principal, el mismo que
+   * lleva el botón de crear.
+   */
+  --sidebar: var(--color-lila-100);
+  --sidebar-foreground: var(--color-tinta-900);
+  --sidebar-primary: var(--color-rosa-300);
+  --sidebar-primary-foreground: var(--color-tinta-900);
+  --sidebar-accent: var(--color-rosa-200);
+  --sidebar-accent-foreground: var(--color-tinta-900);
+  --sidebar-border: color-mix(in oklab, var(--color-tinta-900) 12%, transparent);
+  --sidebar-ring: var(--color-lila-600);
+
   --radius: 0.75rem;
 }
 
@@ -199,4 +214,32 @@
  */
 [data-blendy-to] > * {
   transform-origin: top left;
+}
+
+/*
+ * Un cuadro de texto crece con lo que tiene dentro, pero solo hasta acá.
+ *
+ * Los textareas del registro llevan `field-sizing-content`: la caja se ajusta
+ * a su contenido, que es justo lo que se quiere al escribir dos renglones. Con
+ * un archivo de texto traido entero, esos cuatro mil caracteres estiraban el
+ * diálogo hasta tapar la pantalla y el botón de guardar quedaba fuera de la
+ * vista. Con el techo, el cuadro se queda en su sitio y el texto se desplaza
+ * por dentro.
+ */
+[data-slot='textarea'] {
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/*
+ * El botón de origen no puede taparse el diálogo que está abriendo.
+ *
+ * Blendy le pone `z-index: 1000` en línea mientras dura la transición, y eso
+ * lo deja por encima del velo y del propio diálogo: durante los primeros
+ * milisegundos se veía el botón encima del formulario que estaba creciendo.
+ * Con `auto` vuelve al flujo normal, debajo del velo, que es donde tiene que
+ * estar mientras se desvanece.
+ */
+[data-blendy-from] {
+  z-index: auto !important;
 }

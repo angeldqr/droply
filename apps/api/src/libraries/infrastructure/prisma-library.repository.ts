@@ -12,7 +12,8 @@ export class PrismaLibraryRepository implements LibraryRepository {
     ownerId: UserId,
   ): Promise<{ library: Library; counts: Record<ItemKind, number> }[]> {
     const rows = await this.prisma.library.findMany({
-      where: { ownerId },
+      // El baúl no es una biblioteca del listado: tiene su propia pantalla.
+      where: { ownerId, isVault: false },
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -47,6 +48,12 @@ export class PrismaLibraryRepository implements LibraryRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findVaultOf(ownerId: UserId): Promise<Library | null> {
+    const row = await this.prisma.library.findFirst({ where: { ownerId, isVault: true } });
+
+    return row ? toDomain(row) : null;
+  }
+
   async add(library: Library): Promise<void> {
     const snapshot = library.toSnapshot();
 
@@ -56,6 +63,7 @@ export class PrismaLibraryRepository implements LibraryRepository {
         ownerId: snapshot.ownerId,
         name: snapshot.name,
         description: snapshot.description,
+        isVault: snapshot.isVault,
         createdAt: snapshot.createdAt,
         updatedAt: snapshot.updatedAt,
       },
@@ -87,6 +95,7 @@ function toDomain(row: LibraryRow): Library {
     ownerId: UserId.from(row.ownerId),
     name: row.name,
     description: row.description,
+    isVault: row.isVault,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });

@@ -62,6 +62,14 @@ export const requestUploadSchema = z
   });
 
 /**
+ * Llevar algo del baúl a una biblioteca. Solo hace falta decir qué elemento del
+ * baúl: la columna y el nombre salen del original.
+ */
+export const copyFromVaultSchema = z.object({
+  sourceItemId: z.uuid(),
+});
+
+/**
  * Mover un elemento se expresa por sus vecinos y no por un índice: dos personas
  * arrastrando a la vez sobre la misma columna se pisarían los índices, mientras
  * que "entre estos dos" sigue significando lo mismo.
@@ -83,6 +91,7 @@ export type RenameLibraryInput = z.infer<typeof renameLibrarySchema>;
 export type AddTextItemInput = z.infer<typeof addTextItemSchema>;
 export type MoveItemInput = z.infer<typeof moveItemSchema>;
 export type UploadableKind = z.infer<typeof uploadableKind>;
+export type CopyFromVaultInput = z.infer<typeof copyFromVaultSchema>;
 export type RequestUploadInput = z.infer<typeof requestUploadSchema>;
 
 /**
