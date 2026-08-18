@@ -9,7 +9,7 @@ import {
 import { err, ok, type Result } from '../../shared/result';
 import { ItemMoveImpossible, ItemNotFound, LibraryNotFound } from '../domain/errors';
 import { LibraryItem } from '../domain/library-item';
-import type { LibraryItemRepository, LibraryRepository } from '../domain/ports';
+import type { LibraryItemRepository, LibraryRepository, MediaStorage } from '../domain/ports';
 import { needsRebalance, positionAtEnd, positionBetween, rebalanced } from '../domain/position';
 
 export class AddTextItem {
@@ -55,6 +55,7 @@ export class RemoveItem {
   constructor(
     private readonly libraries: LibraryRepository,
     private readonly items: LibraryItemRepository,
+    private readonly storage: MediaStorage,
     private readonly clock: Clock,
   ) {}
 
@@ -68,6 +69,12 @@ export class RemoveItem {
 
     const item = await this.items.findInLibrary(itemId, libraryId);
     if (!item) return err(new ItemNotFound());
+
+    // Este es el único camino por el que se quita un elemento, así que es el
+    // único lugar donde hay que acordarse del archivo. El objeto va primero: si
+    // fallara después de borrar la fila, quedaría suelto y sin nada que lo
+    // apunte.
+    if (item.storageKey) await this.storage.remove(item.storageKey);
 
     await this.items.remove(itemId, libraryId);
 

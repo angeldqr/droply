@@ -43,7 +43,30 @@ export class PrismaLibraryItemRepository implements LibraryItemRepository {
         kind: snapshot.kind,
         position: snapshot.position,
         textContent: snapshot.textContent,
+        storageKey: snapshot.storageKey,
+        fileName: snapshot.fileName,
+        mimeType: snapshot.mimeType,
+        sizeBytes: snapshot.sizeBytes,
+        mediaReadyAt: snapshot.mediaReadyAt,
         createdAt: snapshot.createdAt,
+      },
+    });
+  }
+
+  async save(item: LibraryItem): Promise<void> {
+    const snapshot = item.toSnapshot();
+
+    // Se rescribe todo lo que un elemento puede cambiar; la columna, la
+    // biblioteca y la clave del objeto no se mueven nunca.
+    //
+    // `updateMany` y no `update` para poder llevar la biblioteca en el `where`:
+    // acá también el alcance va en la consulta, no en un chequeo aparte.
+    await this.prisma.libraryItem.updateMany({
+      where: { id: snapshot.id, libraryId: snapshot.libraryId },
+      data: {
+        position: snapshot.position,
+        sizeBytes: snapshot.sizeBytes,
+        mediaReadyAt: snapshot.mediaReadyAt,
       },
     });
   }
@@ -75,6 +98,11 @@ function toDomain(row: ItemRow): LibraryItem {
     kind: row.kind,
     position: row.position,
     textContent: row.textContent,
+    storageKey: row.storageKey,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    mediaReadyAt: row.mediaReadyAt,
     createdAt: row.createdAt,
   });
 }

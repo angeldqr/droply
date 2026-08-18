@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { itemKind, TEXT_ITEM_MAX_LENGTH, type ItemKind } from './primitives.js';
+import { itemKind, MEDIA_LIMITS, TEXT_ITEM_MAX_LENGTH, type ItemKind } from './primitives.js';
 
 export const LIBRARY_NAME_MAX_LENGTH = 60;
 export const LIBRARY_DESCRIPTION_MAX_LENGTH = 240;
@@ -18,6 +18,48 @@ export const addTextItemSchema = z.object({
     .min(1, 'Escribe algo.')
     .max(TEXT_ITEM_MAX_LENGTH, `El texto no puede pasar de ${TEXT_ITEM_MAX_LENGTH} caracteres.`),
 });
+
+/** Todo lo que no es texto llega como archivo. */
+export const uploadableKind = z.enum(['AUDIO', 'VIDEO', 'IMAGE']);
+
+/** "10 MB", no "10485760 bytes". */
+export function megabytes(bytes: number): string {
+  return `${Math.round(bytes / 1024 / 1024)} MB`;
+}
+
+/**
+ * Lo que el navegador declara antes de subir. Se comprueba acá para avisarle en
+ * el acto, y el propio almacenamiento vuelve a aplicar el techo de tamaño sobre
+ * el archivo de verdad: esto es cortesía, no la defensa.
+ */
+export const MEDIA_FILE_NAME_MAX_LENGTH = 200;
+
+export const requestUploadSchema = z
+  .object({
+    kind: uploadableKind,
+    fileName: z.string().trim().min(1).max(MEDIA_FILE_NAME_MAX_LENGTH),
+    mimeType: z.string(),
+    sizeBytes: z.number().int().positive(),
+  })
+  .superRefine((value, ctx) => {
+    const limits = MEDIA_LIMITS[value.kind];
+
+    if (!(limits.mimeTypes as readonly string[]).includes(value.mimeType)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['mimeType'],
+        message: 'Ese tipo de archivo no sirve para esta columna.',
+      });
+    }
+
+    if (value.sizeBytes > limits.maxBytes) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sizeBytes'],
+        message: `El archivo no puede pasar de ${megabytes(limits.maxBytes)}.`,
+      });
+    }
+  });
 
 /**
  * Mover un elemento se expresa por sus vecinos y no por un índice: dos personas
@@ -40,13 +82,38 @@ export type CreateLibraryInput = z.infer<typeof createLibrarySchema>;
 export type RenameLibraryInput = z.infer<typeof renameLibrarySchema>;
 export type AddTextItemInput = z.infer<typeof addTextItemSchema>;
 export type MoveItemInput = z.infer<typeof moveItemSchema>;
+export type UploadableKind = z.infer<typeof uploadableKind>;
+export type RequestUploadInput = z.infer<typeof requestUploadSchema>;
+
+/**
+ * El archivo de un elemento que no es texto. `url` viene firmada y de vida
+ * corta, y es `null` mientras la subida no se ha confirmado: no hace falta un
+ * estado aparte, porque no hay URL que dar hasta que el archivo se verificó.
+ */
+export interface MediaView {
+  /** El nombre que traía el archivo. Es lo único que identifica la tarjeta. */
+  readonly fileName: string;
+  readonly url: string | null;
+}
 
 export interface LibraryItemView {
   readonly id: string;
   readonly kind: ItemKind;
   readonly position: number;
   readonly text: string | null;
+  readonly media: MediaView | null;
   readonly createdAt: string;
+}
+
+/** El permiso de subida: se manda tal cual a la URL, con el archivo al final. */
+export interface UploadTicketView {
+  readonly url: string;
+  readonly fields: Readonly<Record<string, string>>;
+}
+
+export interface StartUploadResult {
+  readonly item: LibraryItemView;
+  readonly upload: UploadTicketView;
 }
 
 export interface LibrarySummary {

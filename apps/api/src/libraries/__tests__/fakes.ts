@@ -2,7 +2,12 @@ import type { LibraryId, LibraryItemId, UserId } from '../../shared/identifiers'
 import { emptyCounts, type ItemKind } from '../domain/item-kind';
 import type { Library } from '../domain/library';
 import type { LibraryItem } from '../domain/library-item';
-import type { LibraryItemRepository, LibraryRepository } from '../domain/ports';
+import type {
+  LibraryItemRepository,
+  LibraryRepository,
+  MediaStorage,
+  UploadTicket,
+} from '../domain/ports';
 
 export class InMemoryLibraryRepository implements LibraryRepository {
   readonly rows = new Map<string, Library>();
@@ -83,6 +88,12 @@ export class InMemoryLibraryItemRepository implements LibraryItemRepository {
     return Promise.resolve();
   }
 
+  save(item: LibraryItem): Promise<void> {
+    this.rows.set(item.id, item);
+
+    return Promise.resolve();
+  }
+
   savePositions(items: readonly LibraryItem[]): Promise<void> {
     for (const item of items) this.rows.set(item.id, item);
 
@@ -117,5 +128,54 @@ export class InMemoryLibraryItemRepository implements LibraryItemRepository {
     return [...this.rows.values()]
       .filter((item) => item.libraryId === libraryId && item.kind === kind)
       .sort((left, right) => left.position - right.position);
+  }
+}
+
+/**
+ * El almacenamiento de mentira. Guarda los bytes que le pongan, así que un test
+ * puede subir una cabecera de PNG a un elemento que dijo ser un MP3 y ver qué
+ * hace la confirmación.
+ */
+export class InMemoryMediaStorage implements MediaStorage {
+  readonly objects = new Map<string, Uint8Array>();
+  /** Los permisos firmados, para comprobar con qué techo se firmaron. */
+  readonly tickets = new Map<string, { mimeType: string; maxBytes: number }>();
+
+  ticketFor(key: string, mimeType: string, maxBytes: number): Promise<UploadTicket> {
+    this.tickets.set(key, { mimeType, maxBytes });
+
+    return Promise.resolve({
+      url: 'https://almacenamiento.invalido/droply-media',
+      fields: { key, 'Content-Type': mimeType },
+    });
+  }
+
+  /** Lo que haría el navegador al subir. */
+  put(key: string, bytes: Uint8Array): void {
+    this.objects.set(key, bytes);
+  }
+
+  inspect(key: string): Promise<{ sizeBytes: number; head: Uint8Array } | null> {
+    const bytes = this.objects.get(key);
+
+    return Promise.resolve(bytes ? { sizeBytes: bytes.length, head: bytes } : null);
+  }
+
+  linkTo(key: string): Promise<string> {
+    return Promise.resolve(`https://almacenamiento.invalido/droply-media/${key}?firma=x`);
+  }
+
+  remove(key: string): Promise<void> {
+    this.objects.delete(key);
+
+    return Promise.resolve();
+  }
+
+  removeUnder(prefix: string): Promise<void> {
+    for (const key of this.objects.keys()) {
+      if (key.startsWith(prefix)) this.objects.delete(key);
+    }
+
+    return Promise.resolve();
   }
 }

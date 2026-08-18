@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
+import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
 import {
   CreateLibrary,
   DeleteLibrary,
@@ -13,11 +15,14 @@ import {
 import {
   LIBRARY_ITEM_REPOSITORY,
   LIBRARY_REPOSITORY,
+  MEDIA_STORAGE,
   type LibraryItemRepository,
   type LibraryRepository,
+  type MediaStorage,
 } from '../domain/ports';
 import { PrismaLibraryItemRepository } from '../infrastructure/prisma-library-item.repository';
 import { PrismaLibraryRepository } from '../infrastructure/prisma-library.repository';
+import { S3MediaStorage } from '../infrastructure/s3-media-storage';
 import { LibrariesController } from './libraries.controller';
 
 @Module({
@@ -33,6 +38,11 @@ import { LibrariesController } from './libraries.controller';
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaLibraryItemRepository(prisma),
     },
+    {
+      provide: MEDIA_STORAGE,
+      inject: [ENV],
+      useFactory: (env: ApiEnv) => new S3MediaStorage(env),
+    },
 
     {
       provide: CreateLibrary,
@@ -47,9 +57,12 @@ import { LibrariesController } from './libraries.controller';
     },
     {
       provide: GetLibrary,
-      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY],
-      useFactory: (libraries: LibraryRepository, items: LibraryItemRepository) =>
-        new GetLibrary(libraries, items),
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+      ) => new GetLibrary(libraries, items, storage),
     },
     {
       provide: RenameLibrary,
@@ -59,8 +72,9 @@ import { LibrariesController } from './libraries.controller';
     },
     {
       provide: DeleteLibrary,
-      inject: [LIBRARY_REPOSITORY],
-      useFactory: (libraries: LibraryRepository) => new DeleteLibrary(libraries),
+      inject: [LIBRARY_REPOSITORY, MEDIA_STORAGE],
+      useFactory: (libraries: LibraryRepository, storage: MediaStorage) =>
+        new DeleteLibrary(libraries, storage),
     },
 
     {
@@ -75,15 +89,41 @@ import { LibrariesController } from './libraries.controller';
     },
     {
       provide: RemoveItem,
-      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, CLOCK],
-      useFactory: (libraries: LibraryRepository, items: LibraryItemRepository, clock: Clock) =>
-        new RemoveItem(libraries, items, clock),
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, CLOCK],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+        clock: Clock,
+      ) => new RemoveItem(libraries, items, storage, clock),
     },
     {
       provide: MoveItem,
       inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, CLOCK],
       useFactory: (libraries: LibraryRepository, items: LibraryItemRepository, clock: Clock) =>
         new MoveItem(libraries, items, clock),
+    },
+
+    {
+      provide: RequestMediaUpload,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, ID_GENERATOR, CLOCK],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new RequestMediaUpload(libraries, items, storage, ids, clock),
+    },
+    {
+      provide: ConfirmMediaUpload,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, CLOCK],
+      useFactory: (
+        libraries: LibraryRepository,
+        items: LibraryItemRepository,
+        storage: MediaStorage,
+        clock: Clock,
+      ) => new ConfirmMediaUpload(libraries, items, storage, clock),
     },
   ],
 })

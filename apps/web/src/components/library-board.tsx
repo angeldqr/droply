@@ -3,10 +3,15 @@
 import {
   COLUMN_LABELS,
   COLUMN_ORDER,
+  MEDIA_LIMITS,
+  requestUploadSchema,
   type ItemKind,
   type LibraryItemView,
+  type MediaView,
+  type UploadableKind,
 } from '@droply/contracts';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { AddTextDialog } from '@/components/add-text-dialog';
 import { Button } from '@/components/ui/button';
@@ -17,11 +22,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Item, ItemActions, ItemContent, ItemDescription } from '@/components/ui/item';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
 import { COLUMN_TINT } from '@/lib/columns';
-import { useMoveItem, useRemoveItem } from '@/lib/libraries';
+import { useMoveItem, useRemoveItem, useUploadMedia } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
 
 /**
@@ -98,8 +104,6 @@ function Column({
   addButtonProps: { 'data-blendy-from': string };
   className: string;
 }) {
-  const isText = kind === 'TEXT';
-
   return (
     <section
       aria-label={COLUMN_LABELS[kind]}
@@ -124,8 +128,8 @@ function Column({
           El botón queda al final de la pila y baja solo a medida que se agregan
           elementos, que es exactamente el gesto del boceto.
         */}
-        <div className="flex justify-center pt-2">
-          {isText ? (
+        {kind === 'TEXT' ? (
+          <div className="flex justify-center pt-2">
             <Button
               variant="ghost"
               onClick={onAddText}
@@ -138,32 +142,94 @@ function Column({
                 <Plus className="size-8" strokeWidth={1.25} />
               </span>
             </Button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/*
-                  `aria-disabled` en vez de `disabled`: un botón deshabilitado
-                  no recibe foco ni dispara eventos, así que ni se puede llegar
-                  con el teclado ni aparece el tooltip que explica por qué no
-                  se puede usar todavía. Así queda enfocable, anunciado como no
-                  disponible, y la explicación es alcanzable.
-                */}
-                <Button
-                  variant="ghost"
-                  aria-disabled
-                  aria-label={`Agregar a ${COLUMN_LABELS[kind]}, todavía no disponible`}
-                  onClick={(event) => event.preventDefault()}
-                  className="text-muted-foreground/50 h-16 w-16 cursor-not-allowed"
-                >
-                  <Plus className="size-8" strokeWidth={1.25} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Los archivos llegan con la subida de media.</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+          </div>
+        ) : (
+          <UploadButton libraryId={libraryId} kind={kind} />
+        )}
       </div>
     </section>
+  );
+}
+
+/**
+ * El botón de agregar de las tres columnas de archivos.
+ *
+ * Un `<input type="file">` no se puede maquillar sin pelear con el navegador,
+ * así que va escondido y lo dispara el botón. El `accept` sale de los mismos
+ * techos que valida el servidor, así el diálogo del sistema ya filtra lo que no
+ * sirve en vez de dejar elegir algo que después se rechaza.
+ */
+function UploadButton({ libraryId, kind }: { libraryId: string; kind: UploadableKind }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const upload = useUploadMedia(libraryId);
+
+  const limits = MEDIA_LIMITS[kind];
+  const uploading = progress !== null;
+
+  async function onPick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    // Se limpia enseguida para que elegir el mismo archivo otra vez, después de
+    // un error, vuelva a disparar el evento.
+    event.target.value = '';
+
+    if (!file) return;
+
+    // El mismo esquema que valida el servidor, corrido acá para avisar en el
+    // acto. Repetir las comprobaciones a mano sería tener dos versiones del
+    // mismo mensaje esperando a separarse.
+    const check = requestUploadSchema.safeParse({
+      kind,
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+    });
+
+    if (!check.success) {
+      toast.error(check.error.issues[0]?.message ?? 'Ese archivo no sirve para esta columna.');
+      return;
+    }
+
+    setProgress(0);
+
+    try {
+      await upload.mutateAsync({ kind, file, onProgress: setProgress });
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo subir el archivo.');
+    } finally {
+      setProgress(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2 pt-2">
+      <input
+        ref={input}
+        type="file"
+        accept={limits.mimeTypes.join(',')}
+        onChange={onPick}
+        className="hidden"
+      />
+
+      <Button
+        variant="ghost"
+        onClick={() => input.current?.click()}
+        disabled={uploading}
+        aria-label={`Agregar a ${COLUMN_LABELS[kind]}`}
+        className="text-muted-foreground hover:text-foreground h-16 w-16"
+      >
+        {uploading ? <Spinner /> : <Plus className="size-8" strokeWidth={1.25} />}
+      </Button>
+
+      {uploading ? (
+        <Progress
+          value={Math.round(progress * 100)}
+          aria-label={`Subiendo a ${COLUMN_LABELS[kind]}`}
+          className="w-full"
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -197,9 +263,13 @@ function StackedItem({
   return (
     <Item variant="outline" size="sm" className="bg-card items-start">
       <ItemContent>
-        <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap">
-          {item.text}
-        </ItemDescription>
+        {item.media ? (
+          <MediaContent kind={item.kind} media={item.media} />
+        ) : (
+          <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap">
+            {item.text}
+          </ItemDescription>
+        )}
       </ItemContent>
 
       <ItemActions>
@@ -235,5 +305,47 @@ function StackedItem({
         </DropdownMenu>
       </ItemActions>
     </Item>
+  );
+}
+
+/**
+ * El archivo dentro de su tarjeta.
+ *
+ * Sin URL el archivo no terminó de subir: quedó a medias porque se cortó la
+ * conexión o se cerró la pestaña. La tarjeta lo dice en vez de esconderlo, y el
+ * menú de siempre sirve para quitarla.
+ */
+function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
+  return (
+    <>
+      <ItemTitle className="truncate">{media.fileName}</ItemTitle>
+
+      {media.url === null ? (
+        <ItemDescription>Se quedó a medias. Quítalo y vuelve a subirlo.</ItemDescription>
+      ) : kind === 'IMAGE' ? (
+        /*
+         * `<img>` a propósito, no `next/image`. El optimizador descarga la
+         * imagen desde el servidor y deja el resultado en su caché de disco,
+         * donde sobreviviría a la firma que la protege: el bucket es privado y
+         * la URL caduca justamente para que el archivo no quede accesible.
+         */
+        // ponytail: se muestra el original reducido por CSS y no una
+        // miniatura de verdad; generarlas pide un worker con sharp, y hasta
+        // que una biblioteca grande se sienta lenta no compensa.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={media.url}
+          alt={media.fileName}
+          loading="lazy"
+          className="max-h-40 w-full rounded-sm object-cover"
+        />
+      ) : kind === 'VIDEO' ? (
+        // `metadata` y no `auto`: una columna con diez videos no tiene por qué
+        // descargar quinientos megas antes de que nadie le dé al play.
+        <video src={media.url} controls preload="metadata" className="max-h-40 w-full rounded-sm" />
+      ) : (
+        <audio src={media.url} controls preload="metadata" className="w-full" />
+      )}
+    </>
   );
 }

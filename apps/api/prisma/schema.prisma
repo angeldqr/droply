@@ -101,9 +101,24 @@ model LibraryItem {
   kind      ItemKind
   position  Float
 
-  /// Los elementos de texto guardan su contenido acá mismo; el resto apuntará
-  /// a un archivo cuando exista el almacenamiento.
+  /// Los elementos de texto guardan su contenido acá mismo; el resto apunta a
+  /// un objeto del almacenamiento.
   textContent String? @map("text_content")
+
+  /// La clave del objeto en el bucket: `ownerId/libraryId/itemId`. Sin el
+  /// nombre de archivo del usuario, que no aporta nada y traería caracteres
+  /// raros y recorridos de ruta.
+  storageKey String? @map("storage_key")
+  /// El nombre con el que llegó, solo para mostrarlo. No entra en la clave del
+  /// objeto: ahí traería caracteres raros y recorridos de ruta.
+  fileName   String? @map("file_name")
+  mimeType   String? @map("mime_type")
+  sizeBytes  Int?    @map("size_bytes")
+
+  /// En null mientras el permiso de subida está firmado pero el archivo no se
+  /// ha verificado. Una verificación fallida no deja rastro: se borra el objeto
+  /// y se borra la fila, así que no hace falta un estado de error.
+  mediaReadyAt DateTime? @map("media_ready_at")
 
   createdAt DateTime @default(now()) @map("created_at")
 

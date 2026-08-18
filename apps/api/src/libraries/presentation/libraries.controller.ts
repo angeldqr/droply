@@ -14,6 +14,7 @@ import {
   createLibrarySchema,
   moveItemSchema,
   renameLibrarySchema,
+  requestUploadSchema,
   type AddTextItemInput,
   type CreateLibraryInput,
   type LibraryDetail,
@@ -21,6 +22,8 @@ import {
   type LibrarySummary,
   type MoveItemInput,
   type RenameLibraryInput,
+  type RequestUploadInput,
+  type StartUploadResult,
 } from '@droply/contracts';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
@@ -28,6 +31,7 @@ import { InvalidInputError } from '../../shared/domain-error';
 import { LibraryId, LibraryItemId, type UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
 import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
+import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
 import {
   CreateLibrary,
   DeleteLibrary,
@@ -50,6 +54,8 @@ export class LibrariesController {
     @Inject(AddTextItem) private readonly addTextItem: AddTextItem,
     @Inject(RemoveItem) private readonly removeItem: RemoveItem,
     @Inject(MoveItem) private readonly moveItem: MoveItem,
+    @Inject(RequestMediaUpload) private readonly requestMediaUpload: RequestMediaUpload,
+    @Inject(ConfirmMediaUpload) private readonly confirmMediaUpload: ConfirmMediaUpload,
   ) {}
 
   @Get()
@@ -79,7 +85,7 @@ export class LibrariesController {
 
     return {
       ...toSummary(found.library, countByKind(found.items)),
-      items: found.items.map(toItemView),
+      items: found.items.map((item) => toItemView(item, found.mediaLinks.get(item.id) ?? null)),
     };
   }
 
@@ -118,7 +124,41 @@ export class LibrariesController {
   ): Promise<LibraryItemView> {
     const item = orThrow(await this.addTextItem.execute(userId, toLibraryId(libraryId), body.text));
 
-    return toItemView(item);
+    return toItemView(item, null);
+  }
+
+  /**
+   * Devuelve el permiso para subir, no recibe el archivo. Los cincuenta megas
+   * van del navegador al almacenamiento sin pasar por acá.
+   */
+  @Post(':libraryId/items/media')
+  @HttpCode(HttpStatus.CREATED)
+  async startUpload(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @ZodBody(requestUploadSchema) body: RequestUploadInput,
+  ): Promise<StartUploadResult> {
+    const started = orThrow(
+      await this.requestMediaUpload.execute(userId, toLibraryId(libraryId), body),
+    );
+
+    return { item: toItemView(started.item, null), upload: started.ticket };
+  }
+
+  /**
+   * Acá se comprueba qué llegó de verdad. Sin cuerpo de respuesta: el navegador
+   * recarga la biblioteca y ahí viene el elemento con su URL firmada.
+   */
+  @Post(':libraryId/items/:itemId/confirm')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async confirmUpload(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @Param('itemId') itemId: string,
+  ): Promise<void> {
+    orThrow(
+      await this.confirmMediaUpload.execute(userId, toLibraryId(libraryId), toItemId(itemId)),
+    );
   }
 
   @Patch(':libraryId/items/:itemId/position')
@@ -182,12 +222,13 @@ function toSummary(library: Library, counts: Record<ItemKind, number>): LibraryS
   };
 }
 
-function toItemView(item: LibraryItem): LibraryItemView {
+function toItemView(item: LibraryItem, mediaUrl: string | null): LibraryItemView {
   return {
     id: item.id,
     kind: item.kind,
     position: item.position,
     text: item.textContent,
+    media: item.fileName === null ? null : { fileName: item.fileName, url: mediaUrl },
     createdAt: item.createdAt.toISOString(),
   };
 }
