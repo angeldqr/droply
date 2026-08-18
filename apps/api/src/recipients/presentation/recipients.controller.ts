@@ -80,7 +80,6 @@ export class RecipientsController {
         ? `https://t.me/${this.env.TELEGRAM_BOT_USERNAME}?start=${encodeURIComponent(code)}`
         : null,
       linkExpiresAt: recipient.linkCodeExpiresAt?.toISOString() ?? null,
-      linkedAt: recipient.verifiedAt?.toISOString() ?? null,
       createdAt: recipient.createdAt.toISOString(),
     };
   }

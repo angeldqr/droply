@@ -30,12 +30,28 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
   constructor(
     private readonly api: TelegramApi,
     private readonly handler: HandleTelegramMessage,
-    private readonly webhook: { url: string | undefined; secret: string },
+    private readonly webhook: { url: string | undefined; secret: string; isProduction: boolean },
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     if (this.webhook.url) {
       await this.registerWebhook(this.webhook.url);
+
+      return;
+    }
+
+    /*
+     * El sondeo es una muleta de desarrollo, no un modo de operación.
+     *
+     * En el servidor puede haber más de una réplica del API, y cada una
+     * abriría su propio `getUpdates` contra el mismo bot: Telegram le entrega a
+     * una sola y las demás reciben 409, así que los mensajes se atenderían a
+     * medias sin que nada lo diga. Falta la variable, se avisa y no se sondea.
+     */
+    if (this.webhook.isProduction) {
+      this.logger.error(
+        'Falta TELEGRAM_WEBHOOK_URL: el bot no va a recibir nada. En producción no se sondea.',
+      );
 
       return;
     }

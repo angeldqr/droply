@@ -48,9 +48,12 @@ export interface RecipientView {
    * bot fue bloqueado; hasta la fase 6 no lo emite nadie.
    */
   readonly status: RecipientStatus;
-  /** El enlace que hay que hacerle llegar. Solo mientras está pendiente. */
+  /**
+   * El enlace que hay que hacerle llegar. Llega una sola vez, en la respuesta
+   * que lo emitió: el código se guarda hasheado y no se puede volver a mostrar.
+   */
   readonly linkUrl: string | null;
+  /** Cuándo deja de servir el último enlace emitido, para poder decirlo. */
   readonly linkExpiresAt: string | null;
-  readonly linkedAt: string | null;
   readonly createdAt: string;
 }

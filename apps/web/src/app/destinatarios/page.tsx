@@ -145,6 +145,34 @@ const STATUS: Readonly<
   BLOCKED: { badge: 'Te bloqueó', variant: 'destructive' },
 };
 
+/**
+ * Qué dice la fila debajo del nombre.
+ *
+ * Un pendiente necesita saber si el enlace que ya mandó sigue vivo: si venció,
+ * la otra persona lo va a abrir y no va a pasar nada, y sin decirlo acá no hay
+ * forma de enterarse salvo preguntándole.
+ */
+function describe(recipient: RecipientView): string {
+  if (recipient.status === 'VERIFIED') {
+    return `${CHANNEL_LABELS[recipient.channel]}, listo para recibir`;
+  }
+
+  const expiresAt = recipient.linkExpiresAt ? new Date(recipient.linkExpiresAt) : null;
+
+  if (!expiresAt || expiresAt.getTime() <= Date.now()) {
+    return 'Su enlace venció. Genera uno nuevo y vuelve a mandárselo.';
+  }
+
+  return `Falta que abra su enlace y apriete Empezar. Vence el ${WHEN.format(expiresAt)}.`;
+}
+
+/*
+ * La fecha se arma en el navegador y nunca en el servidor: estas filas solo se
+ * pintan con sesión resuelta y con la respuesta ya en mano, así que no hay un
+ * render del servidor con otra zona horaria del que despegarse.
+ */
+const WHEN = new Intl.DateTimeFormat('es', { dateStyle: 'long', timeStyle: 'short' });
+
 function RecipientRow({
   recipient,
   onIssued,
@@ -178,11 +206,7 @@ function RecipientRow({
       <Item variant="outline" size="sm" className="bg-card">
         <ItemContent className="min-w-0">
           <ItemTitle className="truncate">{recipient.label}</ItemTitle>
-          <ItemDescription>
-            {recipient.status === 'VERIFIED'
-              ? `${CHANNEL_LABELS[recipient.channel]}, listo para recibir`
-              : 'Falta que abra su enlace y apriete Empezar'}
-          </ItemDescription>
+          <ItemDescription>{describe(recipient)}</ItemDescription>
         </ItemContent>
 
         <ItemActions>

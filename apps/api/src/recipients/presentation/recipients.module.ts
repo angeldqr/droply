@@ -110,6 +110,7 @@ const TELEGRAM_API = Symbol('TelegramApi');
         new TelegramConnection(api, handler, {
           url: env.TELEGRAM_WEBHOOK_URL,
           secret: env.TELEGRAM_WEBHOOK_SECRET,
+          isProduction: env.NODE_ENV === 'production',
         }),
     },
   ],
