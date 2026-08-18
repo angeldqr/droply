@@ -1,0 +1,323 @@
+'use client';
+
+import {
+  CHANNEL_LABELS,
+  RECIPIENT_LABEL_MAX_LENGTH,
+  type RecipientStatus,
+  type RecipientView,
+} from '@droply/contracts';
+import { Link2, Plus, Send, Trash2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
+import { AppShell } from '@/components/app-shell';
+import { MorphDialogContent } from '@/components/morph-dialog-content';
+import { RecipientLinkDialog } from '@/components/recipient-link-dialog';
+import { RequireSession } from '@/components/require-session';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { ApiError } from '@/lib/api';
+import { useMorphDialog } from '@/lib/morph-dialog';
+import {
+  useCreateRecipient,
+  useDeleteRecipient,
+  useRecipients,
+  useRelinkRecipient,
+} from '@/lib/recipients';
+
+export default function RecipientsPage() {
+  return (
+    <RequireSession>
+      <AppShell crumbs={[{ label: 'Destinatarios' }]}>
+        <Contents />
+      </AppShell>
+    </RequireSession>
+  );
+}
+
+function Contents() {
+  const { data, isPending, error } = useRecipients();
+
+  /*
+   * El enlace recién emitido, que se muestra en su propio diálogo.
+   *
+   * Vive acá arriba porque lo producen dos acciones distintas —crear y pedir
+   * uno nuevo— y las dos terminan en la misma pantalla.
+   */
+  const [issued, setIssued] = useState<RecipientView | null>(null);
+
+  return (
+    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-4xl">Destinatarios</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            A quién le llegan los envíos. Cada persona tiene que abrir su enlace y apretar Empezar
+            en Telegram: hasta entonces el bot no tiene permiso para escribirle.
+          </p>
+        </div>
+
+        <NewRecipientDialog id="nuevo-destinatario-cabecera" onIssued={setIssued} />
+      </div>
+
+      <div className="mt-10">
+        {isPending ? (
+          <div className="flex flex-col gap-2">
+            {[0, 1, 2].map((index) => (
+              <Skeleton key={index} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : error ? (
+          <Alert variant="destructive">
+            <AlertTitle>No pudimos traer tus destinatarios</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        ) : data.length === 0 ? (
+          <Empty className="border-border border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Send />
+              </EmptyMedia>
+              <EmptyTitle>Todavía no hay nadie</EmptyTitle>
+              <EmptyDescription>
+                Agrega a la primera persona y mándale el enlace que te vamos a dar.
+              </EmptyDescription>
+            </EmptyHeader>
+            <NewRecipientDialog id="nuevo-destinatario-vacio" onIssued={setIssued} />
+          </Empty>
+        ) : (
+          <ul className="flex max-w-3xl flex-col gap-2">
+            {data.map((recipient) => (
+              <li key={recipient.id}>
+                <RecipientRow recipient={recipient} onIssued={setIssued} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <RecipientLinkDialog recipient={issued} onOpenChange={() => setIssued(null)} />
+    </div>
+  );
+}
+
+/**
+ * Cómo se ve cada estado. En un mapa y no repartido en tres ternarios: la
+ * descripción, la etiqueta y su tono son la misma decisión tomada tres veces, y
+ * el día que entre BLOCKED —cuando el envío descubra que bloquearon al bot— se
+ * agrega una línea acá y no se busca por el archivo.
+ */
+const STATUS: Readonly<
+  Record<RecipientStatus, { badge: string; variant: 'secondary' | 'outline' | 'destructive' }>
+> = {
+  PENDING: { badge: 'Pendiente', variant: 'outline' },
+  VERIFIED: { badge: 'Vinculado', variant: 'secondary' },
+  BLOCKED: { badge: 'Te bloqueó', variant: 'destructive' },
+};
+
+function RecipientRow({
+  recipient,
+  onIssued,
+}: {
+  recipient: RecipientView;
+  onIssued: (issued: RecipientView) => void;
+}) {
+  const relink = useRelinkRecipient();
+  const remove = useDeleteRecipient();
+  const [confirming, setConfirming] = useState(false);
+
+  async function askForLink() {
+    try {
+      onIssued(await relink.mutateAsync(recipient.id));
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo generar el enlace.');
+    }
+  }
+
+  async function onDelete() {
+    try {
+      await remove.mutateAsync(recipient.id);
+      toast.success(`Se quitó a ${recipient.label}.`);
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo quitar.');
+    }
+  }
+
+  return (
+    <>
+      <Item variant="outline" size="sm" className="bg-card">
+        <ItemContent className="min-w-0">
+          <ItemTitle className="truncate">{recipient.label}</ItemTitle>
+          <ItemDescription>
+            {recipient.status === 'VERIFIED'
+              ? `${CHANNEL_LABELS[recipient.channel]}, listo para recibir`
+              : 'Falta que abra su enlace y apriete Empezar'}
+          </ItemDescription>
+        </ItemContent>
+
+        <ItemActions>
+          <Badge variant={STATUS[recipient.status].variant}>{STATUS[recipient.status].badge}</Badge>
+
+          {recipient.status === 'PENDING' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={relink.isPending}
+              onClick={() => void askForLink()}
+            >
+              {relink.isPending ? <Spinner /> : <Link2 />}
+              {/*
+                "Generar enlace" y no "Ver enlace": el código se guarda hasheado,
+                así que no hay ninguno que mostrar. Esto emite uno nuevo y apaga
+                el anterior, y el botón tiene que decirlo.
+              */}
+              Generar enlace
+            </Button>
+          ) : null}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Quitar a ${recipient.label}`}
+            onClick={() => setConfirming(true)}
+          >
+            <Trash2 />
+          </Button>
+        </ItemActions>
+      </Item>
+
+      {/*
+        Con confirmación, igual que al borrar una biblioteca. Quitar a alguien no
+        se deshace: recuperarlo obliga a que la otra persona vuelva a apretar
+        Empezar, y eso ya no depende de quien hizo el clic.
+      */}
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Quitar a {recipient.label}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deja de recibir tus envíos. Para volver a agregarlo tendrás que mandarle un enlace
+              nuevo y esperar a que lo abra otra vez.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void onDelete()}
+              disabled={remove.isPending}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {remove.isPending ? <Spinner /> : null}
+              Quitar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function NewRecipientDialog({
+  id,
+  onIssued,
+}: {
+  id: string;
+  onIssued: (issued: RecipientView) => void;
+}) {
+  const create = useCreateRecipient();
+  const dialog = useMorphDialog(id);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const created = await create.mutateAsync({ label: String(form.get('label')) });
+
+      dialog.close();
+      onIssued(created);
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo agregar.');
+    }
+  }
+
+  return (
+    <Dialog open={dialog.open} onOpenChange={dialog.onOpenChange}>
+      <DialogTrigger asChild>
+        <Button {...dialog.fromProps}>
+          {/* Blendy necesita que el contenido cuelgue de un solo elemento. */}
+          <span className="flex items-center gap-2">
+            <Plus /> Nuevo destinatario
+          </span>
+        </Button>
+      </DialogTrigger>
+
+      <MorphDialogContent toProps={dialog.toProps}>
+        <form onSubmit={onSubmit}>
+          <DialogHeader>
+            <DialogTitle>Nuevo destinatario</DialogTitle>
+            <DialogDescription>
+              Ponle el nombre con el que lo reconozcas. Después te damos el enlace para mandarle.
+            </DialogDescription>
+          </DialogHeader>
+
+          <FieldGroup className="py-6">
+            <Field>
+              <FieldLabel htmlFor={`${id}-label`}>Nombre</FieldLabel>
+              <Input
+                id={`${id}-label`}
+                name="label"
+                autoFocus
+                required
+                maxLength={RECIPIENT_LABEL_MAX_LENGTH}
+                placeholder="Mamá"
+              />
+              <FieldDescription>Es solo para ti: la otra persona nunca lo ve.</FieldDescription>
+            </Field>
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={dialog.close}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={create.isPending}>
+              {create.isPending ? <Spinner /> : null}
+              Agregar
+            </Button>
+          </DialogFooter>
+        </form>
+      </MorphDialogContent>
+    </Dialog>
+  );
+}

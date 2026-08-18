@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, LibraryBig, LogOut } from 'lucide-react';
+import { Archive, LibraryBig, LogOut, Send } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Fragment } from 'react';
@@ -98,10 +98,25 @@ export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: Reac
   );
 }
 
-/** Las dos pantallas de la aplicación, con la que estás abierta marcada. */
+/*
+ * Las pantallas de la aplicación, con la que estás abierta marcada.
+ *
+ * Van en dos grupos porque son dos cosas distintas: lo que se envía y a quién
+ * se le envía. Mezclarlas en una lista sola haría parecer que "Destinatarios"
+ * es otra caja de contenido.
+ */
 const SECTIONS = [
-  { href: '/bibliotecas', label: 'Bibliotecas', icon: LibraryBig },
-  { href: '/baul', label: 'Baúl', icon: Archive },
+  {
+    label: 'Tu contenido',
+    items: [
+      { href: '/bibliotecas', label: 'Bibliotecas', icon: LibraryBig },
+      { href: '/baul', label: 'Baúl', icon: Archive },
+    ],
+  },
+  {
+    label: 'Envíos',
+    items: [{ href: '/destinatarios', label: 'Destinatarios', icon: Send }],
+  },
 ] as const;
 
 function DroplySidebar() {
@@ -128,27 +143,29 @@ function DroplySidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Tu contenido</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {SECTIONS.map((section) => (
-                <SidebarMenuItem key={section.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(section.href)}
-                    tooltip={section.label}
-                  >
-                    <Link href={section.href}>
-                      <section.icon />
-                      <span>{section.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {SECTIONS.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((section) => (
+                  <SidebarMenuItem key={section.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(section.href)}
+                      tooltip={section.label}
+                    >
+                      <Link href={section.href}>
+                        <section.icon />
+                        <span>{section.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>

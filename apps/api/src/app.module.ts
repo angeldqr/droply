@@ -8,6 +8,7 @@ import { loggerConfig } from './platform/logging/logger.config';
 import { PlatformModule } from './platform/platform.module';
 import { IdentityModule } from './identity/presentation/identity.module';
 import { LibrariesModule } from './libraries/presentation/libraries.module';
+import { RecipientsModule } from './recipients/presentation/recipients.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { LibrariesModule } from './libraries/presentation/libraries.module';
     PlatformModule,
     IdentityModule,
     LibrariesModule,
+    RecipientsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

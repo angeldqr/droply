@@ -35,6 +35,7 @@ model User {
   refreshTokens     RefreshToken[]
   verificationCodes EmailVerification[]
   libraries         Library[]
+  recipients        Recipient[]
 
   @@map("users")
 }
@@ -147,4 +148,43 @@ model EmailVerification {
 
   @@index([userId])
   @@map("email_verifications")
+}
+
+enum RecipientChannel {
+  TELEGRAM
+
+  @@map("recipient_channel")
+}
+
+/// A quien le llegan los envios.
+///
+/// Un bot de Telegram no puede escribirle a alguien que nunca le hablo, asi que
+/// un destinatario nace **pendiente**: solo tiene la etiqueta que le puso su
+/// dueño y un codigo de un solo uso. Cuando esa persona abre el enlace y aprieta
+/// Empezar, el bot recibe el codigo y recien ahi se conoce su `externalId`.
+model Recipient {
+  id      String           @id @db.Uuid
+  ownerId String           @map("owner_id") @db.Uuid
+  label   String
+  channel RecipientChannel @default(TELEGRAM)
+
+  /// El chat_id de Telegram. Nulo mientras el destinatario no se vinculo.
+  externalId String? @map("external_id")
+
+  /// El codigo de vinculacion se guarda hasheado, igual que los de refresco:
+  /// quien lea la tabla no puede vincularse haciendose pasar por otro.
+  linkCodeHash      String?   @unique @map("link_code_hash")
+  linkCodeExpiresAt DateTime? @map("link_code_expires_at")
+
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /// La misma persona no se vincula dos veces a la misma cuenta. Postgres trata
+  /// los nulos como distintos entre si, asi que los pendientes no chocan.
+  @@unique([ownerId, channel, externalId])
+  @@index([ownerId])
+  @@map("recipients")
 }

@@ -36,6 +36,14 @@ El almacenamiento compatible con S3 lo da el binario de [MinIO](https://dl.min.i
 
 La consola de administración queda en http://localhost:9001. El bucket se llama como diga `STORAGE_BUCKET` y se deja privado: el contenido solo sale por URL firmada.
 
+El bot de Telegram lo crea [@BotFather](https://t.me/BotFather) con `/newbot`; su token y su
+usuario van en `TELEGRAM_BOT_TOKEN` y `TELEGRAM_BOT_USERNAME`.
+
+Telegram no puede alcanzar una dirección local, así que en desarrollo el API **no** registra
+webhook: abre una conexión larga contra `getUpdates` y espera los mensajes. En el servidor basta
+con poner `TELEGRAM_WEBHOOK_URL` apuntando a `<API_URL>/api/telegram/webhook` y el arranque
+registra el webhook solo, con el secreto de `TELEGRAM_WEBHOOK_SECRET`.
+
 Docker no hace falta en desarrollo, solo para el despliegue.
 
 Crea la base y el rol una sola vez, tomando la contraseña del propio `.env` para no escribirla en ningún lado:
