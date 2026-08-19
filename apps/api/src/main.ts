@@ -46,7 +46,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: [env.WEB_URL],
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
 
   app.setGlobalPrefix('api', { exclude: ['health', 'health/ready'] });

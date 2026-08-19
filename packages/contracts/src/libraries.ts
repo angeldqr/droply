@@ -62,6 +62,29 @@ export const requestUploadSchema = z
   });
 
 /**
+ * Cuántas veces al día se manda un elemento.
+ *
+ * El techo no es técnico: doce envíos del mismo archivo en un día ya es más
+ * insistencia de la que nadie quiere recibir, y sin tope alguien pondría cien
+ * sin darse cuenta de lo que pide.
+ */
+export const TIMES_PER_DAY_MAX = 12;
+
+export const setTimesPerDaySchema = z.object({
+  timesPerDay: z.number().int().min(1).max(TIMES_PER_DAY_MAX),
+});
+
+/**
+ * A quién se le puede enviar lo de esta biblioteca.
+ *
+ * Se manda la lista entera y no altas y bajas sueltas: es un diálogo de
+ * casillas que se guarda de una vez.
+ */
+export const setLibraryRecipientsSchema = z.object({
+  recipientIds: z.array(z.uuid()).max(100),
+});
+
+/**
  * Llevar algo del baúl a una biblioteca. Solo hace falta decir qué elemento del
  * baúl: la columna y el nombre salen del original.
  */
@@ -92,6 +115,8 @@ export type AddTextItemInput = z.infer<typeof addTextItemSchema>;
 export type MoveItemInput = z.infer<typeof moveItemSchema>;
 export type UploadableKind = z.infer<typeof uploadableKind>;
 export type CopyFromVaultInput = z.infer<typeof copyFromVaultSchema>;
+export type SetLibraryRecipientsInput = z.infer<typeof setLibraryRecipientsSchema>;
+export type SetTimesPerDayInput = z.infer<typeof setTimesPerDaySchema>;
 export type RequestUploadInput = z.infer<typeof requestUploadSchema>;
 
 /**
@@ -109,6 +134,8 @@ export interface LibraryItemView {
   readonly id: string;
   readonly kind: ItemKind;
   readonly position: number;
+  /** Cuántas veces al día lo manda cada horario de esta biblioteca. */
+  readonly timesPerDay: number;
   readonly text: string | null;
   readonly media: MediaView | null;
   readonly createdAt: string;

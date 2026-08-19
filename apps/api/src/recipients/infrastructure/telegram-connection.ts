@@ -30,10 +30,21 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
   constructor(
     private readonly api: TelegramApi,
     private readonly handler: HandleTelegramMessage,
-    private readonly webhook: { url: string | undefined; secret: string; isProduction: boolean },
+    private readonly webhook: {
+      url: string | undefined;
+      secret: string;
+      isProduction: boolean;
+      botUsername: string;
+    },
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    // Lo primero es preguntarle a Telegram quién es este bot. Sin esto, un
+    // token inválido solo se notaba como un aviso perdido en el bucle del
+    // sondeo, y el enlace que se le manda a la gente apunta a un usuario que no
+    // existe: el fallo aparecía en el teléfono de otra persona, no acá.
+    if (!(await this.checkIdentity())) return;
+
     if (this.webhook.url) {
       await this.registerWebhook(this.webhook.url);
 
@@ -61,6 +72,37 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
 
   onApplicationShutdown(): void {
     this.running = false;
+  }
+
+  /**
+   * Comprueba que el token sirva y que el usuario configurado sea el de verdad.
+   *
+   * El nombre importa tanto como el token: el enlace de vinculación se arma con
+   * `TELEGRAM_BOT_USERNAME`, así que si ahí hay otro nombre, la gente abre un
+   * `t.me` que no lleva a ninguna parte aunque el bot funcione perfectamente.
+   */
+  private async checkIdentity(): Promise<boolean> {
+    let me: { username: string };
+
+    try {
+      me = await this.api.whoAmI();
+    } catch {
+      this.logger.error(
+        'TELEGRAM_BOT_TOKEN no vale: Telegram lo rechaza. Crea un bot con @BotFather y pon su token en el .env. El bot queda apagado.',
+      );
+
+      return false;
+    }
+
+    if (me.username && me.username !== this.webhook.botUsername) {
+      this.logger.error(
+        `TELEGRAM_BOT_USERNAME dice "${this.webhook.botUsername}" pero el bot es "${me.username}". Los enlaces de vinculación no van a llevar a ninguna parte hasta que lo corrijas en el .env.`,
+      );
+    }
+
+    this.logger.log(`Bot conectado como @${me.username}`);
+
+    return true;
   }
 
   private async registerWebhook(url: string): Promise<void> {

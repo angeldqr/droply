@@ -8,12 +8,15 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   addTextItemSchema,
   copyFromVaultSchema,
   createLibrarySchema,
   moveItemSchema,
+  setLibraryRecipientsSchema,
+  setTimesPerDaySchema,
   renameLibrarySchema,
   requestUploadSchema,
   type AddTextItemInput,
@@ -24,6 +27,8 @@ import {
   type LibrarySummary,
   type MoveItemInput,
   type RenameLibraryInput,
+  type SetLibraryRecipientsInput,
+  type SetTimesPerDayInput,
   type RequestUploadInput,
   type StartUploadResult,
 } from '@droply/contracts';
@@ -32,7 +37,16 @@ import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { InvalidInputError } from '../../shared/domain-error';
 import { LibraryId, LibraryItemId, type UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
-import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
+import {
+  AddTextItem,
+  MoveItem,
+  RemoveItem,
+  SetItemTimesPerDay,
+} from '../application/item-use-cases';
+import {
+  ListLibraryRecipients,
+  SetLibraryRecipients,
+} from '../application/library-recipient-use-cases';
 import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
 import { CopyFromVault, OpenVault } from '../application/vault-use-cases';
 import {
@@ -59,6 +73,9 @@ export class LibrariesController {
     @Inject(MoveItem) private readonly moveItem: MoveItem,
     @Inject(RequestMediaUpload) private readonly requestMediaUpload: RequestMediaUpload,
     @Inject(ConfirmMediaUpload) private readonly confirmMediaUpload: ConfirmMediaUpload,
+    @Inject(ListLibraryRecipients) private readonly listRecipients: ListLibraryRecipients,
+    @Inject(SetLibraryRecipients) private readonly setRecipients: SetLibraryRecipients,
+    @Inject(SetItemTimesPerDay) private readonly setTimesPerDay: SetItemTimesPerDay,
     @Inject(OpenVault) private readonly openVault: OpenVault,
     @Inject(CopyFromVault) private readonly copyFromVault: CopyFromVault,
   ) {}
@@ -109,6 +126,30 @@ export class LibrariesController {
       ...toSummary(found.library, countByKind(found.items)),
       items: found.items.map((item) => toItemView(item, found.mediaLinks.get(item.id) ?? null)),
     };
+  }
+
+  /**
+   * A quiénes se les puede enviar lo de esta biblioteca. Solo los
+   * identificadores: la pantalla ya tiene la lista de destinatarios y los cruza
+   * ahí, así que devolver los nombres otra vez sería repetirlos.
+   */
+  @Get(':libraryId/recipients')
+  async recipientsOf(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+  ): Promise<string[]> {
+    return orThrow(await this.listRecipients.execute(userId, toLibraryId(libraryId)));
+  }
+
+  @Put(':libraryId/recipients')
+  async setRecipientsOf(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @ZodBody(setLibraryRecipientsSchema) body: SetLibraryRecipientsInput,
+  ): Promise<string[]> {
+    return orThrow(
+      await this.setRecipients.execute(userId, toLibraryId(libraryId), body.recipientIds),
+    );
   }
 
   @Patch(':libraryId')
@@ -198,6 +239,26 @@ export class LibrariesController {
     return toItemView(item, null);
   }
 
+  /** Cuántas veces al día se manda este elemento dentro de la franja. */
+  @Patch(':libraryId/items/:itemId/repetitions')
+  async setRepetitions(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @Param('itemId') itemId: string,
+    @ZodBody(setTimesPerDaySchema) body: SetTimesPerDayInput,
+  ): Promise<LibraryItemView> {
+    const item = orThrow(
+      await this.setTimesPerDay.execute(
+        userId,
+        toLibraryId(libraryId),
+        toItemId(itemId),
+        body.timesPerDay,
+      ),
+    );
+
+    return toItemView(item, null);
+  }
+
   @Patch(':libraryId/items/:itemId/position')
   @HttpCode(HttpStatus.NO_CONTENT)
   async move(
@@ -264,6 +325,7 @@ function toItemView(item: LibraryItem, mediaUrl: string | null): LibraryItemView
     id: item.id,
     kind: item.kind,
     position: item.position,
+    timesPerDay: item.timesPerDay,
     text: item.textContent,
     media: item.fileName === null ? null : { fileName: item.fileName, url: mediaUrl },
     createdAt: item.createdAt.toISOString(),

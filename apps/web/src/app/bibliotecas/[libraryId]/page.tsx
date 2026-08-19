@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { LibraryActions } from '@/components/library-actions';
 import { LibraryBoard } from '@/components/library-board';
+import { LibraryRecipientsDialog } from '@/components/library-recipients-dialog';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +85,9 @@ function Board({ libraryId }: { libraryId: string }) {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <LibraryRecipientsDialog library={data} />
+
             {COLUMN_ORDER.filter((kind) => data.counts[kind] > 0).map((kind) => (
               <Badge key={kind} variant="secondary" className={COLUMN_TINT[kind]}>
                 {countLabel(kind, data.counts[kind])}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_MIN_LENGTH } from '../identity.js';
 
 /** Un secreto generado con `openssl rand -base64 N` no baja de 32 caracteres. */
 const secret = (label: string) =>
@@ -75,6 +76,21 @@ export const apiEnvSchema = sharedEnvSchema.extend({
 
   TELEGRAM_WEBHOOK_SECRET: secret('TELEGRAM_WEBHOOK_SECRET'),
   TELEGRAM_WEBHOOK_URL: optional(z.url()),
+
+  /*
+   * La cuenta que administra, resuelta al arrancar.
+   *
+   * Sin registro abierto, la primera cuenta no la puede crear nadie desde la
+   * aplicación: el huevo y la gallina. Con esto, quien despliega deja el correo
+   * en el entorno y el API se encarga — si esa cuenta existe la asciende, y si
+   * no existe la crea con la contraseña de abajo.
+   *
+   * Las dos son opcionales: una instalación que ya tiene su administrador no
+   * necesita ninguna, y dejarlas puestas no hace daño porque la operación es
+   * idempotente.
+   */
+  ADMIN_EMAIL: optional(z.email()),
+  ADMIN_INITIAL_PASSWORD: optional(z.string().min(PASSWORD_MIN_LENGTH)),
 });
 
 export const workerEnvSchema = sharedEnvSchema.extend({

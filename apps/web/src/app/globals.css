@@ -116,53 +116,51 @@
  * shadcn, y en un empate gana el último.
  */
 :root {
-  --background: var(--color-lila-50);
-  --foreground: var(--color-tinta-900);
+  --background: var(--color-papel-50);
+  --foreground: var(--color-ciruela-900);
 
   --card: var(--color-papel);
-  --card-foreground: var(--color-tinta-900);
+  --card-foreground: var(--color-ciruela-900);
   --popover: var(--color-papel);
-  --popover-foreground: var(--color-tinta-900);
+  --popover-foreground: var(--color-ciruela-900);
 
   /*
-   * El rosa es el botón principal, y lleva la tinta encima en vez de blanco:
-   * un pastel no da contraste suficiente para texto claro, pero con la tinta
-   * pasa de largo el mínimo y además conserva el color tal como viene de la
-   * paleta, sin oscurecerlo para que "funcione".
+   * El morado es la acción principal, y esta vez sí lleva blanco encima: a
+   * diferencia de las paletas pastel anteriores, `#532b88` sobre blanco pasa de
+   * 9:1, así que el botón puede ser sólido sin pelearse con su propio texto.
    */
-  --primary: var(--color-rosa-300);
-  --primary-foreground: var(--color-tinta-900);
+  --primary: var(--color-morado-700);
+  --primary-foreground: var(--color-papel);
 
-  --secondary: var(--color-cielo-200);
-  --secondary-foreground: var(--color-tinta-900);
-  --muted: var(--color-lila-100);
-  --muted-foreground: var(--color-tinta-500);
-  --accent: var(--color-rosa-200);
-  --accent-foreground: var(--color-tinta-900);
+  --secondary: var(--color-lavanda-200);
+  --secondary-foreground: var(--color-ciruela-900);
+  --muted: var(--color-lavanda-200);
+  --muted-foreground: color-mix(in oklab, var(--color-ciruela-900) 65%, transparent);
+  --accent: var(--color-lavanda-300);
+  --accent-foreground: var(--color-ciruela-900);
 
   --destructive: var(--color-alerta-500);
 
   /* Un borde con algo de opacidad de la tinta lee como trazo, no como caja. */
-  --border: color-mix(in oklab, var(--color-tinta-900) 14%, transparent);
-  --input: color-mix(in oklab, var(--color-tinta-900) 22%, transparent);
+  --border: color-mix(in oklab, var(--color-ciruela-900) 12%, transparent);
+  --input: color-mix(in oklab, var(--color-ciruela-900) 20%, transparent);
 
-  /* El lila oscuro es el único de la familia que se ve sobre el fondo claro. */
-  --ring: var(--color-lila-600);
+  --ring: var(--color-morado-700);
 
   /*
-   * El panel lateral es el lomo de la aplicación: lila apagado contra el fondo
-   * lila claro, de modo que se lee como una franja y no como otra tarjeta. La
-   * página elegida se marca con el rosa de la acción principal, el mismo que
-   * lleva el botón de crear.
+   * El panel lateral va oscuro contra una aplicación clara, y es la decisión
+   * más visible de esta paleta: la ciruela ancla la pantalla por la izquierda y
+   * hace que el contenido —tarjetas blancas sobre papel lavanda— se lea como lo
+   * que importa. El morado marca la página abierta.
    */
-  --sidebar: var(--color-lila-100);
-  --sidebar-foreground: var(--color-tinta-900);
-  --sidebar-primary: var(--color-rosa-300);
-  --sidebar-primary-foreground: var(--color-tinta-900);
-  --sidebar-accent: var(--color-rosa-200);
-  --sidebar-accent-foreground: var(--color-tinta-900);
-  --sidebar-border: color-mix(in oklab, var(--color-tinta-900) 12%, transparent);
-  --sidebar-ring: var(--color-lila-600);
+  --sidebar: var(--color-ciruela-900);
+  --sidebar-foreground: var(--color-papel-50);
+  --sidebar-primary: var(--color-morado-400);
+  --sidebar-primary-foreground: var(--color-ciruela-900);
+  --sidebar-accent: color-mix(in oklab, var(--color-papel-50) 12%, transparent);
+  --sidebar-accent-foreground: var(--color-papel-50);
+  --sidebar-border: color-mix(in oklab, var(--color-papel-50) 16%, transparent);
+  --sidebar-ring: var(--color-morado-400);
 
   --radius: 0.75rem;
 }

@@ -3,8 +3,14 @@ import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import '../../platform/http/current-user.decorator';
 import { IS_PUBLIC } from '../../platform/http/public.decorator';
-import { UnauthenticatedError } from '../../shared/domain-error';
-import { ACCESS_TOKEN_ISSUER, type AccessTokenIssuer } from '../domain/ports';
+import { REQUIRED_ROLE } from '../../platform/http/roles.decorator';
+import { ForbiddenError, UnauthenticatedError } from '../../shared/domain-error';
+import {
+  ACCESS_TOKEN_ISSUER,
+  USER_REPOSITORY,
+  type AccessTokenIssuer,
+  type UserRepository,
+} from '../domain/ports';
 
 /**
  * Se registra como guard global: las rutas nacen cerradas y hay que abrirlas a
@@ -16,6 +22,7 @@ export class AuthenticatedGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     @Inject(ACCESS_TOKEN_ISSUER) private readonly accessTokens: AccessTokenIssuer,
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,6 +47,26 @@ export class AuthenticatedGuard implements CanActivate {
     }
 
     request.userId = claims.userId;
+
+    const required = this.reflector.getAllAndOverride<string>(REQUIRED_ROLE, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!required) return true;
+
+    /*
+     * El rol se relee de la base, no viaja en el token.
+     *
+     * El token vive quince minutos: si el rol viniera dentro, alguien a quien
+     * se le acaba de quitar el permiso seguiría administrando ese cuarto de
+     * hora. Es una consulta más, y solo en las rutas restringidas.
+     */
+    const user = await this.users.findById(claims.userId);
+
+    if (!user || user.role !== required) {
+      throw new ForbiddenError('auth.forbidden', 'No tienes permiso para esto.');
+    }
 
     return true;
   }

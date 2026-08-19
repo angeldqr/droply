@@ -7,8 +7,16 @@ import type { LinkTelegramChat } from './link-telegram-chat';
  * que habla en su idioma y no en el de la base de datos.
  */
 const REPLIES = {
-  linked: (label: string) =>
-    `Listo. A partir de ahora vas a recibir acá lo que «${label}» te mande desde Droply.`,
+  /*
+   * Sin nombrar a nadie, y a propósito.
+   *
+   * Antes decía «vas a recibir lo que "X" te mande» con la etiqueta del propio
+   * destinatario, que es el nombre con el que su dueño lo tiene anotado: al
+   * leerlo parecía que esa persona era quien enviaba. Y aunque quisiéramos
+   * nombrar al remitente, acá todavía no se puede: la vinculación ocurre antes
+   * de que exista ningún horario, y el remitente se elige en el horario.
+   */
+  linked: 'Listo. Ya puedes recibir envíos acá.',
   invalid:
     'Ese enlace ya no sirve o no es el tuyo. Pídele a quien te lo mandó que genere uno nuevo.',
   noCode:
@@ -42,7 +50,7 @@ export class HandleTelegramMessage {
     const linked = await this.link.execute(code, message.chatId);
 
     if (linked.ok) {
-      await this.channel.send(message.chatId, REPLIES.linked(linked.value.label));
+      await this.channel.send(message.chatId, REPLIES.linked);
 
       return;
     }

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth-shell';
 import { SignInForm } from '@/components/sign-in-form';
@@ -12,14 +11,11 @@ export default function EntrarPage() {
     <AuthShell
       title="Entrar"
       description="Vuelve a tus bibliotecas."
-      footer={
-        <>
-          ¿Todavía no tienes cuenta?{' '}
-          <Link href="/crear-cuenta" className="text-foreground underline underline-offset-4">
-            Crea una
-          </Link>
-        </>
-      }
+      /*
+       * Ya no hay enlace para crear cuenta: las cuentas las crea quien
+       * administra. Decirlo acá evita que alguien busque un botón que no existe.
+       */
+      footer={<>¿No tienes cuenta? Pídesela a quien administra Droply.</>}
     >
       <SignInForm onDone={() => router.push('/bibliotecas')} />
     </AuthShell>

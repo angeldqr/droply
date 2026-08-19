@@ -28,7 +28,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Marca que esta llamada ya es el reintento, para no encadenar otro. */
   retryOnExpired?: boolean;

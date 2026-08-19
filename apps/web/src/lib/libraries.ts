@@ -2,6 +2,8 @@
 
 import type {
   AddTextItemInput,
+  SetLibraryRecipientsInput,
+  SetTimesPerDayInput,
   CopyFromVaultInput,
   CreateLibraryInput,
   LibraryDetail,
@@ -52,6 +54,30 @@ export function useLibrary(id: string) {
   return useQuery({
     queryKey: detailKey(id),
     queryFn: () => api<LibraryDetail>(`/libraries/${encodeURIComponent(id)}`),
+  });
+}
+
+const recipientsKey = (libraryId: string) => ['libraries', libraryId, 'recipients'] as const;
+
+/** A quién se le puede enviar lo de esta biblioteca. Solo identificadores. */
+export function useLibraryRecipients(libraryId: string) {
+  return useQuery({
+    queryKey: recipientsKey(libraryId),
+    queryFn: () => api<string[]>(`/libraries/${encodeURIComponent(libraryId)}/recipients`),
+  });
+}
+
+export function useSetLibraryRecipients(libraryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SetLibraryRecipientsInput) =>
+      api<string[]>(`/libraries/${encodeURIComponent(libraryId)}/recipients`, {
+        method: 'PUT',
+        body: input,
+      }),
+    // Cambia también qué horarios se pueden crear, así que se invalida todo.
+    onSuccess: () => queryClient.invalidateQueries(everything),
   });
 }
 
@@ -125,6 +151,20 @@ export function useMoveItem(libraryId: string) {
           method: 'PATCH',
           body: target,
         },
+      ),
+    onSuccess: () => queryClient.invalidateQueries(everything),
+  });
+}
+
+/** Cuántas veces al día se manda este elemento dentro de la franja del horario. */
+export function useSetTimesPerDay(libraryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ itemId, ...input }: SetTimesPerDayInput & { itemId: string }) =>
+      api<LibraryItemView>(
+        `/libraries/${encodeURIComponent(libraryId)}/items/${encodeURIComponent(itemId)}/repetitions`,
+        { method: 'PATCH', body: input },
       ),
     onSuccess: () => queryClient.invalidateQueries(everything),
   });

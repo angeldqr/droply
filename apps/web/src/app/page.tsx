@@ -14,9 +14,11 @@ export default function HomePage() {
         encarga del resto.
       </p>
 
-      <div className="mt-10 flex flex-wrap gap-3">
-        <AuthDialog modo="crear-cuenta" />
+      <div className="mt-10 flex flex-wrap items-center gap-3">
         <AuthDialog modo="entrar" />
+        <span className="text-muted-foreground text-sm">
+          Las cuentas las crea quien administra Droply.
+        </span>
       </div>
     </main>
   );

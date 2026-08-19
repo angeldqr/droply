@@ -19,11 +19,22 @@ datasource db {
 // identity
 // ---------------------------------------------------------------------------
 
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_role")
+}
+
 model User {
-  id           String @id @db.Uuid
-  email        String @unique
-  passwordHash String @map("password_hash")
-  displayName  String @map("display_name")
+  id           String   @id @db.Uuid
+  email        String   @unique
+  /// Quien administra crea las cuentas y ve los metadatos de todas. No hay
+  /// registro abierto: el rol solo lo da otro administrador o el script de
+  /// arranque.
+  role         UserRole @default(USER)
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
 
   /// Zona IANA. Define a qué hora real llega cada envío programado.
   timezone String
@@ -36,6 +47,7 @@ model User {
   verificationCodes EmailVerification[]
   libraries         Library[]
   recipients        Recipient[]
+  schedules         Schedule[]
 
   @@map("users")
 }
@@ -83,8 +95,10 @@ model Library {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  items LibraryItem[]
+  owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items      LibraryItem[]
+  schedules  Schedule[]
+  recipients LibraryRecipient[]
 
   @@index([ownerId])
   @@map("libraries")
@@ -121,6 +135,11 @@ model LibraryItem {
   fileName   String? @map("file_name")
   mimeType   String? @map("mime_type")
   sizeBytes  Int?    @map("size_bytes")
+
+  /// Cuantas veces al dia se manda este elemento. Los envios se reparten de
+  /// extremo a extremo de la franja del horario: con tres, sale a la primera
+  /// hora, a la del medio y a la ultima.
+  timesPerDay Int @default(1) @map("times_per_day")
 
   /// En null mientras el permiso de subida está firmado pero el archivo no se
   /// ha verificado. Una verificación fallida no deja rastro: se borra el objeto
@@ -180,11 +199,143 @@ model Recipient {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  schedules  Schedule[]
+  libraries  LibraryRecipient[]
 
   /// La misma persona no se vincula dos veces a la misma cuenta. Postgres trata
   /// los nulos como distintos entre si, asi que los pendientes no chocan.
   @@unique([ownerId, channel, externalId])
   @@index([ownerId])
   @@map("recipients")
+}
+
+enum SelectionStrategy {
+  RANDOM
+  RANDOM_NO_REPEAT
+  SEQUENTIAL
+
+  @@map("selection_strategy")
+}
+
+/// Cuando sale un envio y de donde.
+///
+/// `rrule` es la regla en texto (RFC 5545) y `timezone` la zona IANA en la que
+/// se interpreta: sin la zona, "todos los dias a las 8" cambia de hora sola dos
+/// veces al año. `nextRunAt` se guarda en UTC y es lo unico que mira el tick,
+/// asi que el indice de vencidos no depende de recalcular la regla.
+model Schedule {
+  id          String @id @db.Uuid
+  ownerId     String @map("owner_id") @db.Uuid
+  libraryId   String @map("library_id") @db.Uuid
+  recipientId String @map("recipient_id") @db.Uuid
+
+  /// Que dias de la semana sale, con 1 = lunes y 7 = domingo, como Luxon.
+  /// Nunca vacio: un horario sin dias no se disparara jamas.
+  weekdays Int[]
+
+  /// La franja del dia en minutos desde medianoche, en la zona de abajo.
+  /// `endMinute` es estrictamente mayor que `startMinute`.
+  startMinute Int @map("start_minute")
+  endMinute   Int @map("end_minute")
+
+  timezone String
+
+  /// Con qué nombre firma este horario sus envios. Nulo = el nombre de la
+  /// cuenta, que es el caso normal. Existe porque quien manda no siempre es el
+  /// dueño de la cuenta: un padre que le programa cosas a su hijo quiere que
+  /// llegue firmado como el, no como Droply.
+  senderName String? @map("sender_name")
+
+  strategy SelectionStrategy @default(RANDOM)
+
+  /// Si esta puesto, solo se eligen elementos de esa columna.
+  kindFilter ItemKind? @map("kind_filter")
+
+  active    Boolean   @default(true)
+  nextRunAt DateTime? @map("next_run_at")
+  lastRunAt DateTime? @map("last_run_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  library   Library   @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  sent       SentItem[]
+  deliveries DeliveryAttempt[]
+
+  /// El indice del tick: solo activos y vencidos, que es la unica consulta que
+  /// corre cada minuto.
+  @@index([active, nextRunAt])
+  @@index([ownerId])
+  @@map("schedules")
+}
+
+/// La bolsa del "aleatorio sin repetir": lo que este horario ya envio.
+///
+/// Una fila por elemento y no un array en `schedules`, para que dos ticks
+/// simultaneos no se pisen la bolsa entera al escribirla.
+model SentItem {
+  scheduleId String   @map("schedule_id") @db.Uuid
+  itemId     String   @map("item_id") @db.Uuid
+  sentAt     DateTime @default(now()) @map("sent_at")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@id([scheduleId, itemId])
+  @@map("sent_items")
+}
+
+/// A quien se le puede enviar lo de esta biblioteca.
+///
+/// Sin esta tabla, cualquier biblioteca podia programarse hacia cualquier
+/// destinatario de la cuenta. Tener tres bibliotecas no significa que las tres
+/// vayan a las mismas personas: las fotos de la abuela no son para el grupo del
+/// trabajo. El baul nunca tiene filas aca; es personal y no sale hacia nadie.
+model LibraryRecipient {
+  libraryId   String @map("library_id") @db.Uuid
+  recipientId String @map("recipient_id") @db.Uuid
+
+  library   Library   @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@id([libraryId, recipientId])
+  @@index([recipientId])
+  @@map("library_recipients")
+}
+
+enum DeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+
+  @@map("delivery_status")
+}
+
+/// Lo que salio, hacia quien y con que resultado.
+///
+/// `occurrenceKey` es `horario:instante` y es unico: es lo que impide que un
+/// reintento del tick, o dos replicas a la vez, manden dos veces lo mismo. La
+/// unicidad la garantiza el indice, no una comprobacion previa.
+model DeliveryAttempt {
+  id            String         @id @db.Uuid
+  scheduleId    String         @map("schedule_id") @db.Uuid
+  itemId        String?        @map("item_id") @db.Uuid
+  occurrenceKey String         @unique @map("occurrence_key")
+  status        DeliveryStatus
+
+  /// El identificador que devuelve Telegram, para poder rastrear un envio.
+  providerMessageId String? @map("provider_message_id")
+  /// Por que fallo, en el idioma del proveedor. Solo para diagnosticar.
+  error             String?
+
+  occurredAt DateTime @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, occurredAt])
+  @@map("delivery_attempts")
 }

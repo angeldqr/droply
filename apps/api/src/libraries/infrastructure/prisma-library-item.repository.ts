@@ -42,6 +42,7 @@ export class PrismaLibraryItemRepository implements LibraryItemRepository {
         libraryId: snapshot.libraryId,
         kind: snapshot.kind,
         position: snapshot.position,
+        timesPerDay: snapshot.timesPerDay,
         textContent: snapshot.textContent,
         storageKey: snapshot.storageKey,
         fileName: snapshot.fileName,
@@ -65,6 +66,7 @@ export class PrismaLibraryItemRepository implements LibraryItemRepository {
       where: { id: snapshot.id, libraryId: snapshot.libraryId },
       data: {
         position: snapshot.position,
+        timesPerDay: snapshot.timesPerDay,
         sizeBytes: snapshot.sizeBytes,
         mediaReadyAt: snapshot.mediaReadyAt,
       },
@@ -97,6 +99,7 @@ function toDomain(row: ItemRow): LibraryItem {
     libraryId: LibraryId.from(row.libraryId),
     kind: row.kind,
     position: row.position,
+    timesPerDay: row.timesPerDay,
     textContent: row.textContent,
     storageKey: row.storageKey,
     fileName: row.fileName,

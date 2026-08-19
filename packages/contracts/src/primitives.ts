@@ -28,6 +28,9 @@ export type SelectionStrategy = (typeof selectionStrategy.values)[number];
 export const deliveryStatus = vocabulary(['QUEUED', 'SENT', 'FAILED', 'SKIPPED'] as const);
 export type DeliveryStatus = (typeof deliveryStatus.values)[number];
 
+export const userRole = vocabulary(['USER', 'ADMIN'] as const);
+export type UserRole = (typeof userRole.values)[number];
+
 export const recipientStatus = vocabulary(['PENDING', 'VERIFIED', 'BLOCKED'] as const);
 export type RecipientStatus = (typeof recipientStatus.values)[number];
 

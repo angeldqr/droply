@@ -3,6 +3,8 @@ import { LoginUseCase } from '../application/login.use-case';
 import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
+import { ResendVerificationUseCase } from '../application/resend-verification.use-case';
+import { VerificationSender } from '../application/verification-sender';
 import { SessionIssuer } from '../application/session-issuer';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import {
@@ -33,6 +35,15 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
   const ids = new SequentialIdGenerator();
   const clock = new FixedClock(startingAt);
 
+  const sender = new VerificationSender(
+    verifications,
+    secrets,
+    mailer,
+    ids,
+    clock,
+    'https://droply.test',
+  );
+
   const sessions = new SessionIssuer(
     accessTokens,
     refreshTokens,
@@ -53,16 +64,9 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
     ids,
     clock,
     sessions,
-    register: new RegisterUserUseCase(
-      users,
-      verifications,
-      hasher,
-      secrets,
-      mailer,
-      ids,
-      clock,
-      'https://droply.test',
-    ),
+    sender,
+    register: new RegisterUserUseCase(users, hasher, sender, ids, clock),
+    resendVerification: new ResendVerificationUseCase(users, sender),
     login: new LoginUseCase(users, hasher, sessions),
     refresh: new RefreshSessionUseCase(refreshTokens, users, secrets, sessions, clock),
     logout: new LogoutUseCase(refreshTokens, secrets, clock),

@@ -7,12 +7,14 @@ import { isMediaKind, MEDIA_LIMITS, type MediaKind } from './media-limits';
 
 export const TEXT_MAX_LENGTH = 4096;
 export const FILE_NAME_MAX_LENGTH = 200;
+export const TIMES_PER_DAY_MAX = 12;
 
 export interface LibraryItemSnapshot {
   readonly id: LibraryItemId;
   readonly libraryId: LibraryId;
   readonly kind: ItemKind;
   readonly position: number;
+  readonly timesPerDay: number;
   readonly textContent: string | null;
   readonly storageKey: string | null;
   readonly fileName: string | null;
@@ -58,6 +60,7 @@ export class LibraryItem {
         libraryId: input.libraryId,
         kind: 'TEXT',
         position: input.position,
+        timesPerDay: 1,
         textContent: content,
         storageKey: null,
         fileName: null,
@@ -118,6 +121,7 @@ export class LibraryItem {
         libraryId: input.libraryId,
         kind: input.kind,
         position: input.position,
+        timesPerDay: 1,
         textContent: null,
         storageKey: input.storageKey,
         fileName,
@@ -147,6 +151,10 @@ export class LibraryItem {
 
   get position(): number {
     return this.state.position;
+  }
+
+  get timesPerDay(): number {
+    return this.state.timesPerDay;
   }
 
   get textContent(): string | null {
@@ -190,6 +198,28 @@ export class LibraryItem {
 
   moveTo(position: number): void {
     this.state = { ...this.state, position };
+  }
+
+  /**
+   * Cuántas veces al día quiere enviarse este elemento.
+   *
+   * El horario decide entre qué horas; esto decide cuántas veces dentro de esa
+   * franja. Uno es lo normal y el techo evita que alguien pida cien sin darse
+   * cuenta de lo que está pidiendo.
+   */
+  sendTimesPerDay(times: number): Result<void, InvalidInputError> {
+    if (!Number.isInteger(times) || times < 1 || times > TIMES_PER_DAY_MAX) {
+      return err(
+        new InvalidInputError(
+          'item.times_per_day_invalid',
+          `Tiene que ser un número entre 1 y ${TIMES_PER_DAY_MAX}.`,
+        ),
+      );
+    }
+
+    this.state = { ...this.state, timesPerDay: times };
+
+    return ok();
   }
 
   /**

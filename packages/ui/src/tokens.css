@@ -1,43 +1,46 @@
 /*
  * Paleta de droply.
  *
- * Cinco pasteles: lila, dos rosas y dos azules. Ninguno de los cinco aguanta
- * texto encima, así que la escala se completa con una tinta ciruela oscura y
- * con los pasos claros y oscuros que hacen falta para bordes, estados y foco.
- * Los cinco originales se reservan para lo que se ve: el color de cada
- * columna, el botón principal y la selección de texto.
+ * Cinco tonos de una misma familia morada, del papel casi blanco a la ciruela
+ * casi negra. La ciruela hace de tinta y de panel lateral; el morado, que
+ * aguanta texto blanco con holgura, es la acción principal.
+ *
+ * Las cuatro columnas se reparten la escala de claridad, con un paso intermedio
+ * mezclado a mano porque la paleta original trae cinco tonos y hacen falta
+ * cuatro escalones parejos.
  */
 
 @theme {
-  /* Lila: fondo de la aplicación, tonos apagados y el foco */
-  --color-lila-50: #f7f1fb;
-  --color-lila-100: #ece0f2;
-  --color-lila-300: #cdb4db;
-  --color-lila-600: #7d5992;
+  /* Ciruela: la tinta y el panel lateral. El tono más oscuro de la familia. */
+  --color-ciruela-900: #2f184b;
 
-  /* Rosa: la acción principal, lo resaltado y la selección */
-  --color-rosa-200: #ffc8dd;
-  --color-rosa-300: #ffafcc;
+  /* Morado: la acción principal. Aguanta texto blanco con holgura. */
+  --color-morado-700: #532b88;
+  --color-morado-400: #9b72cf;
 
-  /* Azul: lo secundario y las superficies frías */
-  --color-cielo-200: #bde0fe;
-  --color-cielo-300: #a2d2ff;
+  /* Lavanda: las superficies templadas y los tonos intermedios. */
+  --color-lavanda-300: #c8b1e4;
+  /*
+   * Un paso intermedio que la paleta no trae, mezclado entre el papel y la
+   * lavanda. Hace falta para que las cuatro columnas tengan cuatro escalones
+   * distintos en vez de tres y un salto.
+   */
+  --color-lavanda-200: #e4d9f2;
 
-  /* Tinta: todo el texto sale de acá */
-  --color-tinta-500: #6d6484;
-  --color-tinta-900: #2a2438;
-
+  /* Papel: el fondo de la aplicación. */
+  --color-papel-50: #f4effa;
   --color-papel: #ffffff;
+
   --color-alerta-500: #b8324a;
 
   /*
-   * Una columna por color. El tono no decora: dice de qué columna se trata sin
-   * tener que leer el encabezado, y es el mismo en la tarjeta y en el tablero.
+   * Una columna por color, repartidas en la escala de claridad de la familia.
+   * Con una paleta de un solo morado, la luz distingue mejor que el matiz.
    */
-  --color-columna-audio: var(--color-cielo-300);
-  --color-columna-video: var(--color-lila-300);
-  --color-columna-imagen: var(--color-rosa-300);
-  --color-columna-texto: var(--color-cielo-200);
+  --color-columna-texto: var(--color-lavanda-200);
+  --color-columna-audio: var(--color-lavanda-300);
+  --color-columna-imagen: var(--color-morado-400);
+  --color-columna-video: var(--color-morado-700);
 
   /* Las dos primeras variables las inyecta next/font en el <html>. */
   --font-display: var(--font-quicksand), ui-rounded, 'Segoe UI', sans-serif;
@@ -75,8 +78,8 @@
   }
 
   ::selection {
-    background-color: var(--color-rosa-200);
-    color: var(--color-tinta-900);
+    background-color: var(--color-lavanda-300);
+    color: var(--color-ciruela-900);
   }
 }
 

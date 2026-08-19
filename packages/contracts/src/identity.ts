@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { UserRole } from './primitives.js';
 
 /**
  * Los límites de la contraseña, para el borde HTTP y para el front.
@@ -62,4 +63,37 @@ export interface AuthenticatedUser {
   readonly displayName: string;
   readonly timezone: string;
   readonly emailVerified: boolean;
+  readonly role: UserRole;
+}
+
+/**
+ * Lo que el panel de administración ve de una cuenta: cuánto hay, no qué hay.
+ * Sin textos, sin nombres de archivo y sin ninguna URL de descarga.
+ */
+export interface AccountSummaryView {
+  readonly id: string;
+  readonly email: string;
+  readonly displayName: string;
+  readonly role: string;
+  readonly emailVerified: boolean;
+  readonly createdAt: string;
+  readonly libraryCount: number;
+  readonly recipientCount: number;
+  readonly scheduleCount: number;
+  readonly vaultItemCount: number;
+}
+
+export interface AccountDetailView extends AccountSummaryView {
+  readonly libraries: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly description: string | null;
+    readonly itemCount: number;
+    readonly recipientCount: number;
+  }[];
+  readonly recipients: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly linked: boolean;
+  }[];
 }

@@ -10,6 +10,18 @@ export function useRecipients() {
   return useQuery({
     queryKey: listKey,
     queryFn: () => api<RecipientView[]>('/recipients'),
+    /*
+     * Mientras quede alguien pendiente, la lista se recarga sola cada cinco
+     * segundos.
+     *
+     * Es el único sitio de la aplicación donde el cambio no lo provoca quien
+     * está mirando la pantalla, sino la otra persona desde Telegram: no hay
+     * ninguna acción a la que colgar la invalidación, y sin esto habría que
+     * recargar a mano para saber si ya se vinculó. En cuanto no queda ninguno
+     * pendiente el sondeo se apaga.
+     */
+    refetchInterval: (query) =>
+      query.state.data?.some((recipient) => recipient.status === 'PENDING') ? 5_000 : false,
   });
 }
 

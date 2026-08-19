@@ -25,6 +25,19 @@ export class VaultNotEditable extends PreconditionFailedError {
   }
 }
 
+/**
+ * Se intentó apuntar la biblioteca a alguien que no sirve: de otra cuenta, o
+ * que todavía no apretó Empezar en el bot.
+ */
+export class RecipientNotAvailable extends PreconditionFailedError {
+  constructor() {
+    super(
+      'library.recipient_not_available',
+      'Ese destinatario no existe o todavía no abrió su enlace.',
+    );
+  }
+}
+
 export class ItemNotFound extends NotFoundError {
   constructor() {
     super('el elemento', 'item.not_found');

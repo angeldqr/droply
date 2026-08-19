@@ -85,6 +85,44 @@ export class RemoveItem {
   }
 }
 
+/**
+ * Cuántas veces al día se manda este elemento.
+ *
+ * Vive en el elemento y no en el horario porque es una propiedad de la cosa
+ * enviada: la foto que quieres ver tres veces al día la quieres ver tres veces
+ * la mande el horario que la mande.
+ */
+export class SetItemTimesPerDay {
+  constructor(
+    private readonly libraries: LibraryRepository,
+    private readonly items: LibraryItemRepository,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(
+    ownerId: UserId,
+    libraryId: LibraryId,
+    itemId: LibraryItemId,
+    times: number,
+  ): Promise<Result<LibraryItem, LibraryNotFound | ItemNotFound | InvalidInputError>> {
+    const library = await this.libraries.findOwned(libraryId, ownerId);
+    if (!library) return err(new LibraryNotFound());
+
+    const item = await this.items.findInLibrary(itemId, libraryId);
+    if (!item) return err(new ItemNotFound());
+
+    const changed = item.sendTimesPerDay(times);
+    if (!changed.ok) return changed;
+
+    await this.items.save(item);
+
+    library.touch(this.clock.now());
+    await this.libraries.save(library);
+
+    return ok(item);
+  }
+}
+
 export interface MoveTarget {
   readonly afterItemId?: string | null | undefined;
   readonly beforeItemId?: string | null | undefined;

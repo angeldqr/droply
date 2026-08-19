@@ -5,14 +5,9 @@ import { err, ok, type Result } from '../../shared/result';
 import { Email } from '../domain/email';
 import { EmailAlreadyRegistered } from '../domain/errors';
 import { PlainPassword } from '../domain/password';
-import type {
-  EmailVerificationRepository,
-  Mailer,
-  PasswordHasher,
-  SecretTokenFactory,
-  UserRepository,
-} from '../domain/ports';
+import type { PasswordHasher, UserRepository } from '../domain/ports';
 import { User } from '../domain/user';
+import type { VerificationSender } from './verification-sender';
 
 export interface RegisterUserInput {
   readonly email: string;
@@ -25,19 +20,13 @@ export interface RegisterUserOutput {
   readonly userId: string;
 }
 
-/** Una hora alcanza para abrir un correo; más tiempo solo agranda la ventana. */
-const VERIFICATION_LIFETIME_MS = 60 * 60 * 1000;
-
 export class RegisterUserUseCase {
   constructor(
     private readonly users: UserRepository,
-    private readonly verifications: EmailVerificationRepository,
     private readonly hasher: PasswordHasher,
-    private readonly secrets: SecretTokenFactory,
-    private readonly mailer: Mailer,
+    private readonly sender: VerificationSender,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
-    private readonly webUrl: string,
   ) {}
 
   async execute(
@@ -71,26 +60,8 @@ export class RegisterUserUseCase {
     if (!user.ok) return user;
 
     await this.users.add(user.value);
-    await this.sendVerification(user.value, now);
+    await this.sender.sendTo(user.value);
 
     return ok({ userId: user.value.id });
-  }
-
-  private async sendVerification(user: User, now: Date): Promise<void> {
-    const secret = this.secrets.create();
-
-    await this.verifications.add({
-      id: this.ids.generate(),
-      userId: user.id,
-      tokenHash: secret.hash,
-      expiresAt: new Date(now.getTime() + VERIFICATION_LIFETIME_MS),
-      usedAt: null,
-    });
-
-    await this.mailer.sendVerification({
-      to: user.email,
-      displayName: user.displayName,
-      verificationUrl: `${this.webUrl}/verificar-correo?token=${secret.value}`,
-    });
   }
 }

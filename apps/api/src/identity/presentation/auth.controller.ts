@@ -13,6 +13,7 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { Public } from '../../platform/http/public.decorator';
+import { Roles } from '../../platform/http/roles.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { NotFoundError } from '../../shared/domain-error';
 import type { UserId } from '../../shared/identifiers';
@@ -22,6 +23,7 @@ import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
 import type { AuthenticatedSession } from '../application/session-issuer';
+import { ResendVerificationUseCase } from '../application/resend-verification.use-case';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import { USER_REPOSITORY, type UserRepository } from '../domain/ports';
 import type { User } from '../domain/user';
@@ -46,12 +48,21 @@ export class AuthController {
     @Inject(RefreshSessionUseCase) private readonly refreshSession: RefreshSessionUseCase,
     @Inject(LogoutUseCase) private readonly logout: LogoutUseCase,
     @Inject(VerifyEmailUseCase) private readonly verifyEmail: VerifyEmailUseCase,
+    @Inject(ResendVerificationUseCase)
+    private readonly resendVerification: ResendVerificationUseCase,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(IS_PRODUCTION) private readonly isProduction: boolean,
   ) {}
 
-  @Public()
-  @Post('register')
+  /**
+   * Crea una cuenta. **Solo un administrador**: no hay registro abierto, así
+   * que quien administra decide quién entra.
+   *
+   * Vive en identity y no en el panel de administración porque crear usuarios
+   * es de este contexto; el panel solo lee.
+   */
+  @Roles('ADMIN')
+  @Post('users')
   @HttpCode(HttpStatus.CREATED)
   // Crear cuentas es caro: cada intento hashea con argon2 y manda un correo.
   @Throttle({ medium: { limit: 5, ttl: 60_000 } })
@@ -104,6 +115,25 @@ export class AuthController {
     orThrow(await this.verifyEmail.execute(body.token));
   }
 
+  /**
+   * Manda otra vez el enlace de confirmación.
+   *
+   * Con sesión y no con el correo en el cuerpo: quien pide el reenvío ya
+   * demostró ser el dueño al entrar, y así esto no sirve para averiguar qué
+   * direcciones están registradas. Sin cuerpo de respuesta, y responde igual
+   * esté confirmada o no la cuenta.
+   *
+   * Con su propio límite, más estrecho que el general: cada llamada manda un
+   * correo, y un botón que se puede apretar cien veces por minuto es un
+   * lanzador de spam con la dirección de otro.
+   */
+  @Throttle({ medium: { limit: 3, ttl: 60_000 } })
+  @Post('verify-email/resend')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resend(@CurrentUserId() userId: UserId): Promise<void> {
+    orThrow(await this.resendVerification.execute(userId));
+  }
+
   @Get('me')
   async me(@CurrentUserId() userId: UserId): Promise<AuthenticatedUser> {
     const user = await this.users.findById(userId);
@@ -145,5 +175,6 @@ function toAuthenticatedUser(user: User): AuthenticatedUser {
     displayName: user.displayName,
     timezone: user.timezone,
     emailVerified: user.isEmailVerified,
+    role: user.role,
   };
 }

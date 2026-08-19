@@ -6,7 +6,7 @@ import {
   type RecipientStatus,
   type RecipientView,
 } from '@droply/contracts';
-import { Link2, Plus, Send, Trash2 } from 'lucide-react';
+import { Link2, MailCheck, Plus, Send, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
@@ -46,8 +46,9 @@ import { Input } from '@/components/ui/input';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { ApiError } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useMorphDialog } from '@/lib/morph-dialog';
+import { useSession } from '@/lib/session';
 import {
   useCreateRecipient,
   useDeleteRecipient,
@@ -67,6 +68,15 @@ export default function RecipientsPage() {
 
 function Contents() {
   const { data, isPending, error } = useRecipients();
+  const { user } = useSession();
+
+  /*
+   * Sin correo confirmado el servidor rechaza crear destinatarios, y con razón:
+   * es lo único que separa esto de una máquina de mandar mensajes a
+   * desconocidos desde cuentas desechables. Se dice antes de que lo intente, en
+   * vez de dejarle apretar el botón para que se estrelle contra un 412.
+   */
+  const verified = user?.emailVerified ?? false;
 
   /*
    * El enlace recién emitido, que se muestra en su propio diálogo.
@@ -87,8 +97,12 @@ function Contents() {
           </p>
         </div>
 
-        <NewRecipientDialog id="nuevo-destinatario-cabecera" onIssued={setIssued} />
+        {verified ? (
+          <NewRecipientDialog id="nuevo-destinatario-cabecera" onIssued={setIssued} />
+        ) : null}
       </div>
+
+      {verified ? null : <VerifyFirst />}
 
       <div className="mt-10">
         {isPending ? (
@@ -113,7 +127,9 @@ function Contents() {
                 Agrega a la primera persona y mándale el enlace que te vamos a dar.
               </EmptyDescription>
             </EmptyHeader>
-            <NewRecipientDialog id="nuevo-destinatario-vacio" onIssued={setIssued} />
+            {verified ? (
+              <NewRecipientDialog id="nuevo-destinatario-vacio" onIssued={setIssued} />
+            ) : null}
           </Empty>
         ) : (
           <ul className="flex max-w-3xl flex-col gap-2">
@@ -172,6 +188,51 @@ function describe(recipient: RecipientView): string {
  * render del servidor con otra zona horaria del que despegarse.
  */
 const WHEN = new Intl.DateTimeFormat('es', { dateStyle: 'long', timeStyle: 'short' });
+
+/**
+ * El aviso de que falta confirmar el correo, con la salida a mano.
+ *
+ * Antes solo decía "ábrelo y vuelve acá", que no sirve de nada a quien perdió
+ * ese correo: quedaba encerrado sin forma de salir. El botón vuelve a mandarlo.
+ */
+function VerifyFirst() {
+  const [sending, setSending] = useState(false);
+
+  async function resend() {
+    setSending(true);
+
+    try {
+      await api<void>('/auth/verify-email/resend', { method: 'POST' });
+      toast.success('Te mandamos el enlace otra vez. Revisa tu correo.');
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo reenviar.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Alert className="mt-6">
+      <AlertTitle>Confirma tu correo para agregar destinatarios</AlertTitle>
+      <AlertDescription>
+        <span>
+          Te mandamos un enlace al crear la cuenta. Mientras tanto puedes seguir armando tus
+          bibliotecas y tu baúl con normalidad.
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 w-fit"
+          disabled={sending}
+          onClick={() => void resend()}
+        >
+          {sending ? <Spinner /> : <MailCheck />}
+          Reenviar el correo
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 function RecipientRow({
   recipient,
@@ -318,7 +379,7 @@ function NewRecipientDialog({
 
           <FieldGroup className="py-6">
             <Field>
-              <FieldLabel htmlFor={`${id}-label`}>Nombre</FieldLabel>
+              <FieldLabel htmlFor={`${id}-label`}>Nombre de quien recibe</FieldLabel>
               <Input
                 id={`${id}-label`}
                 name="label"

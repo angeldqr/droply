@@ -34,6 +34,7 @@ export class PrismaUserRepository implements UserRepository {
           email: snapshot.email.value,
           passwordHash: snapshot.passwordHash,
           displayName: snapshot.displayName,
+          role: snapshot.role,
           timezone: snapshot.timezone,
           emailVerifiedAt: snapshot.emailVerifiedAt,
           createdAt: snapshot.createdAt,
@@ -62,6 +63,7 @@ export class PrismaUserRepository implements UserRepository {
       data: {
         passwordHash: snapshot.passwordHash,
         displayName: snapshot.displayName,
+        role: snapshot.role,
         timezone: snapshot.timezone,
         emailVerifiedAt: snapshot.emailVerifiedAt,
       },
@@ -87,6 +89,7 @@ function toDomain(row: UserRow): User {
     email: email.value,
     passwordHash: row.passwordHash,
     displayName: row.displayName,
+    role: row.role,
     timezone: row.timezone,
     emailVerifiedAt: row.emailVerifiedAt,
     createdAt: row.createdAt,

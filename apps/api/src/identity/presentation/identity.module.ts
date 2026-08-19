@@ -8,6 +8,8 @@ import { LoginUseCase } from '../application/login.use-case';
 import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
+import { ResendVerificationUseCase } from '../application/resend-verification.use-case';
+import { VerificationSender } from '../application/verification-sender';
 import { SessionIssuer } from '../application/session-issuer';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import {
@@ -26,6 +28,7 @@ import {
   type SecretTokenFactory,
   type UserRepository,
 } from '../domain/ports';
+import { AdminBootstrap } from '../infrastructure/admin-bootstrap';
 import { Argon2PasswordHasher } from '../infrastructure/argon2-password-hasher';
 import { JwtAccessTokenIssuer } from '../infrastructure/jwt-access-token-issuer';
 import { LoggingMailer } from '../infrastructure/logging-mailer';
@@ -133,36 +136,14 @@ import { IS_PRODUCTION } from './tokens';
 
     {
       provide: RegisterUserUseCase,
-      inject: [
-        USER_REPOSITORY,
-        EMAIL_VERIFICATION_REPOSITORY,
-        PASSWORD_HASHER,
-        SECRET_TOKEN_FACTORY,
-        MAILER,
-        ID_GENERATOR,
-        CLOCK,
-        ENV,
-      ],
+      inject: [USER_REPOSITORY, PASSWORD_HASHER, VerificationSender, ID_GENERATOR, CLOCK],
       useFactory: (
         users: UserRepository,
-        verifications: EmailVerificationRepository,
         hasher: PasswordHasher,
-        secrets: SecretTokenFactory,
-        mailer: Mailer,
+        sender: VerificationSender,
         ids: IdGenerator,
         clock: Clock,
-        env: ApiEnv,
-      ) =>
-        new RegisterUserUseCase(
-          users,
-          verifications,
-          hasher,
-          secrets,
-          mailer,
-          ids,
-          clock,
-          env.WEB_URL,
-        ),
+      ) => new RegisterUserUseCase(users, hasher, sender, ids, clock),
     },
 
     {
@@ -200,6 +181,49 @@ import { IS_PRODUCTION } from './tokens';
       ) => new LogoutUseCase(refreshTokens, secrets, clock),
     },
 
+    {
+      provide: AdminBootstrap,
+      inject: [USER_REPOSITORY, PASSWORD_HASHER, ID_GENERATOR, CLOCK, ENV],
+      useFactory: (
+        users: UserRepository,
+        hasher: PasswordHasher,
+        ids: IdGenerator,
+        clock: Clock,
+        env: ApiEnv,
+      ) =>
+        new AdminBootstrap(users, hasher, ids, clock, {
+          email: env.ADMIN_EMAIL,
+          initialPassword: env.ADMIN_INITIAL_PASSWORD,
+          // La zona de la cuenta de administración da igual: no programa
+          // envíos. Se toma la del servidor para no inventar una.
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+    },
+    {
+      provide: VerificationSender,
+      inject: [
+        EMAIL_VERIFICATION_REPOSITORY,
+        SECRET_TOKEN_FACTORY,
+        MAILER,
+        ID_GENERATOR,
+        CLOCK,
+        ENV,
+      ],
+      useFactory: (
+        verifications: EmailVerificationRepository,
+        secrets: SecretTokenFactory,
+        mailer: Mailer,
+        ids: IdGenerator,
+        clock: Clock,
+        env: ApiEnv,
+      ) => new VerificationSender(verifications, secrets, mailer, ids, clock, env.WEB_URL),
+    },
+    {
+      provide: ResendVerificationUseCase,
+      inject: [USER_REPOSITORY, VerificationSender],
+      useFactory: (users: UserRepository, sender: VerificationSender) =>
+        new ResendVerificationUseCase(users, sender),
+    },
     {
       provide: VerifyEmailUseCase,
       inject: [EMAIL_VERIFICATION_REPOSITORY, USER_REPOSITORY, SECRET_TOKEN_FACTORY, CLOCK],

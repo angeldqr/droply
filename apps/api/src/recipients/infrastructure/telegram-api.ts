@@ -26,6 +26,13 @@ export class TelegramApi {
     this.base = `https://api.telegram.org/bot${botToken}`;
   }
 
+  /** Quién es el bot de verdad, según Telegram. Falla si el token no vale. */
+  async whoAmI(): Promise<{ username: string }> {
+    const me = await this.call<{ username?: string }>('getMe', {});
+
+    return { username: me?.username ?? '' };
+  }
+
   sendMessage(chatId: string, text: string): Promise<void> {
     return this.call<unknown>('sendMessage', { chat_id: chatId, text }).then(() => undefined);
   }

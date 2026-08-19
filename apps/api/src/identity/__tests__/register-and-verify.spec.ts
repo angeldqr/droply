@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { UserId } from '../../shared/identifiers';
 import { buildIdentity, validRegistration } from './support';
 
 describe('registro', () => {
@@ -137,5 +138,42 @@ describe('verificación de correo', () => {
     );
 
     expect(new Set(respuestas).size).toBe(1);
+  });
+
+  it('reenvía el enlace mientras el correo no esté confirmado', async () => {
+    const world = buildIdentity();
+    const registered = await world.register.execute(validRegistration);
+
+    if (!registered.ok) throw new Error('no se registró');
+
+    const userId = UserId.from(registered.value.userId);
+    const enviadosAlRegistrar = world.mailer.sent.length;
+
+    await world.resendVerification.execute(userId);
+
+    expect(world.mailer.sent).toHaveLength(enviadosAlRegistrar + 1);
+    // Y el enlace nuevo sirve igual que el primero.
+    const link = world.mailer.sent.at(-1)?.verificationUrl ?? '';
+    const token = new URL(link).searchParams.get('token') ?? '';
+
+    expect((await world.verifyEmail.execute(token)).ok).toBe(true);
+  });
+
+  it('no manda nada si la cuenta ya está confirmada', async () => {
+    const world = buildIdentity();
+    const registered = await world.register.execute(validRegistration);
+
+    if (!registered.ok) throw new Error('no se registró');
+
+    const link = world.mailer.sent.at(-1)?.verificationUrl ?? '';
+    await world.verifyEmail.execute(new URL(link).searchParams.get('token') ?? '');
+
+    const antes = world.mailer.sent.length;
+    // Responde bien igual: quien aprieta el botón dos veces no necesita un
+    // error, el estado que quería ya lo tiene.
+    expect((await world.resendVerification.execute(UserId.from(registered.value.userId))).ok).toBe(
+      true,
+    );
+    expect(world.mailer.sent).toHaveLength(antes);
   });
 });

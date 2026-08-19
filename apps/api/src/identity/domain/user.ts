@@ -4,6 +4,14 @@ import { err, ok, type Result } from '../../shared/result';
 import type { Email } from './email';
 
 /**
+ * Quién administra y quién no. Copia del vocabulario del contrato, porque el
+ * núcleo no puede importarlo; un test guardián los compara.
+ */
+export const USER_ROLES = ['USER', 'ADMIN'] as const;
+
+export type UserRole = (typeof USER_ROLES)[number];
+
+/**
  * El estado plano del usuario, tal como entra y sale del repositorio. El
  * correo va como `Email` y no como string: al reconstruir desde la base, si
  * viniera suelto habría dos fuentes para el mismo dato y nada impediría que
@@ -14,6 +22,7 @@ export interface UserSnapshot {
   readonly email: Email;
   readonly passwordHash: string;
   readonly displayName: string;
+  readonly role: UserRole;
   readonly timezone: string;
   readonly emailVerifiedAt: Date | null;
   readonly createdAt: Date;
@@ -25,6 +34,7 @@ export class User {
     readonly email: Email,
     private passwordHash: string,
     readonly displayName: string,
+    private currentRole: UserRole,
     readonly timezone: string,
     private emailVerifiedAt: Date | null,
     readonly createdAt: Date,
@@ -35,6 +45,8 @@ export class User {
     email: Email;
     passwordHash: string;
     displayName: string;
+    /** Solo el script de arranque y otro administrador crean administradores. */
+    role?: UserRole;
     timezone: string;
     now: Date;
   }): Result<User, InvalidInputError> {
@@ -65,6 +77,7 @@ export class User {
         input.email,
         input.passwordHash,
         displayName,
+        input.role ?? 'USER',
         input.timezone,
         null,
         input.now,
@@ -78,6 +91,7 @@ export class User {
       snapshot.email,
       snapshot.passwordHash,
       snapshot.displayName,
+      snapshot.role,
       snapshot.timezone,
       snapshot.emailVerifiedAt,
       snapshot.createdAt,
@@ -86,6 +100,25 @@ export class User {
 
   get isEmailVerified(): boolean {
     return this.emailVerifiedAt !== null;
+  }
+
+  get role(): UserRole {
+    return this.currentRole;
+  }
+
+  get isAdmin(): boolean {
+    return this.currentRole === 'ADMIN';
+  }
+
+  /**
+   * Le da el papel de administrador.
+   *
+   * Solo lo llama el arranque, que resuelve `ADMIN_EMAIL`. No hay ninguna ruta
+   * que ascienda a nadie: quien quiera otro administrador lo declara en el
+   * entorno, que es donde vive el resto de las decisiones del despliegue.
+   */
+  promoteToAdmin(): void {
+    this.currentRole = 'ADMIN';
   }
 
   /**
@@ -125,6 +158,7 @@ export class User {
       email: this.email,
       passwordHash: this.passwordHash,
       displayName: this.displayName,
+      role: this.currentRole,
       timezone: this.timezone,
       emailVerifiedAt: this.emailVerifiedAt,
       createdAt: this.createdAt,

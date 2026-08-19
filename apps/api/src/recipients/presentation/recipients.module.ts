@@ -111,6 +111,7 @@ const TELEGRAM_API = Symbol('TelegramApi');
           url: env.TELEGRAM_WEBHOOK_URL,
           secret: env.TELEGRAM_WEBHOOK_SECRET,
           isProduction: env.NODE_ENV === 'production',
+          botUsername: env.TELEGRAM_BOT_USERNAME,
         }),
     },
   ],

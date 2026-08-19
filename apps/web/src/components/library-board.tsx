@@ -3,15 +3,14 @@
 import {
   COLUMN_LABELS,
   COLUMN_ORDER,
-  MEDIA_LIMITS,
-  requestUploadSchema,
+  TIMES_PER_DAY_MAX,
   type ItemKind,
   type LibraryItemView,
   type MediaView,
   type UploadableKind,
 } from '@droply/contracts';
-import { Archive, ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { Archive, ArrowDown, ArrowUp, Plus, Repeat, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddTextDialog } from '@/components/add-text-dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
@@ -20,17 +19,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
-import { Progress } from '@/components/ui/progress';
-import { Spinner } from '@/components/ui/spinner';
+import { UploadDialog } from '@/components/upload-dialog';
 import { VaultPickerDialog } from '@/components/vault-picker-dialog';
 import { ApiError } from '@/lib/api';
 import { COLUMN_TINT } from '@/lib/columns';
-import { useMoveItem, useRemoveItem, useUploadMedia } from '@/lib/libraries';
+import { useMoveItem, useRemoveItem, useSetTimesPerDay } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
 
 /**
@@ -221,76 +225,38 @@ function Column({
  * techos que valida el servidor, así el diálogo del sistema ya filtra lo que no
  * sirve en vez de dejar elegir algo que después se rechaza.
  */
+/**
+ * El botón de agregar de las tres columnas de archivos.
+ *
+ * Abre el diálogo con la zona de arrastre, que nace del propio botón como todos
+ * los demás. Antes disparaba un `<input type="file">` escondido: se abría el
+ * diálogo del sistema y no había manera de soltar un archivo encima.
+ */
 function UploadButton({ libraryId, kind }: { libraryId: string; kind: UploadableKind }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<number | null>(null);
-  const upload = useUploadMedia(libraryId);
-
-  const limits = MEDIA_LIMITS[kind];
-  const uploading = progress !== null;
-
-  async function onPick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    // Se limpia enseguida para que elegir el mismo archivo otra vez, después de
-    // un error, vuelva a disparar el evento.
-    event.target.value = '';
-
-    if (!file) return;
-
-    // El mismo esquema que valida el servidor, corrido acá para avisar en el
-    // acto. Repetir las comprobaciones a mano sería tener dos versiones del
-    // mismo mensaje esperando a separarse.
-    const check = requestUploadSchema.safeParse({
-      kind,
-      fileName: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-    });
-
-    if (!check.success) {
-      toast.error(check.error.issues[0]?.message ?? 'Ese archivo no sirve para esta columna.');
-      return;
-    }
-
-    setProgress(0);
-
-    try {
-      await upload.mutateAsync({ kind, file, onProgress: setProgress });
-    } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo subir el archivo.');
-    } finally {
-      setProgress(null);
-    }
-  }
+  const dialog = useMorphDialog(`subir-${kind.toLowerCase()}`);
 
   return (
     <>
-      <input
-        ref={input}
-        type="file"
-        accept={limits.mimeTypes.join(',')}
-        onChange={onPick}
-        className="hidden"
-      />
-
       <Button
         variant="ghost"
-        onClick={() => input.current?.click()}
-        disabled={uploading}
+        onClick={dialog.openDialog}
         aria-label={`Agregar a ${COLUMN_LABELS[kind]}`}
         className="text-muted-foreground hover:text-foreground h-16 w-16"
+        {...dialog.fromProps}
       >
-        {uploading ? <Spinner /> : <Plus className="size-8" strokeWidth={1.25} />}
+        {/* Blendy necesita que el contenido cuelgue de un solo elemento. */}
+        <span className="flex items-center justify-center">
+          <Plus className="size-8" strokeWidth={1.25} />
+        </span>
       </Button>
 
-      {uploading ? (
-        <Progress
-          value={Math.round(progress * 100)}
-          aria-label={`Subiendo a ${COLUMN_LABELS[kind]}`}
-          className="w-full"
-        />
-      ) : null}
+      <UploadDialog
+        libraryId={libraryId}
+        kind={kind}
+        open={dialog.open}
+        onOpenChange={dialog.onOpenChange}
+        toProps={dialog.toProps}
+      />
     </>
   );
 }
@@ -308,6 +274,7 @@ function StackedItem({
 }) {
   const move = useMoveItem(libraryId);
   const remove = useRemoveItem(libraryId);
+  const repetitions = useSetTimesPerDay(libraryId);
 
   const reorder = (target: {
     afterItemId?: string | undefined;
@@ -356,6 +323,48 @@ function StackedItem({
             <DropdownMenuItem disabled={!nextId} onSelect={() => reorder({ afterItemId: nextId })}>
               <ArrowDown /> Bajar
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+
+            {/*
+              Cuántas veces al día, dentro del submenú: es una decisión que se
+              toma una vez y no en cada visita, así que no merece ocupar sitio
+              en la tarjeta.
+            */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Repeat /> Enviar {item.timesPerDay === 1 ? '1 vez' : `${item.timesPerDay} veces`}{' '}
+                al día
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel className="font-normal">
+                  Se reparten dentro de la franja de cada horario.
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={String(item.timesPerDay)}
+                  onValueChange={(value) =>
+                    repetitions.mutate(
+                      { itemId: item.id, timesPerDay: Number(value) },
+                      {
+                        onError: (error) =>
+                          toast.error(
+                            error instanceof ApiError ? error.message : 'No se pudo cambiar.',
+                          ),
+                      },
+                    )
+                  }
+                >
+                  {Array.from({ length: TIMES_PER_DAY_MAX }, (_, index) => index + 1).map(
+                    (times) => (
+                      <DropdownMenuRadioItem key={times} value={String(times)}>
+                        {times === 1 ? '1 vez' : `${times} veces`}
+                      </DropdownMenuRadioItem>
+                    ),
+                  )}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
