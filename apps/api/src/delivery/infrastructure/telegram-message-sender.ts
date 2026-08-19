@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import type { PrismaService } from '../../platform/prisma/prisma.service';
 import type { MessageSender, Payload, SendResult } from '../domain/ports';
 
 /**
@@ -33,10 +32,7 @@ export class TelegramMessageSender implements MessageSender {
   private readonly logger = new Logger(TelegramMessageSender.name);
   private readonly base: string;
 
-  constructor(
-    botToken: string,
-    private readonly prisma: PrismaService,
-  ) {
+  constructor(botToken: string) {
     this.base = `https://api.telegram.org/bot${botToken}`;
   }
 

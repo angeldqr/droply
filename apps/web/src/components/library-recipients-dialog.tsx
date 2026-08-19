@@ -1,12 +1,13 @@
 'use client';
 
 import type { LibrarySummary } from '@droply/contracts';
-import { Send } from 'lucide-react';
+import { Send, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -55,6 +56,30 @@ export function LibraryRecipientsDialog({ library }: { library: LibrarySummary }
     setSelected((current) =>
       checked ? [...current, recipientId] : current.filter((id) => id !== recipientId),
     );
+  }
+
+  /*
+   * A quién se le está quitando el permiso en esta edición.
+   *
+   * Importa decirlo antes de guardar: quitar a alguien no solo lo saca de la
+   * lista, también borra los horarios que le enviaban desde esta biblioteca, y
+   * eso no se deshace. Sin el aviso, un clic distraído apaga envíos que el
+   * dueño creía programados y no se entera hasta que la otra persona pregunta
+   * por qué dejó de recibir.
+   */
+  const removed = (chosen.data ?? []).filter((id) => !selected.includes(id));
+
+  /** Los nombres, no los identificadores: el aviso lo lee una persona. */
+  function namesOf(ids: readonly string[]): string {
+    const labels = ids.map(
+      (id) => linked.find((recipient) => recipient.id === id)?.label ?? 'Alguien',
+    );
+
+    const last = labels.at(-1) ?? 'Alguien';
+
+    if (labels.length === 1) return last;
+
+    return `${labels.slice(0, -1).join(', ')} y ${last}`;
   }
 
   async function onSave() {
@@ -128,6 +153,21 @@ export function LibraryRecipientsDialog({ library }: { library: LibrarySummary }
               </ul>
             )}
           </div>
+
+          {removed.length > 0 ? (
+            <Alert variant="destructive" className="mb-4">
+              <TriangleAlert />
+              <AlertTitle>
+                {removed.length === 1
+                  ? 'Se borrarán sus horarios'
+                  : `Se borrarán los horarios de ${removed.length} destinatarios`}
+              </AlertTitle>
+              <AlertDescription>
+                {namesOf(removed)} deja de recibir lo de esta biblioteca, y los horarios que le
+                enviaban desde acá se borran. No se puede deshacer.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={dialog.close}>

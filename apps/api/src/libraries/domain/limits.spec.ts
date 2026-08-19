@@ -2,10 +2,11 @@ import {
   LIBRARY_DESCRIPTION_MAX_LENGTH,
   LIBRARY_NAME_MAX_LENGTH,
   TEXT_ITEM_MAX_LENGTH,
+  TIMES_PER_DAY_MAX as TIMES_PER_DAY_MAX_CONTRACT,
 } from '@droply/contracts';
 import { describe, expect, it } from 'vitest';
 import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from './library';
-import { TEXT_MAX_LENGTH } from './library-item';
+import { TEXT_MAX_LENGTH, TIMES_PER_DAY_MAX } from './library-item';
 
 /**
  * El núcleo no puede importar `@droply/contracts`, así que cada límite está
@@ -24,5 +25,9 @@ describe('límites del dominio y del contrato', () => {
 
   it('coinciden en el largo de un texto', () => {
     expect(TEXT_MAX_LENGTH).toBe(TEXT_ITEM_MAX_LENGTH);
+  });
+
+  it('coinciden en cuántas veces al día puede salir un elemento', () => {
+    expect(TIMES_PER_DAY_MAX).toBe(TIMES_PER_DAY_MAX_CONTRACT);
   });
 });

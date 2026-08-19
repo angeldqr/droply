@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { PrismaService } from '../../platform/prisma/prisma.service';
+import { slotsOf } from '../../shared/daily-slots';
 import type {
   DeliveryLog,
   DeliveryRecord,
@@ -17,6 +19,8 @@ import type { Candidate } from '../domain/selection';
 const UNIQUE_VIOLATION = 'P2002';
 
 export class PrismaScheduleReader implements ScheduleReader {
+  private readonly logger = new Logger(PrismaScheduleReader.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async find(scheduleId: string): Promise<DispatchTarget | null> {
@@ -55,13 +59,17 @@ export class PrismaScheduleReader implements ScheduleReader {
     };
   }
 
-  async deactivate(scheduleId: string): Promise<void> {
+  async deactivate(scheduleId: string, reason: string): Promise<void> {
     await this.prisma.schedule.update({
       where: { id: scheduleId },
       // Se pausa, no se borra: el dueño tiene que poder ver qué pasó y
       // reanudarlo cuando lo arregle.
       data: { active: false },
     });
+
+    // El motivo no tiene columna: al dueño se le avisa por Telegram y acá queda
+    // el rastro para quien opere el servidor.
+    this.logger.warn({ scheduleId, reason }, 'Horario apagado por un fallo permanente');
   }
 }
 
@@ -72,7 +80,7 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
     const rows = await this.prisma.libraryItem.findMany({
       where: {
         libraryId: target.libraryId,
-        ...(target.kindFilter === null ? {} : { kind: target.kindFilter as 'AUDIO' }),
+        ...(target.kindFilter === null ? {} : { kind: target.kindFilter }),
         // Un archivo a medio subir no se puede enviar. Los textos no tienen
         // subida, y por eso entran siempre.
         OR: [{ storageKey: null }, { mediaReadyAt: { not: null } }],
@@ -220,22 +228,4 @@ function dayMinuteOf(moment: Date, timezone: string): number {
   const local = DateTime.fromJSDate(moment, { zone: timezone });
 
   return local.isValid ? local.hour * 60 + local.minute : 0;
-}
-
-/**
- * El mismo reparto que usa el planificador para armar la rejilla.
- *
- * Está escrito dos veces —acá y en `scheduling/domain/daily-slots.ts`— porque un
- * contexto no importa del dominio de otro. Un test compara los dos y falla si se
- * separan: si lo hicieran, el tick despertaría a una hora en la que este lado no
- * encontraría nada que enviar.
- */
-export function slotsOf(timesPerDay: number, startMinute: number, endMinute: number): number[] {
-  const times = Math.max(1, Math.floor(timesPerDay));
-
-  if (times === 1) return [startMinute];
-
-  const step = (endMinute - startMinute) / (times - 1);
-
-  return Array.from({ length: times }, (_, index) => Math.round(startMinute + step * index));
 }

@@ -1,4 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
+import type { UserRole } from '@droply/contracts';
 
 export const REQUIRED_ROLE = 'http:role';
 
@@ -12,4 +13,4 @@ export const REQUIRED_ROLE = 'http:role';
  * Vive en `platform` por lo mismo que `CurrentUserId`: lo necesita cualquier
  * contexto con rutas restringidas, e identity es quien lo hace cumplir.
  */
-export const Roles = (role: 'ADMIN') => SetMetadata(REQUIRED_ROLE, role);
+export const Roles = (role: UserRole) => SetMetadata(REQUIRED_ROLE, role);

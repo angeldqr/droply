@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { slotsOf as slotsOfScheduling } from '../../scheduling/domain/daily-slots';
 import { DispatchOccurrence } from '../application/dispatch-occurrence';
 import type {
   DeliveryLog,
@@ -12,7 +11,6 @@ import type {
   SendResult,
   SentBag,
 } from '../domain/ports';
-import { slotsOf } from '../infrastructure/prisma-delivery.adapters';
 import { selectOne, type Candidate, type Randomness } from '../domain/selection';
 
 const TARGET: DispatchTarget = {
@@ -257,19 +255,5 @@ describe('estrategias de selección', () => {
 
   it('sin candidatos no elige nada', () => {
     expect(selectOne('RANDOM', [], new Set(), always(0))).toBeNull();
-  });
-});
-
-describe('el reparto de horas coincide con el del calendario', () => {
-  /*
-   * Están escritos dos veces porque un contexto no importa del dominio de otro.
-   * Si se separaran, el calendario despertaría a una hora en la que el envío no
-   * encontraría nada que mandar, y no lo notaría nadie hasta que un destinatario
-   * dejara de recibir.
-   */
-  it('dan lo mismo para los repartos que se usan de verdad', () => {
-    for (let times = 1; times <= 12; times += 1) {
-      expect(slotsOf(times, 480, 1200)).toEqual(slotsOfScheduling(times, 480, 1200));
-    }
   });
 });

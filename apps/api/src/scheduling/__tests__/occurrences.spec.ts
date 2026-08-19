@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { gridOf, slotsOf, windowOf } from '../domain/daily-slots';
+import { slotsOf } from '../../shared/daily-slots';
+import { gridOf, windowOf } from '../domain/daily-slots';
 import { WindowOccurrencePlanner } from '../infrastructure/window-occurrence-planner';
 
 const planner = new WindowOccurrencePlanner();

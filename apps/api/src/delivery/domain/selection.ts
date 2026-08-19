@@ -1,3 +1,5 @@
+import type { ItemKind, SelectionStrategy } from './vocabulary';
+
 /**
  * Qué elemento sale en este envío.
  *
@@ -5,13 +7,11 @@
  * consulta la base desde acá, y por eso se pueden probar con listas escritas a
  * mano en vez de con un mundo entero montado.
  */
-export type SelectionStrategy = 'RANDOM' | 'RANDOM_NO_REPEAT' | 'SEQUENTIAL';
-
 export interface Candidate {
   readonly id: string;
   /** El orden dentro de su columna, que es el que ve el usuario en el tablero. */
   readonly position: number;
-  readonly kind: string;
+  readonly kind: ItemKind;
 }
 
 /** Para poder fijar el azar en los tests sin tocar `Math.random`. */

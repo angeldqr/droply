@@ -25,7 +25,7 @@ export type MediaStatus = (typeof mediaStatus.values)[number];
 export const selectionStrategy = vocabulary(['RANDOM', 'RANDOM_NO_REPEAT', 'SEQUENTIAL'] as const);
 export type SelectionStrategy = (typeof selectionStrategy.values)[number];
 
-export const deliveryStatus = vocabulary(['QUEUED', 'SENT', 'FAILED', 'SKIPPED'] as const);
+export const deliveryStatus = vocabulary(['SENT', 'FAILED', 'SKIPPED'] as const);
 export type DeliveryStatus = (typeof deliveryStatus.values)[number];
 
 export const userRole = vocabulary(['USER', 'ADMIN'] as const);

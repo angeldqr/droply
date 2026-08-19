@@ -1,8 +1,8 @@
-import { Controller, Get, Inject, NotFoundException, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param } from '@nestjs/common';
 import type { AccountDetailView, AccountSummaryView } from '@droply/contracts';
 import { Roles } from '../../platform/http/roles.decorator';
 import { UserId } from '../../shared/identifiers';
-import { InvalidInputError } from '../../shared/domain-error';
+import { InvalidInputError, NotFoundError } from '../../shared/domain-error';
 import { ACCOUNT_DIRECTORY, type AccountDirectory } from '../domain/ports';
 
 /**
@@ -31,7 +31,9 @@ export class AdminController {
 
     const account = await this.accounts.find(UserId.from(userId));
 
-    if (!account) throw new NotFoundException('Esa cuenta no existe.');
+    if (!account) {
+      throw new NotFoundError('admin.account_not_found', 'Esa cuenta no existe.');
+    }
 
     return { ...account, createdAt: account.createdAt.toISOString() };
   }

@@ -1,6 +1,11 @@
-import { itemKind, selectionStrategy } from '@droply/contracts';
+import {
+  itemKind,
+  selectionStrategy,
+  SENDER_NAME_MAX_LENGTH as SENDER_NAME_MAX_LENGTH_CONTRACT,
+} from '@droply/contracts';
 import { describe, expect, it } from 'vitest';
 import { ITEM_KINDS } from './item-kind';
+import { SENDER_NAME_MAX_LENGTH } from './schedule';
 import { SELECTION_STRATEGIES } from './selection-strategy';
 
 /**
@@ -15,5 +20,9 @@ describe('vocabulario del dominio frente al contrato', () => {
 
   it('coinciden las estrategias de selección', () => {
     expect([...SELECTION_STRATEGIES]).toEqual([...selectionStrategy.values]);
+  });
+
+  it('coinciden en el largo del nombre de quien envía', () => {
+    expect(SENDER_NAME_MAX_LENGTH).toBe(SENDER_NAME_MAX_LENGTH_CONTRACT);
   });
 });

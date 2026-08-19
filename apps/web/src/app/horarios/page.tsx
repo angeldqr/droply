@@ -5,6 +5,7 @@ import {
   DELIVERY_STATUS_LABELS,
   describeWeekdays,
   formatDayMinute,
+  itemKind,
   SENDER_NAME_MAX_LENGTH,
   STRATEGY_HINTS,
   STRATEGY_LABELS,
@@ -335,6 +336,7 @@ function NewScheduleDialog({ id }: { id: string }) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const kindFilter = String(form.get('kindFilter'));
+    const strategy = String(form.get('strategy'));
 
     try {
       await create.mutateAsync({
@@ -345,10 +347,8 @@ function NewScheduleDialog({ id }: { id: string }) {
         startMinute,
         endMinute,
         timezone: browserTimezone(),
-        strategy: selectionStrategy.is(String(form.get('strategy')))
-          ? (String(form.get('strategy')) as 'RANDOM')
-          : 'RANDOM',
-        kindFilter: kindFilter === 'ALL' ? null : (kindFilter as 'AUDIO'),
+        strategy: selectionStrategy.is(strategy) ? strategy : 'RANDOM',
+        kindFilter: itemKind.is(kindFilter) ? kindFilter : null,
       });
 
       dialog.close();
@@ -495,7 +495,7 @@ function NewScheduleDialog({ id }: { id: string }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">De todas las columnas</SelectItem>
-                    {(['AUDIO', 'VIDEO', 'IMAGE', 'TEXT'] as const).map((kind) => (
+                    {itemKind.values.map((kind) => (
                       <SelectItem key={kind} value={kind}>
                         Solo {COLUMN_LABELS[kind]}
                       </SelectItem>

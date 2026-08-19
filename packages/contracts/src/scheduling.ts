@@ -3,6 +3,7 @@ import { timezoneSchema } from './identity.js';
 import {
   itemKind,
   selectionStrategy,
+  type DeliveryStatus,
   type ItemKind,
   type SelectionStrategy,
 } from './primitives.js';
@@ -164,13 +165,13 @@ export interface DeliveryRecordView {
   readonly scheduleId: string;
   readonly libraryName: string;
   readonly recipientLabel: string;
-  readonly status: 'SENT' | 'FAILED' | 'SKIPPED';
+  readonly status: DeliveryStatus;
   /** Por qué no salió. Nulo cuando salió bien. */
   readonly error: string | null;
   readonly occurredAt: string;
 }
 
-export const DELIVERY_STATUS_LABELS: Readonly<Record<DeliveryRecordView['status'], string>> = {
+export const DELIVERY_STATUS_LABELS: Readonly<Record<DeliveryStatus, string>> = {
   SENT: 'Enviado',
   FAILED: 'Falló',
   SKIPPED: 'Sin enviar',

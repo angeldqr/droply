@@ -3,6 +3,7 @@
 import {
   COLUMN_LABELS,
   formatDayMinute,
+  itemKind,
   SENDER_NAME_MAX_LENGTH,
   selectionStrategy,
   STRATEGY_LABELS,
@@ -121,7 +122,7 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
         endMinute,
         senderName: String(form.get('senderName')),
         strategy: selectionStrategy.is(strategy) ? strategy : schedule.strategy,
-        kindFilter: kindFilter === 'ALL' ? null : (kindFilter as 'AUDIO'),
+        kindFilter: itemKind.is(kindFilter) ? kindFilter : null,
       });
 
       dialog.close();
@@ -219,7 +220,7 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">De todas las columnas</SelectItem>
-                  {(['AUDIO', 'VIDEO', 'IMAGE', 'TEXT'] as const).map((kind) => (
+                  {itemKind.values.map((kind) => (
                     <SelectItem key={kind} value={kind}>
                       Solo {COLUMN_LABELS[kind]}
                     </SelectItem>

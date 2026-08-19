@@ -1,4 +1,5 @@
-import type { Candidate, SelectionStrategy } from './selection';
+import type { Candidate } from './selection';
+import type { DeliveryStatus, ItemKind, SelectionStrategy } from './vocabulary';
 
 /** Lo que hace falta saber del horario para poder despachar su envío. */
 export interface DispatchTarget {
@@ -10,7 +11,7 @@ export interface DispatchTarget {
   /** Con qué nombre firma. Ya resuelto: el del horario o el de la cuenta. */
   readonly senderName: string;
   readonly strategy: SelectionStrategy;
-  readonly kindFilter: string | null;
+  readonly kindFilter: ItemKind | null;
   readonly startMinute: number;
   readonly endMinute: number;
   readonly timezone: string;
@@ -25,7 +26,7 @@ export interface ScheduleReader {
 /** Un elemento listo para salir, ya con sus bytes o su texto. */
 export interface Payload {
   readonly itemId: string;
-  readonly kind: 'AUDIO' | 'VIDEO' | 'IMAGE' | 'TEXT';
+  readonly kind: ItemKind;
   readonly fileName: string | null;
   readonly text: string | null;
   readonly storageKey: string | null;
@@ -96,7 +97,7 @@ export interface DeliveryLog {
     itemId: string | null;
     occurrenceKey: string;
     occurredAt: Date;
-    status: 'SENT' | 'FAILED' | 'SKIPPED';
+    status: DeliveryStatus;
     providerMessageId: string | null;
     error: string | null;
   }): Promise<boolean>;
@@ -108,7 +109,7 @@ export interface DeliveryRecord {
   readonly scheduleId: string;
   readonly libraryName: string;
   readonly recipientLabel: string;
-  readonly status: string;
+  readonly status: DeliveryStatus;
   readonly error: string | null;
   readonly occurredAt: Date;
 }

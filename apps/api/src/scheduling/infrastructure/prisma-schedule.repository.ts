@@ -62,8 +62,13 @@ export class PrismaScheduleRepository implements ScheduleRepository {
   async save(schedule: Schedule): Promise<void> {
     const snapshot = schedule.toSnapshot();
 
-    await this.prisma.schedule.update({
-      where: { id: snapshot.id },
+    /*
+     * `updateMany` y no `update` para poder filtrar tambien por dueño: la
+     * entidad llega ya comprobada, pero la regla de la casa es que la consulta
+     * lleve el dueño encima, y así un camino nuevo no puede saltársela.
+     */
+    await this.prisma.schedule.updateMany({
+      where: { id: snapshot.id, ownerId: snapshot.ownerId },
       data: {
         weekdays: [...snapshot.weekdays],
         startMinute: snapshot.startMinute,

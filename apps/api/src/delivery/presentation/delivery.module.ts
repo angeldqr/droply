@@ -69,9 +69,8 @@ import { DeliveriesController } from './deliveries.controller';
     },
     {
       provide: MESSAGE_SENDER,
-      inject: [ENV, PrismaService],
-      useFactory: (env: ApiEnv, prisma: PrismaService) =>
-        new TelegramMessageSender(env.TELEGRAM_BOT_TOKEN, prisma),
+      inject: [ENV],
+      useFactory: (env: ApiEnv) => new TelegramMessageSender(env.TELEGRAM_BOT_TOKEN),
     },
 
     {

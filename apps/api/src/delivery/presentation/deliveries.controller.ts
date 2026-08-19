@@ -26,7 +26,7 @@ export class DeliveriesController {
       scheduleId: row.scheduleId,
       libraryName: row.libraryName,
       recipientLabel: row.recipientLabel,
-      status: row.status as 'SENT',
+      status: row.status,
       error: row.error,
       occurredAt: row.occurredAt.toISOString(),
     }));
