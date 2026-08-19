@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { Mailer, VerificationMail } from '../domain/ports';
+import type { Mailer, PasswordResetMail, VerificationMail } from '../domain/ports';
 
 /**
  * Escribe el enlace de verificación en el log en lugar de mandar un correo.
@@ -14,6 +14,12 @@ export class LoggingMailer implements Mailer {
 
   sendVerification(mail: VerificationMail): Promise<void> {
     this.logger.log(`Verificación para ${mail.to.value}: ${mail.verificationUrl}`);
+
+    return Promise.resolve();
+  }
+
+  sendPasswordReset(mail: PasswordResetMail): Promise<void> {
+    this.logger.log(`Restablecer contraseña de ${mail.to.value}: ${mail.resetUrl}`);
 
     return Promise.resolve();
   }

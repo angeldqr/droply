@@ -21,6 +21,7 @@ export class PrismaAccountDirectory implements AccountDirectory {
         displayName: true,
         role: true,
         emailVerifiedAt: true,
+        deactivatedAt: true,
         createdAt: true,
         _count: { select: { recipients: true, schedules: true } },
         libraries: { select: { isVault: true, _count: { select: { items: true } } } },
@@ -33,6 +34,7 @@ export class PrismaAccountDirectory implements AccountDirectory {
       displayName: row.displayName,
       role: row.role,
       emailVerified: row.emailVerifiedAt !== null,
+      active: row.deactivatedAt === null,
       createdAt: row.createdAt,
       // El baúl no cuenta como biblioteca: no se envía ni se lista con ellas.
       libraryCount: row.libraries.filter((library) => !library.isVault).length,
@@ -53,6 +55,7 @@ export class PrismaAccountDirectory implements AccountDirectory {
         displayName: true,
         role: true,
         emailVerifiedAt: true,
+        deactivatedAt: true,
         createdAt: true,
         _count: { select: { recipients: true, schedules: true } },
         libraries: {
@@ -83,6 +86,7 @@ export class PrismaAccountDirectory implements AccountDirectory {
       displayName: row.displayName,
       role: row.role,
       emailVerified: row.emailVerifiedAt !== null,
+      active: row.deactivatedAt === null,
       createdAt: row.createdAt,
       libraryCount: libraries.length,
       recipientCount: row._count.recipients,

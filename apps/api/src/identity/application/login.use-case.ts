@@ -36,6 +36,15 @@ export class LoginUseCase {
     const result = await this.hasher.verify(user.hashedPassword, input.password);
     if (!result.matches) return err(new InvalidCredentials());
 
+    /*
+     * Una cuenta desactivada responde igual que una contraseña incorrecta.
+     *
+     * Se comprueba **después** de verificar, no antes: si se cortara arriba,
+     * el tiempo de respuesta distinguiría una cuenta desactivada de una que no
+     * existe, que es justo lo que el hash de relleno de más arriba evita.
+     */
+    if (!user.isActive) return err(new InvalidCredentials());
+
     // Si los parámetros de argon2 subieron desde que se creó la cuenta, este es
     // el único momento en que existe la contraseña en claro para rehacerlo.
     if (result.needsRehash) {

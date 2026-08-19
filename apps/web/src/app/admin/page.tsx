@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { AccountActions } from '@/components/account-actions';
 import { useAccount, useAccounts, useCreateAccount } from '@/lib/admin';
 import { ApiError } from '@/lib/api';
 import { useMorphDialog } from '@/lib/morph-dialog';
@@ -131,6 +132,7 @@ function AccountRow({
             </Badge>
           ) : null}
           {account.emailVerified ? null : <Badge variant="outline">Sin confirmar</Badge>}
+          {account.active ? null : <Badge variant="destructive">Sin acceso</Badge>}
         </ItemTitle>
         <ItemDescription className="truncate">{account.email}</ItemDescription>
         <ItemDescription>
@@ -140,6 +142,8 @@ function AccountRow({
       </ItemContent>
 
       <ItemActions>
+        <AccountActions account={account} />
+
         <Button variant="ghost" size="icon" onClick={onOpen} aria-label={`Ver ${account.email}`}>
           <ChevronRight
             className={open ? 'rotate-90 transition-transform' : 'transition-transform'}

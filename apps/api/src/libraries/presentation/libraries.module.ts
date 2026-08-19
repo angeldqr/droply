@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
+import { OWNER_STORAGE, type OwnerStorage } from '../../shared/owner-storage';
 import {
   AddTextItem,
   MoveItem,
@@ -46,6 +47,14 @@ import { PrismaLibraryRepository } from '../infrastructure/prisma-library.reposi
 import { S3MediaStorage } from '../infrastructure/s3-media-storage';
 import { LibrariesController } from './libraries.controller';
 
+/*
+ * Es `@Global` por una sola razón: `identity` necesita poder vaciar el
+ * almacenamiento de una cuenta al borrarla, y un contexto no puede importar el
+ * módulo de otro sin atarse a él. Declarándolo global, el token de `shared`
+ * viaja por el contenedor y quien lo usa solo conoce la interfaz. Es el mismo
+ * arreglo que usa `delivery` con el sumidero de ocurrencias.
+ */
+@Global()
 @Module({
   controllers: [LibrariesController],
   providers: [
@@ -73,6 +82,15 @@ import { LibrariesController } from './libraries.controller';
       provide: SCHEDULE_PRUNER,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaSchedulePruner(prisma),
+    },
+    {
+      provide: OWNER_STORAGE,
+      inject: [MEDIA_STORAGE],
+      useFactory: (storage: MediaStorage): OwnerStorage => ({
+        // La clave del objeto empieza por el dueño, así que un solo prefijo
+        // cubre todas sus bibliotecas.
+        removeAllOf: (ownerId) => storage.removeUnder(`${ownerId}/`),
+      }),
     },
     {
       provide: MEDIA_STORAGE,
@@ -212,5 +230,7 @@ import { LibrariesController } from './libraries.controller';
       ) => new CopyFromVault(libraries, items, storage, ids, clock),
     },
   ],
+  // Solo esto sale del contexto: el resto de sus proveedores son asunto suyo.
+  exports: [OWNER_STORAGE],
 })
 export class LibrariesModule {}

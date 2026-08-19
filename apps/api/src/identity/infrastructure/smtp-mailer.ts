@@ -1,6 +1,6 @@
 import { createTransport, type Transporter } from 'nodemailer';
-import type { Mailer, VerificationMail } from '../domain/ports';
-import { verificationEmail } from './verification-email';
+import type { Mailer, PasswordResetMail, VerificationMail } from '../domain/ports';
+import { passwordResetEmail, verificationEmail } from './emails';
 
 export interface SmtpSettings {
   readonly host: string;
@@ -23,12 +23,21 @@ export class SmtpMailer implements Mailer {
     });
   }
 
-  async sendVerification(mail: VerificationMail): Promise<void> {
-    const body = verificationEmail(mail);
+  sendVerification(mail: VerificationMail): Promise<void> {
+    return this.send(mail.to.value, verificationEmail(mail));
+  }
 
+  sendPasswordReset(mail: PasswordResetMail): Promise<void> {
+    return this.send(mail.to.value, passwordResetEmail(mail));
+  }
+
+  private async send(
+    to: string,
+    body: { subject: string; text: string; html: string },
+  ): Promise<void> {
     await this.transport.sendMail({
       from: this.settings.from,
-      to: mail.to.value,
+      to,
       subject: body.subject,
       text: body.text,
       html: body.html,

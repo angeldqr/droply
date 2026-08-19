@@ -46,6 +46,51 @@ export const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+/** La nueva contraseña, con las mismas reglas que la del registro. */
+const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Necesita al menos ${PASSWORD_MIN_LENGTH} caracteres.`)
+  .max(PASSWORD_MAX_LENGTH);
+
+/**
+ * Se pide la actual aunque haya sesión abierta: sin ese paso, quien se siente
+ * frente a una pantalla desbloqueada se lleva la cuenta entera.
+ */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Escribe tu contraseña actual.').max(PASSWORD_MAX_LENGTH),
+  newPassword: newPasswordSchema,
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.email('Ese correo no tiene forma de correo.').max(254),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: newPasswordSchema,
+});
+
+/** Lo que el panel manda para cortar o devolver el acceso a una cuenta. */
+export const setAccountActiveSchema = z.object({
+  active: z.boolean(),
+});
+
+export type SetAccountActiveInput = z.infer<typeof setAccountActiveSchema>;
+
+/**
+ * La contraseña temporal que el panel muestra **una sola vez**.
+ *
+ * No se guarda en claro en ningún sitio, así que no hay forma de volver a
+ * verla: quien administra se la dicta a su dueño y esa persona la cambia.
+ */
+export interface TemporaryPasswordView {
+  readonly password: string;
+}
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
@@ -76,6 +121,8 @@ export interface AccountSummaryView {
   readonly displayName: string;
   readonly role: string;
   readonly emailVerified: boolean;
+  /** Si puede entrar. Una cuenta desactivada conserva todo lo suyo. */
+  readonly active: boolean;
   readonly createdAt: string;
   readonly libraryCount: number;
   readonly recipientCount: number;

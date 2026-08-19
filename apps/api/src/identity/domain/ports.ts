@@ -14,6 +14,16 @@ export interface UserRepository {
   /** Falla con `EmailAlreadyRegistered` si el correo ya existe. */
   add(user: User): Promise<void>;
   save(user: User): Promise<void>;
+  remove(id: UserId): Promise<void>;
+  /**
+   * Cuántos administradores **pueden entrar** ahora mismo.
+   *
+   * Cuenta los activos y no los que tienen el rol: un administrador
+   * desactivado no sirve para administrar nada, así que dejar solo a uno
+   * desactivado es quedarse sin ninguno. Existe para esa única regla, y sin
+   * ella la única salida sería entrar a la base a mano.
+   */
+  countActiveAdmins(): Promise<number>;
 }
 
 export interface RefreshTokenRepository {
@@ -22,6 +32,14 @@ export interface RefreshTokenRepository {
   save(token: RefreshToken): Promise<void>;
   /** Corta de raíz toda una cadena de rotaciones. */
   revokeFamily(familyId: string, now: Date): Promise<void>;
+  /**
+   * Cierra todas las sesiones de una cuenta, vengan del login que vengan.
+   *
+   * Es lo que hace que cambiar la contraseña sirva de algo: si las sesiones
+   * abiertas siguieran vivas, quien hubiera entrado con la contraseña vieja
+   * seguiría dentro quince minutos más por cada refresco.
+   */
+  revokeAllOf(userId: UserId, now: Date): Promise<void>;
 }
 
 export interface EmailVerificationRecord {
@@ -34,6 +52,25 @@ export interface EmailVerificationRecord {
 export interface EmailVerificationRepository {
   add(record: EmailVerificationRecord & { tokenHash: string }): Promise<void>;
   findByHash(tokenHash: string): Promise<EmailVerificationRecord | null>;
+  markUsed(id: string, now: Date): Promise<void>;
+}
+
+/**
+ * Un enlace para volver a poner la contraseña.
+ *
+ * Misma forma que el de verificación porque es el mismo problema: un secreto de
+ * un solo uso que viaja por correo y del que solo se guarda el hash.
+ */
+export interface PasswordResetRecord {
+  readonly id: string;
+  readonly userId: UserId;
+  readonly expiresAt: Date;
+  readonly usedAt: Date | null;
+}
+
+export interface PasswordResetRepository {
+  add(record: PasswordResetRecord & { tokenHash: string }): Promise<void>;
+  findByHash(tokenHash: string): Promise<PasswordResetRecord | null>;
   markUsed(id: string, now: Date): Promise<void>;
 }
 
@@ -76,13 +113,21 @@ export interface VerificationMail {
   readonly verificationUrl: string;
 }
 
+export interface PasswordResetMail {
+  readonly to: Email;
+  readonly displayName: string;
+  readonly resetUrl: string;
+}
+
 export interface Mailer {
   sendVerification(mail: VerificationMail): Promise<void>;
+  sendPasswordReset(mail: PasswordResetMail): Promise<void>;
 }
 
 export const USER_REPOSITORY = Symbol('UserRepository');
 export const REFRESH_TOKEN_REPOSITORY = Symbol('RefreshTokenRepository');
 export const EMAIL_VERIFICATION_REPOSITORY = Symbol('EmailVerificationRepository');
+export const PASSWORD_RESET_REPOSITORY = Symbol('PasswordResetRepository');
 export const PASSWORD_HASHER = Symbol('PasswordHasher');
 export const SECRET_TOKEN_FACTORY = Symbol('SecretTokenFactory');
 export const ACCESS_TOKEN_ISSUER = Symbol('AccessTokenIssuer');

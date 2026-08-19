@@ -7,6 +7,9 @@ import type {
   EmailVerificationRepository,
   Mailer,
   PasswordHasher,
+  PasswordResetMail,
+  PasswordResetRecord,
+  PasswordResetRepository,
   RefreshTokenRepository,
   SecretTokenFactory,
   UserRepository,
@@ -51,6 +54,18 @@ export class InMemoryUserRepository implements UserRepository {
 
     return Promise.resolve();
   }
+
+  remove(id: UserId): Promise<void> {
+    this.rows.delete(id);
+
+    return Promise.resolve();
+  }
+
+  countActiveAdmins(): Promise<number> {
+    return Promise.resolve(
+      [...this.rows.values()].filter((user) => user.isAdmin && user.isActive).length,
+    );
+  }
 }
 
 export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
@@ -84,6 +99,44 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
         this.rows.set(id, RefreshToken.fromSnapshot({ ...snapshot, revokedAt: now }));
       }
     }
+
+    return Promise.resolve();
+  }
+
+  revokeAllOf(userId: UserId, now: Date): Promise<void> {
+    for (const [id, token] of this.rows) {
+      const snapshot = token.toSnapshot();
+
+      if (snapshot.userId === userId && snapshot.revokedAt === null) {
+        this.rows.set(id, RefreshToken.fromSnapshot({ ...snapshot, revokedAt: now }));
+      }
+    }
+
+    return Promise.resolve();
+  }
+}
+
+export class InMemoryPasswordResetRepository implements PasswordResetRepository {
+  readonly rows = new Map<string, PasswordResetRecord & { tokenHash: string }>();
+
+  add(record: PasswordResetRecord & { tokenHash: string }): Promise<void> {
+    this.rows.set(record.id, record);
+
+    return Promise.resolve();
+  }
+
+  findByHash(tokenHash: string): Promise<PasswordResetRecord | null> {
+    for (const row of this.rows.values()) {
+      if (row.tokenHash === tokenHash) return Promise.resolve(row);
+    }
+
+    return Promise.resolve(null);
+  }
+
+  markUsed(id: string, now: Date): Promise<void> {
+    const row = this.rows.get(id);
+
+    if (row) this.rows.set(id, { ...row, usedAt: now });
 
     return Promise.resolve();
   }
@@ -134,7 +187,9 @@ export class FakeSecretTokenFactory implements SecretTokenFactory {
   private counter = 0;
 
   create(): { value: string; hash: string } {
-    const value = `secreto-${++this.counter}`;
+    // Del largo del de verdad —32 bytes en base64url son 43 caracteres— para
+    // que quien recorte el valor, como la contraseña temporal, tenga de dónde.
+    const value = `secreto-${++this.counter}`.padEnd(43, 'x');
 
     return { value, hash: this.hash(value) };
   }
@@ -162,11 +217,26 @@ export class FakeAccessTokenIssuer implements AccessTokenIssuer {
 
 export class RecordingMailer implements Mailer {
   readonly sent: VerificationMail[] = [];
+  readonly resets: PasswordResetMail[] = [];
 
   sendVerification(mail: VerificationMail): Promise<void> {
     this.sent.push(mail);
 
     return Promise.resolve();
+  }
+
+  sendPasswordReset(mail: PasswordResetMail): Promise<void> {
+    this.resets.push(mail);
+
+    return Promise.resolve();
+  }
+
+  /** El token del último enlace de restablecimiento. */
+  get lastResetToken(): string {
+    const last = this.resets.at(-1);
+    if (!last) throw new Error('No se mandó ningún correo de restablecimiento.');
+
+    return new URL(last.resetUrl).searchParams.get('token') ?? '';
   }
 
   get lastUrl(): string {

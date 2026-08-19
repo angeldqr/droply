@@ -1,5 +1,16 @@
 import { FixedClock } from '../../shared/clock';
+import {
+  DeleteAccount,
+  ResetAccountPassword,
+  SetAccountActive,
+} from '../application/account-admin-use-cases';
 import { LoginUseCase } from '../application/login.use-case';
+import { PasswordResetSender } from '../application/password-reset-sender';
+import {
+  ChangePassword,
+  RequestPasswordReset,
+  ResetPassword,
+} from '../application/password-use-cases';
 import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
@@ -12,6 +23,7 @@ import {
   FakeHasher,
   FakeSecretTokenFactory,
   InMemoryEmailVerificationRepository,
+  InMemoryPasswordResetRepository,
   InMemoryRefreshTokenRepository,
   InMemoryUserRepository,
   RecordingMailer,
@@ -28,6 +40,7 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
   const users = new InMemoryUserRepository();
   const refreshTokens = new InMemoryRefreshTokenRepository();
   const verifications = new InMemoryEmailVerificationRepository();
+  const resets = new InMemoryPasswordResetRepository();
   const hasher = new FakeHasher();
   const secrets = new FakeSecretTokenFactory();
   const accessTokens = new FakeAccessTokenIssuer();
@@ -53,10 +66,31 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
     REFRESH_LIFETIME_MS,
   );
 
+  const resetSender = new PasswordResetSender(
+    resets,
+    secrets,
+    mailer,
+    ids,
+    clock,
+    'https://droply.test',
+  );
+
+  /** Un almacenamiento de mentira que solo apunta a quién se le vació. */
+  const storage = {
+    emptied: [] as string[],
+    removeAllOf(ownerId: string): Promise<void> {
+      storage.emptied.push(ownerId);
+
+      return Promise.resolve();
+    },
+  };
+
   return {
     users,
     refreshTokens,
     verifications,
+    resets,
+    storage,
     hasher,
     secrets,
     accessTokens,
@@ -71,6 +105,12 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
     refresh: new RefreshSessionUseCase(refreshTokens, users, secrets, sessions, clock),
     logout: new LogoutUseCase(refreshTokens, secrets, clock),
     verifyEmail: new VerifyEmailUseCase(verifications, users, secrets, clock),
+    changePassword: new ChangePassword(users, hasher, refreshTokens, clock),
+    requestReset: new RequestPasswordReset(users, resetSender),
+    resetPassword: new ResetPassword(users, resets, secrets, hasher, refreshTokens, clock),
+    resetAccountPassword: new ResetAccountPassword(users, hasher, refreshTokens, clock, secrets),
+    setAccountActive: new SetAccountActive(users, refreshTokens, clock),
+    deleteAccount: new DeleteAccount(users, storage),
   };
 }
 

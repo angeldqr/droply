@@ -14,6 +14,8 @@ export interface AccountSummary {
   readonly displayName: string;
   readonly role: string;
   readonly emailVerified: boolean;
+  /** Si puede entrar. Una cuenta desactivada conserva todo lo suyo. */
+  readonly active: boolean;
   readonly createdAt: Date;
   readonly libraryCount: number;
   readonly recipientCount: number;

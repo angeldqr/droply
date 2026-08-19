@@ -1,6 +1,14 @@
 'use client';
 
-import { Archive, CalendarClock, LibraryBig, LogOut, Send, ShieldCheck } from 'lucide-react';
+import {
+  Archive,
+  CalendarClock,
+  LibraryBig,
+  LogOut,
+  Send,
+  ShieldCheck,
+  UserCog,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -163,6 +171,11 @@ function DroplyNav() {
             <span className="text-muted-foreground block truncate text-xs">{user?.email}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/cuenta">
+              <UserCog /> Tu cuenta
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void signOut()}>
             <LogOut /> Cerrar sesión
           </DropdownMenuItem>

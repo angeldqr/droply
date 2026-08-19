@@ -1,13 +1,34 @@
-import { Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
+  changePasswordSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
+  setAccountActiveSchema,
   verifyEmailSchema,
   type AuthenticatedUser,
+  type ChangePasswordInput,
+  type ForgotPasswordInput,
   type LoginInput,
   type RegisterInput,
+  type ResetPasswordInput,
   type SessionResponse,
+  type SetAccountActiveInput,
+  type TemporaryPasswordView,
   type VerifyEmailInput,
 } from '@droply/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -15,10 +36,20 @@ import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { Public } from '../../platform/http/public.decorator';
 import { Roles } from '../../platform/http/roles.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
-import { NotFoundError } from '../../shared/domain-error';
-import type { UserId } from '../../shared/identifiers';
+import { InvalidInputError, NotFoundError } from '../../shared/domain-error';
+import { UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
+import {
+  DeleteAccount,
+  ResetAccountPassword,
+  SetAccountActive,
+} from '../application/account-admin-use-cases';
 import { LoginUseCase } from '../application/login.use-case';
+import {
+  ChangePassword,
+  RequestPasswordReset,
+  ResetPassword,
+} from '../application/password-use-cases';
 import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
@@ -50,6 +81,12 @@ export class AuthController {
     @Inject(VerifyEmailUseCase) private readonly verifyEmail: VerifyEmailUseCase,
     @Inject(ResendVerificationUseCase)
     private readonly resendVerification: ResendVerificationUseCase,
+    @Inject(ChangePassword) private readonly changePassword: ChangePassword,
+    @Inject(ResetAccountPassword) private readonly resetAccountPassword: ResetAccountPassword,
+    @Inject(SetAccountActive) private readonly setAccountActive: SetAccountActive,
+    @Inject(DeleteAccount) private readonly deleteAccount: DeleteAccount,
+    @Inject(RequestPasswordReset) private readonly requestPasswordReset: RequestPasswordReset,
+    @Inject(ResetPassword) private readonly resetPassword: ResetPassword,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(IS_PRODUCTION) private readonly isProduction: boolean,
   ) {}
@@ -134,6 +171,82 @@ export class AuthController {
     orThrow(await this.resendVerification.execute(userId));
   }
 
+  /**
+   * Cambia la contraseña de quien ya entró.
+   *
+   * Cierra todas las sesiones, incluida la de quien la cambia, así que el
+   * front tiene que mandar a la pantalla de entrar después de esto.
+   */
+  @Post('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ medium: { limit: 5, ttl: 60_000 } })
+  async changePasswordRoute(
+    @CurrentUserId() userId: UserId,
+    @ZodBody(changePasswordSchema) body: ChangePasswordInput,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    orThrow(await this.changePassword.execute(userId, body));
+
+    reply.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH });
+  }
+
+  /**
+   * Pide el enlace para volver a poner la contraseña.
+   *
+   * **Responde 204 siempre**, exista la cuenta o no: contestar distinto
+   * convertiría esta ruta en un buscador de correos registrados. Con su propio
+   * límite, porque cada llamada manda un correo a una dirección que quien
+   * llama ni siquiera tiene que ser suya.
+   */
+  @Public()
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ medium: { limit: 3, ttl: 60_000 } })
+  async forgotPassword(@ZodBody(forgotPasswordSchema) body: ForgotPasswordInput): Promise<void> {
+    await this.requestPasswordReset.execute(body.email);
+  }
+
+  @Public()
+  @Post('password/reset')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ medium: { limit: 10, ttl: 60_000 } })
+  async resetPasswordRoute(@ZodBody(resetPasswordSchema) body: ResetPasswordInput): Promise<void> {
+    orThrow(await this.resetPassword.execute(body.token, body.password));
+  }
+
+  /*
+   * Las tres de administración de cuentas viven acá y no en el panel por lo
+   * mismo que `POST /auth/users`: crear, borrar y cambiar la contraseña de una
+   * cuenta es de este contexto, y el panel solo lee. Todas exigen el rol.
+   */
+
+  @Roles('ADMIN')
+  @Post('users/:userId/password')
+  async resetAccount(@Param('userId') userId: string): Promise<TemporaryPasswordView> {
+    return orThrow(await this.resetAccountPassword.execute(toUserId(userId)));
+  }
+
+  @Roles('ADMIN')
+  @Patch('users/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async setActive(
+    @CurrentUserId() actorId: UserId,
+    @Param('userId') userId: string,
+    @ZodBody(setAccountActiveSchema) body: SetAccountActiveInput,
+  ): Promise<void> {
+    orThrow(await this.setAccountActive.execute(actorId, toUserId(userId), body.active));
+  }
+
+  @Roles('ADMIN')
+  @Delete('users/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeAccount(
+    @CurrentUserId() actorId: UserId,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    orThrow(await this.deleteAccount.execute(actorId, toUserId(userId)));
+  }
+
   @Get('me')
   async me(@CurrentUserId() userId: UserId): Promise<AuthenticatedUser> {
     const user = await this.users.findById(userId);
@@ -177,4 +290,12 @@ function toAuthenticatedUser(user: User): AuthenticatedUser {
     emailVerified: user.isEmailVerified,
     role: user.role,
   };
+}
+
+function toUserId(raw: string): UserId {
+  if (!UserId.is(raw)) {
+    throw new InvalidInputError('admin.user_id_invalid', 'Ese identificador no vale.');
+  }
+
+  return UserId.from(raw);
 }

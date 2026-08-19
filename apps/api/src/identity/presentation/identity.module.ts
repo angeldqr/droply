@@ -3,18 +3,31 @@ import { APP_GUARD } from '@nestjs/core';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
+import { OWNER_STORAGE, type OwnerStorage } from '../../shared/owner-storage';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { LoginUseCase } from '../application/login.use-case';
 import { LogoutUseCase } from '../application/logout.use-case';
 import { RefreshSessionUseCase } from '../application/refresh-session.use-case';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
 import { ResendVerificationUseCase } from '../application/resend-verification.use-case';
+import {
+  DeleteAccount,
+  ResetAccountPassword,
+  SetAccountActive,
+} from '../application/account-admin-use-cases';
+import { PasswordResetSender } from '../application/password-reset-sender';
+import {
+  ChangePassword,
+  RequestPasswordReset,
+  ResetPassword,
+} from '../application/password-use-cases';
 import { VerificationSender } from '../application/verification-sender';
 import { SessionIssuer } from '../application/session-issuer';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import {
   ACCESS_TOKEN_ISSUER,
   EMAIL_VERIFICATION_REPOSITORY,
+  PASSWORD_RESET_REPOSITORY,
   MAILER,
   PASSWORD_HASHER,
   REFRESH_TOKEN_REPOSITORY,
@@ -22,6 +35,7 @@ import {
   USER_REPOSITORY,
   type AccessTokenIssuer,
   type EmailVerificationRepository,
+  type PasswordResetRepository,
   type Mailer,
   type PasswordHasher,
   type RefreshTokenRepository,
@@ -33,6 +47,7 @@ import { Argon2PasswordHasher } from '../infrastructure/argon2-password-hasher';
 import { JwtAccessTokenIssuer } from '../infrastructure/jwt-access-token-issuer';
 import { LoggingMailer } from '../infrastructure/logging-mailer';
 import { PrismaEmailVerificationRepository } from '../infrastructure/prisma-email-verification.repository';
+import { PrismaPasswordResetRepository } from '../infrastructure/prisma-password-reset.repository';
 import { PrismaRefreshTokenRepository } from '../infrastructure/prisma-refresh-token.repository';
 import { PrismaUserRepository } from '../infrastructure/prisma-user.repository';
 import { Sha256SecretTokenFactory } from '../infrastructure/sha256-secret-token-factory';
@@ -67,6 +82,11 @@ import { IS_PRODUCTION } from './tokens';
       provide: EMAIL_VERIFICATION_REPOSITORY,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaEmailVerificationRepository(prisma),
+    },
+    {
+      provide: PASSWORD_RESET_REPOSITORY,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => new PrismaPasswordResetRepository(prisma),
     },
 
     {
@@ -223,6 +243,82 @@ import { IS_PRODUCTION } from './tokens';
       inject: [USER_REPOSITORY, VerificationSender],
       useFactory: (users: UserRepository, sender: VerificationSender) =>
         new ResendVerificationUseCase(users, sender),
+    },
+    {
+      provide: PasswordResetSender,
+      inject: [PASSWORD_RESET_REPOSITORY, SECRET_TOKEN_FACTORY, MAILER, ID_GENERATOR, CLOCK, ENV],
+      useFactory: (
+        resets: PasswordResetRepository,
+        secrets: SecretTokenFactory,
+        mailer: Mailer,
+        ids: IdGenerator,
+        clock: Clock,
+        env: ApiEnv,
+      ) => new PasswordResetSender(resets, secrets, mailer, ids, clock, env.WEB_URL),
+    },
+    {
+      provide: ChangePassword,
+      inject: [USER_REPOSITORY, PASSWORD_HASHER, REFRESH_TOKEN_REPOSITORY, CLOCK],
+      useFactory: (
+        users: UserRepository,
+        hasher: PasswordHasher,
+        sessions: RefreshTokenRepository,
+        clock: Clock,
+      ) => new ChangePassword(users, hasher, sessions, clock),
+    },
+    {
+      provide: RequestPasswordReset,
+      inject: [USER_REPOSITORY, PasswordResetSender],
+      useFactory: (users: UserRepository, sender: PasswordResetSender) =>
+        new RequestPasswordReset(users, sender),
+    },
+    {
+      provide: ResetPassword,
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_RESET_REPOSITORY,
+        SECRET_TOKEN_FACTORY,
+        PASSWORD_HASHER,
+        REFRESH_TOKEN_REPOSITORY,
+        CLOCK,
+      ],
+      useFactory: (
+        users: UserRepository,
+        resets: PasswordResetRepository,
+        secrets: SecretTokenFactory,
+        hasher: PasswordHasher,
+        sessions: RefreshTokenRepository,
+        clock: Clock,
+      ) => new ResetPassword(users, resets, secrets, hasher, sessions, clock),
+    },
+    {
+      provide: ResetAccountPassword,
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_HASHER,
+        REFRESH_TOKEN_REPOSITORY,
+        CLOCK,
+        SECRET_TOKEN_FACTORY,
+      ],
+      useFactory: (
+        users: UserRepository,
+        hasher: PasswordHasher,
+        sessions: RefreshTokenRepository,
+        clock: Clock,
+        secrets: SecretTokenFactory,
+      ) => new ResetAccountPassword(users, hasher, sessions, clock, secrets),
+    },
+    {
+      provide: SetAccountActive,
+      inject: [USER_REPOSITORY, REFRESH_TOKEN_REPOSITORY, CLOCK],
+      useFactory: (users: UserRepository, sessions: RefreshTokenRepository, clock: Clock) =>
+        new SetAccountActive(users, sessions, clock),
+    },
+    {
+      provide: DeleteAccount,
+      inject: [USER_REPOSITORY, OWNER_STORAGE],
+      useFactory: (users: UserRepository, storage: OwnerStorage) =>
+        new DeleteAccount(users, storage),
     },
     {
       provide: VerifyEmailUseCase,

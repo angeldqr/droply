@@ -25,6 +25,7 @@ export interface UserSnapshot {
   readonly role: UserRole;
   readonly timezone: string;
   readonly emailVerifiedAt: Date | null;
+  readonly deactivatedAt: Date | null;
   readonly createdAt: Date;
 }
 
@@ -37,6 +38,7 @@ export class User {
     private currentRole: UserRole,
     readonly timezone: string,
     private emailVerifiedAt: Date | null,
+    private deactivatedAt: Date | null,
     readonly createdAt: Date,
   ) {}
 
@@ -80,6 +82,7 @@ export class User {
         input.role ?? 'USER',
         input.timezone,
         null,
+        null,
         input.now,
       ),
     );
@@ -94,6 +97,7 @@ export class User {
       snapshot.role,
       snapshot.timezone,
       snapshot.emailVerifiedAt,
+      snapshot.deactivatedAt,
       snapshot.createdAt,
     );
   }
@@ -152,6 +156,28 @@ export class User {
     this.passwordHash = newHash;
   }
 
+  get isActive(): boolean {
+    return this.deactivatedAt === null;
+  }
+
+  /**
+   * Le corta el acceso sin borrar nada.
+   *
+   * Sus bibliotecas, sus destinatarios y sus horarios se quedan donde están: si
+   * la cuenta vuelve, vuelve entera. Lo único que cambia es que no puede entrar,
+   * y por eso el login la trata igual que a una credencial que no existe.
+   *
+   * Desactivar dos veces conserva la fecha original, igual que verificar dos
+   * veces el correo: es el mismo botón apretado otra vez, no un error.
+   */
+  deactivate(now: Date): void {
+    this.deactivatedAt ??= now;
+  }
+
+  reactivate(): void {
+    this.deactivatedAt = null;
+  }
+
   toSnapshot(): UserSnapshot {
     return {
       id: this.id,
@@ -161,6 +187,7 @@ export class User {
       role: this.currentRole,
       timezone: this.timezone,
       emailVerifiedAt: this.emailVerifiedAt,
+      deactivatedAt: this.deactivatedAt,
       createdAt: this.createdAt,
     };
   }

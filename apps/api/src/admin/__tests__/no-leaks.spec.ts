@@ -16,6 +16,7 @@ const ROW = {
   displayName: 'Ana',
   role: 'USER',
   emailVerifiedAt: CREATED_AT,
+  deactivatedAt: null,
   createdAt: CREATED_AT,
   passwordHash: '$argon2id$no-deberia-salir',
   _count: { recipients: 2, schedules: 1 },

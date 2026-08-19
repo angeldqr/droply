@@ -66,8 +66,18 @@ export class PrismaUserRepository implements UserRepository {
         role: snapshot.role,
         timezone: snapshot.timezone,
         emailVerifiedAt: snapshot.emailVerifiedAt,
+        deactivatedAt: snapshot.deactivatedAt,
       },
     });
+  }
+
+  async remove(id: UserId): Promise<void> {
+    // Bibliotecas, destinatarios, horarios y sesiones se van por cascada.
+    await this.prisma.user.deleteMany({ where: { id } });
+  }
+
+  countActiveAdmins(): Promise<number> {
+    return this.prisma.user.count({ where: { role: 'ADMIN', deactivatedAt: null } });
   }
 }
 
@@ -92,6 +102,7 @@ function toDomain(row: UserRow): User {
     role: row.role,
     timezone: row.timezone,
     emailVerifiedAt: row.emailVerifiedAt,
+    deactivatedAt: row.deactivatedAt,
     createdAt: row.createdAt,
   });
 }

@@ -40,11 +40,17 @@ model User {
   timezone String
 
   emailVerifiedAt DateTime? @map("email_verified_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  /// Cuando quien administra le corto el acceso. No se borra la cuenta: sus
+  /// bibliotecas y sus envios siguen ahi por si vuelve, pero no puede entrar.
+  deactivatedAt DateTime? @map("deactivated_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   refreshTokens     RefreshToken[]
   verificationCodes EmailVerification[]
+  passwordResets    PasswordReset[]
   libraries         Library[]
   recipients        Recipient[]
   schedules         Schedule[]
@@ -153,6 +159,26 @@ model LibraryItem {
 
   @@index([libraryId, kind, position])
   @@map("library_items")
+}
+
+/// Un enlace para volver a poner la contrasena.
+///
+/// Misma forma que EmailVerification y por la misma razon: el valor se manda
+/// por correo y de el solo se guarda el hash, asi que quien lea la tabla no
+/// puede entrar a nombre de nadie. Se quema al usarse.
+model PasswordReset {
+  id        String @id @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  tokenHash String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
 }
 
 model EmailVerification {
