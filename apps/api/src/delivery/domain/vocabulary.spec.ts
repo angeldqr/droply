@@ -1,6 +1,6 @@
-import { deliveryStatus, itemKind, selectionStrategy } from '@droply/contracts';
+import { deliveryStatus, itemKind } from '@droply/contracts';
 import { describe, expect, it } from 'vitest';
-import { DELIVERY_STATUSES, ITEM_KINDS, SELECTION_STRATEGIES } from './vocabulary';
+import { DELIVERY_STATUSES, ITEM_KINDS } from './vocabulary';
 
 /**
  * El núcleo no puede importar `@droply/contracts`, así que estos vocabularios
@@ -11,10 +11,6 @@ import { DELIVERY_STATUSES, ITEM_KINDS, SELECTION_STRATEGIES } from './vocabular
 describe('vocabulario de envíos frente al contrato', () => {
   it('coinciden las columnas', () => {
     expect([...ITEM_KINDS]).toEqual([...itemKind.values]);
-  });
-
-  it('coinciden las estrategias de selección', () => {
-    expect([...SELECTION_STRATEGIES]).toEqual([...selectionStrategy.values]);
   });
 
   it('coinciden los estados de un envío', () => {

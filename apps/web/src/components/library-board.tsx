@@ -337,7 +337,8 @@ function StackedItem({
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuLabel className="font-normal">
-                  Se reparten dentro de la franja de cada horario.
+                  Sale ese número de veces, repartidas por la franja de cada horario y sin
+                  amontonarse con las de los demás archivos.
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup

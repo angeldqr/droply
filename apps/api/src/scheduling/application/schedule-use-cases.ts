@@ -9,12 +9,14 @@ import {
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import {
+  FixedItemOutsideWindow,
   RecipientNotInLibrary,
   RecipientNotLinked,
   ScheduleNeverRuns,
   ScheduleNotFound,
 } from '../domain/errors';
 import type {
+  FixedItemRepository,
   LibraryDirectory,
   OccurrencePlanner,
   RecipientDirectory,
@@ -111,8 +113,8 @@ export class CreateSchedule {
     const now = this.clock.now();
     // La rejilla sale de lo que hay en la biblioteca: cada elemento aporta sus
     // horas según cuántas veces al día pida enviarse.
-    const times = await this.libraries.sendTimesOf(target.libraryId, fields.kindFilter);
-    const firstRunAt = this.planner.nextAfter(windowOf(fields, times), fields.timezone, now);
+    const items = await this.libraries.planItemsOf(target.libraryId, fields.kindFilter);
+    const firstRunAt = this.planner.nextAfter(windowOf(fields, items), fields.timezone, now);
 
     if (!firstRunAt) return err(new ScheduleNeverRuns());
 
@@ -140,13 +142,19 @@ export class UpdateSchedule {
     private readonly libraries: LibraryDirectory,
     private readonly planner: OccurrencePlanner,
     private readonly clock: Clock,
+    private readonly fixed: FixedItemRepository,
   ) {}
 
   async execute(
     ownerId: UserId,
     scheduleId: ScheduleId,
     changes: Partial<ScheduleFields> & { active?: boolean },
-  ): Promise<Result<Schedule, ScheduleNotFound | ScheduleNeverRuns | InvalidInputError>> {
+  ): Promise<
+    Result<
+      Schedule,
+      ScheduleNotFound | ScheduleNeverRuns | FixedItemOutsideWindow | InvalidInputError
+    >
+  > {
     const schedule = await this.schedules.findOwned(scheduleId, ownerId);
     if (!schedule) return err(new ScheduleNotFound());
 
@@ -156,7 +164,6 @@ export class UpdateSchedule {
       endMinute: changes.endMinute ?? schedule.endMinute,
       timezone: changes.timezone ?? schedule.timezone,
       senderName: changes.senderName === undefined ? schedule.senderName : changes.senderName,
-      strategy: changes.strategy ?? schedule.strategy,
       kindFilter: changes.kindFilter === undefined ? schedule.kindFilter : changes.kindFilter,
     };
 
@@ -171,9 +178,24 @@ export class UpdateSchedule {
       fields.endMinute !== schedule.endMinute ||
       fields.weekdays.join() !== schedule.weekdays.join();
 
+    const fixedMinutes = await this.fixed.minutesOf(scheduleId);
+
+    /*
+     * Estrechar la franja dejaría envíos fijos fuera de ella, y hay que decirlo
+     * en vez de tirarlos en silencio: son horas que el dueño eligió a mano, y
+     * perderlas por cambiar la franja se descubriría el día que no llegue nada.
+     */
+    if (fixedMinutes.some((minute) => minute < fields.startMinute || minute > fields.endMinute)) {
+      return err(new FixedItemOutsideWindow());
+    }
+
     const nextRunAt = ruleChanged
       ? this.planner.nextAfter(
-          windowOf(fields, await this.libraries.sendTimesOf(schedule.libraryId, fields.kindFilter)),
+          windowOf(
+            fields,
+            await this.libraries.planItemsOf(schedule.libraryId, fields.kindFilter),
+            fixedMinutes,
+          ),
           fields.timezone,
           this.clock.now(),
         )

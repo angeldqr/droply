@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Clock } from '../../shared/clock';
+import type { PlannedItem } from '../../shared/day-plan';
 import type { IdGenerator, LibraryId, RecipientId, UserId } from '../../shared/identifiers';
 import { CreateSchedule } from '../application/schedule-use-cases';
 import type { ItemKind } from '../domain/item-kind';
@@ -25,7 +26,6 @@ const FIELDS: ScheduleFields = {
   endMinute: 1200,
   timezone: 'America/Bogota',
   senderName: null,
-  strategy: 'RANDOM',
   kindFilter: null,
 };
 
@@ -39,8 +39,15 @@ class FakeLibraries implements LibraryDirectory {
     return Promise.resolve(recipientId === MAMA);
   }
 
-  sendTimesOf(_libraryId: LibraryId, _kindFilter: ItemKind | null): Promise<number[]> {
-    return Promise.resolve([1]);
+  planItemsOf(_libraryId: LibraryId, _kindFilter: ItemKind | null): Promise<PlannedItem[]> {
+    return Promise.resolve([{ id: 'foto', timesPerDay: 1, position: 1 }]);
+  }
+
+  itemsOf(
+    _libraryId: LibraryId,
+    itemIds: readonly string[],
+  ): Promise<{ id: string; kind: ItemKind; label: string }[]> {
+    return Promise.resolve(itemIds.map((id) => ({ id, kind: 'IMAGE', label: id })));
   }
 }
 

@@ -9,11 +9,11 @@ const TARGET: DispatchTarget = {
   ownerId: 'ana',
   chatId: '123',
   senderName: 'Ana',
-  strategy: 'RANDOM',
   kindFilter: null,
   startMinute: 480,
   endMinute: 1200,
   timezone: 'America/Bogota',
+  fixedItems: [],
 };
 
 /** Con qué se le preguntó a la base, que es justo lo que hay que fijar. */
@@ -60,7 +60,7 @@ describe('el baúl no sale hacia nadie', () => {
   it('la consulta de candidatos siempre excluye el baúl', async () => {
     const { catalog, count, lastWhere } = spy();
 
-    await catalog.candidatesOf(TARGET, new Date('2026-08-19T13:00:00.000Z'));
+    await catalog.itemAt(TARGET, new Date('2026-08-19T13:00:00.000Z'));
 
     expect(count()).toBe(1);
     expect(lastWhere().library).toEqual({ isVault: false });
@@ -69,7 +69,7 @@ describe('el baúl no sale hacia nadie', () => {
   it('y sigue pidiendo solo los de esa biblioteca', async () => {
     const { catalog, lastWhere } = spy();
 
-    await catalog.candidatesOf(TARGET, new Date('2026-08-19T13:00:00.000Z'));
+    await catalog.itemAt(TARGET, new Date('2026-08-19T13:00:00.000Z'));
 
     expect(lastWhere().libraryId).toBe('biblioteca-1');
   });
@@ -77,10 +77,7 @@ describe('el baúl no sale hacia nadie', () => {
   it('el filtro por columna no reemplaza la guarda', async () => {
     const { catalog, lastWhere } = spy();
 
-    await catalog.candidatesOf(
-      { ...TARGET, kindFilter: 'IMAGE' },
-      new Date('2026-08-19T13:00:00.000Z'),
-    );
+    await catalog.itemAt({ ...TARGET, kindFilter: 'IMAGE' }, new Date('2026-08-19T13:00:00.000Z'));
 
     expect(lastWhere().kind).toBe('IMAGE');
     expect(lastWhere().library).toEqual({ isVault: false });

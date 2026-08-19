@@ -1,3 +1,4 @@
+import type { PlannedItem } from '../../shared/day-plan';
 import type { LibraryId, RecipientId, ScheduleId, UserId } from '../../shared/identifiers';
 import type { ItemKind } from './item-kind';
 import type { Schedule } from './schedule';
@@ -55,13 +56,44 @@ export interface LibraryDirectory {
    */
   allows(libraryId: LibraryId, recipientId: RecipientId): Promise<boolean>;
   /**
-   * Cuántas veces al día pide enviarse cada elemento de la biblioteca.
+   * Los elementos que entran en el plan del día, con lo que hace falta para
+   * repartirlos: cuántas veces al día pide cada uno y en qué orden está.
    *
-   * Es lo que densifica la rejilla del horario: un archivo que pide cinco
-   * envíos obliga a mirar cinco momentos del día, aunque los demás pidan uno.
-   * Solo los elementos listos, y solo los de la columna filtrada si la hay.
+   * Solo los que se pueden enviar —un archivo a medio subir no abre hueco en la
+   * rejilla— y solo los de la columna filtrada si la hay.
    */
-  sendTimesOf(libraryId: LibraryId, kindFilter: ItemKind | null): Promise<number[]>;
+  planItemsOf(libraryId: LibraryId, kindFilter: ItemKind | null): Promise<PlannedItem[]>;
+  /**
+   * Los elementos de esa biblioteca que estén entre los pedidos.
+   *
+   * Se pregunta por la biblioteca y no por el elemento suelto a propósito: es
+   * la única forma de que clavar un archivo ajeno en un horario no cuele. Lo
+   * que no salga en la respuesta, no es de ahí.
+   */
+  itemsOf(
+    libraryId: LibraryId,
+    itemIds: readonly string[],
+  ): Promise<{ id: string; kind: ItemKind; label: string }[]>;
+}
+
+/** Un envío clavado: a este minuto del día sale este elemento y no otro. */
+export interface FixedItem {
+  readonly minute: number;
+  readonly itemId: string;
+}
+
+/**
+ * Los envíos fijos de un horario.
+ *
+ * Se reemplazan en bloque y no de uno en uno: la pantalla manda la lista
+ * entera, así que guardar la diferencia sería inventar un protocolo que nadie
+ * pidió. La unicidad por hora la impone la clave primaria de la tabla.
+ */
+export interface FixedItemRepository {
+  listOf(scheduleId: ScheduleId): Promise<FixedItem[]>;
+  replace(scheduleId: ScheduleId, items: readonly FixedItem[]): Promise<void>;
+  /** Las horas clavadas, que son las que la rejilla tiene que incluir. */
+  minutesOf(scheduleId: ScheduleId): Promise<number[]>;
 }
 
 export interface RecipientDirectory {
@@ -76,3 +108,4 @@ export const SCHEDULE_REPOSITORY = Symbol('ScheduleRepository');
 export const OCCURRENCE_PLANNER = Symbol('OccurrencePlanner');
 export const LIBRARY_DIRECTORY = Symbol('LibraryDirectory');
 export const RECIPIENT_DIRECTORY = Symbol('RecipientDirectory');
+export const FIXED_ITEM_REPOSITORY = Symbol('FixedItemRepository');

@@ -148,7 +148,8 @@ model LibraryItem {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  library  Library             @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  fixedIn  ScheduleFixedItem[]
 
   @@index([libraryId, kind, position])
   @@map("library_items")
@@ -210,14 +211,6 @@ model Recipient {
   @@map("recipients")
 }
 
-enum SelectionStrategy {
-  RANDOM
-  RANDOM_NO_REPEAT
-  SEQUENTIAL
-
-  @@map("selection_strategy")
-}
-
 /// Cuando sale un envio y de donde.
 ///
 /// `weekdays` son los dias (1 lunes .. 7 domingo) y `startMinute`/`endMinute`
@@ -248,8 +241,6 @@ model Schedule {
   /// llegue firmado como el, no como Droply.
   senderName String? @map("sender_name")
 
-  strategy SelectionStrategy @default(RANDOM)
-
   /// Si esta puesto, solo se eligen elementos de esa columna.
   kindFilter ItemKind? @map("kind_filter")
 
@@ -264,8 +255,8 @@ model Schedule {
   library   Library   @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
-  sent       SentItem[]
   deliveries DeliveryAttempt[]
+  fixedItems ScheduleFixedItem[]
 
   /// El indice del tick: solo activos y vencidos, que es la unica consulta que
   /// corre cada minuto.
@@ -274,19 +265,31 @@ model Schedule {
   @@map("schedules")
 }
 
-/// La bolsa del "aleatorio sin repetir": lo que este horario ya envio.
+/// Un envio clavado: a esta hora sale este archivo y no otro.
 ///
-/// Una fila por elemento y no un array en `schedules`, para que dos ticks
-/// simultaneos no se pisen la bolsa entera al escribirla.
-model SentItem {
-  scheduleId String   @map("schedule_id") @db.Uuid
-  itemId     String   @map("item_id") @db.Uuid
-  sentAt     DateTime @default(now()) @map("sent_at")
+/// La clave primaria es (horario, minuto) porque una hora no puede llevar dos
+/// cosas. Lo impide la base y no una comprobacion en el codigo, que hay que
+/// acordarse de repetir en cada camino nuevo que escriba en esta tabla.
+///
+/// El minuto vive aca y no en el elemento porque un envio fijo es la suma de
+/// archivo, hora y persona: el mismo video puede ir a las 6 para uno y no salir
+/// nunca para otro, y eso solo se puede decir desde el horario.
+model ScheduleFixedItem {
+  scheduleId String @map("schedule_id") @db.Uuid
+  /// Minutos desde medianoche, siempre dentro de la franja del horario.
+  minute     Int
+  itemId     String @map("item_id") @db.Uuid
 
-  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@id([scheduleId, itemId])
-  @@map("sent_items")
+  schedule Schedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  item     LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Si el archivo se borra, el envio fijo se va con el: la alternativa seria
+  /// un horario que a las 6 no manda nada y no dice por que.
+  @@id([scheduleId, minute])
+  @@index([itemId])
+  @@map("schedule_fixed_items")
 }
 
 /// A quien se le puede enviar lo de esta biblioteca.

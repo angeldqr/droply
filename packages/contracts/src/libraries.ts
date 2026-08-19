@@ -64,6 +64,11 @@ export const requestUploadSchema = z
 /**
  * Cuántas veces al día se manda un elemento.
  *
+ * Se cumple al pie de la letra: si dice tres, sale tres veces, y cada envío
+ * tiene su propio momento dentro de la franja del horario. Los envíos de todos
+ * los elementos se intercalan, así que poner tres no amontona tres mensajes
+ * seguidos ni le quita el turno a los demás.
+ *
  * El techo no es técnico: doce envíos del mismo archivo en un día ya es más
  * insistencia de la que nadie quiere recibir, y sin tope alguien pondría cien
  * sin darse cuenta de lo que pide.
@@ -136,6 +141,7 @@ export interface LibraryItemView {
   readonly position: number;
   /** Cuántas veces al día lo manda cada horario de esta biblioteca. */
   readonly timesPerDay: number;
+
   readonly text: string | null;
   readonly media: MediaView | null;
   readonly createdAt: string;

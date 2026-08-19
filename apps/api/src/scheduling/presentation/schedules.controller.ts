@@ -8,12 +8,16 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   createScheduleSchema,
+  setFixedItemsSchema,
   updateScheduleSchema,
   type CreateScheduleInput,
+  type FixedItemView,
   type ScheduleView,
+  type SetFixedItemsInput,
   type UpdateScheduleInput,
 } from '@droply/contracts';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
@@ -21,6 +25,7 @@ import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { InvalidInputError } from '../../shared/domain-error';
 import { LibraryId, RecipientId, ScheduleId, type UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
+import { ListFixedItems, SetFixedItems } from '../application/fixed-item-use-cases';
 import {
   CreateSchedule,
   DeleteSchedule,
@@ -36,6 +41,8 @@ export class SchedulesController {
     @Inject(CreateSchedule) private readonly createSchedule: CreateSchedule,
     @Inject(UpdateSchedule) private readonly updateSchedule: UpdateSchedule,
     @Inject(DeleteSchedule) private readonly deleteSchedule: DeleteSchedule,
+    @Inject(ListFixedItems) private readonly listFixed: ListFixedItems,
+    @Inject(SetFixedItems) private readonly setFixed: SetFixedItems,
   ) {}
 
   @Get()
@@ -64,7 +71,6 @@ export class SchedulesController {
           endMinute: body.endMinute,
           timezone: body.timezone,
           senderName: body.senderName ?? null,
-          strategy: body.strategy,
           kindFilter: body.kindFilter ?? null,
         },
       ),
@@ -88,13 +94,37 @@ export class SchedulesController {
         ...(body.endMinute === undefined ? {} : { endMinute: body.endMinute }),
         ...(body.timezone === undefined ? {} : { timezone: body.timezone }),
         ...(body.senderName === undefined ? {} : { senderName: body.senderName ?? null }),
-        ...(body.strategy === undefined ? {} : { strategy: body.strategy }),
         ...(body.kindFilter === undefined ? {} : { kindFilter: body.kindFilter ?? null }),
         ...(body.active === undefined ? {} : { active: body.active }),
       }),
     );
 
     return toView({ schedule, libraryName: '', recipientLabel: '' });
+  }
+
+  /**
+   * Qué sale a qué hora en este horario.
+   *
+   * Cuelga del horario y no de la biblioteca porque un envío fijo es archivo,
+   * hora y persona a la vez: el mismo video puede ir a las 6 para uno y no
+   * salir nunca para otro.
+   */
+  @Get(':scheduleId/fixed-items')
+  async fixedItems(
+    @CurrentUserId() userId: UserId,
+    @Param('scheduleId') scheduleId: string,
+  ): Promise<FixedItemView[]> {
+    return orThrow(await this.listFixed.execute(userId, toScheduleId(scheduleId)));
+  }
+
+  @Put(':scheduleId/fixed-items')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async setFixedItems(
+    @CurrentUserId() userId: UserId,
+    @Param('scheduleId') scheduleId: string,
+    @ZodBody(setFixedItemsSchema) body: SetFixedItemsInput,
+  ): Promise<void> {
+    orThrow(await this.setFixed.execute(userId, toScheduleId(scheduleId), body.fixedItems));
   }
 
   @Delete(':scheduleId')
@@ -127,7 +157,6 @@ function toView({ schedule, libraryName, recipientLabel }: ScheduleWithNames): S
     endMinute: schedule.endMinute,
     timezone: schedule.timezone,
     senderName: schedule.senderName,
-    strategy: schedule.strategy,
     kindFilter: schedule.kindFilter,
     active: schedule.active,
     nextRunAt: schedule.nextRunAt?.toISOString() ?? null,

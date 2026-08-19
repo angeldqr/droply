@@ -1,43 +1,43 @@
-import { slotsOf } from '../../shared/daily-slots';
+import { minutesOf, planOf, type PlannedItem } from '../../shared/day-plan';
 import type { DailyWindow } from './ports';
 
 /**
  * La ventana lista para el planificador, a partir de los campos del horario.
  *
- * `timesPerDayOfEachItem` llega vacío mientras no haya elementos que consultar;
- * el horario entonces sale una vez al día, a la hora de inicio.
+ * La rejilla —las horas a las que el horario tiene que despertarse— sale del
+ * plan del día: cada elemento aporta tantos momentos como veces al día pida, y
+ * todos se intercalan dentro de la franja.
+ *
+ * `fixedMinutes` son las horas con un envío clavado. Entran aunque el plan no
+ * las pise: si alguien pide algo a las 7:15, el horario tiene que despertarse a
+ * las 7:15 aunque nada más salga a esa hora.
  */
 export function windowOf(
   fields: { weekdays: readonly number[]; startMinute: number; endMinute: number },
-  timesPerDayOfEachItem: readonly number[] = [],
+  items: readonly PlannedItem[] = [],
+  fixedMinutes: readonly number[] = [],
 ): DailyWindow {
   return {
     weekdays: fields.weekdays,
-    minutes: gridOf(timesPerDayOfEachItem, fields.startMinute, fields.endMinute),
+    minutes: gridOf(items, fields.startMinute, fields.endMinute, fixedMinutes),
   };
 }
 
-/**
- * La rejilla del horario: todos los minutos en los que tiene algo que enviar.
- *
- * Es la unión de los repartos de cada elemento, sin repetidos y en orden. Un
- * archivo que pide cinco envíos densifica la rejilla para todo el horario, y en
- * cada disparo salen solo los elementos a los que les toca ese minuto.
- */
+/** Todos los minutos del día en los que el horario tiene algo que enviar. */
 export function gridOf(
-  timesPerDayOfEachItem: readonly number[],
+  items: readonly PlannedItem[],
   startMinute: number,
   endMinute: number,
+  fixedMinutes: readonly number[] = [],
 ): number[] {
-  // Sin elementos no hay nada que enviar, pero el horario sigue vivo: se usa la
-  // hora de inicio para que vuelva a mirar cuando alguien llene la biblioteca.
-  if (timesPerDayOfEachItem.length === 0) return [startMinute];
+  const minutes = new Set<number>([
+    ...minutesOf(planOf(items, startMinute, endMinute)),
+    ...fixedMinutes,
+  ]);
 
-  const minutes = new Set<number>();
-
-  for (const times of timesPerDayOfEachItem) {
-    for (const minute of slotsOf(times, startMinute, endMinute)) minutes.add(minute);
-  }
+  // Sin nada que enviar el horario sigue vivo: mira a la hora de inicio para
+  // volver a comprobar cuando alguien llene la biblioteca.
+  if (minutes.size === 0) return [startMinute];
 
   return [...minutes].sort((left, right) => left - right);
 }

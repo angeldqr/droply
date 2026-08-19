@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { slotsOf } from '../../shared/daily-slots';
 import { gridOf, windowOf } from '../domain/daily-slots';
 import { WindowOccurrencePlanner } from '../infrastructure/window-occurrence-planner';
 
@@ -26,27 +25,31 @@ function at(minute: number, weekdays: number[] = TODOS_LOS_DIAS) {
 const LAS_8 = 8 * 60;
 const LAS_2_30 = 2 * 60 + 30;
 
-describe('reparto dentro de la franja', () => {
-  it('reparte tres envíos en la primera hora, la del medio y la última', () => {
-    // 8:00 a 20:00, que es lo que pidió el cliente con este mismo ejemplo.
-    expect(slotsOf(3, 480, 1200)).toEqual([480, 840, 1200]);
-  });
+/** Un archivo del tablero, con lo justo para repartirlo. */
+const item = (id: string, timesPerDay: number, position: number) => ({ id, timesPerDay, position });
 
-  it('una sola vez al día sale a la hora de inicio', () => {
-    expect(slotsOf(1, 480, 1200)).toEqual([480]);
-  });
-
-  it('cinco envíos caen igualmente espaciados, extremos incluidos', () => {
-    expect(slotsOf(5, 480, 1200)).toEqual([480, 660, 840, 1020, 1200]);
-  });
-
-  it('la rejilla une los repartos de todos los elementos, sin repetir', () => {
-    // Uno que sale una vez y otro que sale tres comparten la hora de inicio.
-    expect(gridOf([1, 3], 480, 1200)).toEqual([480, 840, 1200]);
+describe('la rejilla del horario', () => {
+  it('son los momentos del plan del día', () => {
+    // Uno que sale una vez y otro que sale tres: cuatro envíos, cuatro horas.
+    expect(gridOf([item('a', 1, 1), item('b', 3, 2)], 480, 1200)).toEqual([480, 720, 960, 1200]);
   });
 
   it('una biblioteca vacía deja la rejilla en la hora de inicio', () => {
     expect(gridOf([], 480, 1200)).toEqual([480]);
+  });
+
+  it('una hora clavada entra aunque el plan no la pise', () => {
+    // 7:15 no sale del reparto: está solo porque alguien clavó algo ahí, y sin
+    // ella el horario no se despertaría a esa hora.
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [435])).toEqual([435, 480]);
+  });
+
+  it('una hora clavada que ya estaba no se duplica', () => {
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [480])).toEqual([480]);
+  });
+
+  it('con la biblioteca vacía la rejilla es la de lo clavado', () => {
+    expect(gridOf([], 480, 1200, [600])).toEqual([600]);
   });
 });
 
@@ -144,7 +147,9 @@ describe('próxima hora de envío', () => {
   });
 
   it('arma la ventana desde los campos del horario', () => {
-    const window = windowOf({ weekdays: [1, 3], startMinute: 480, endMinute: 1200 }, [3]);
+    const window = windowOf({ weekdays: [1, 3], startMinute: 480, endMinute: 1200 }, [
+      item('a', 3, 1),
+    ]);
 
     expect(window).toEqual({ weekdays: [1, 3], minutes: [480, 840, 1200] });
   });

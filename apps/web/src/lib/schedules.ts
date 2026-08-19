@@ -3,7 +3,9 @@
 import type {
   CreateScheduleInput,
   DeliveryRecordView,
+  FixedItemView,
   ScheduleView,
+  SetFixedItemsInput,
   UpdateScheduleInput,
 } from '@droply/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -52,6 +54,34 @@ export function useUpdateSchedule() {
         body: changes,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: listKey }),
+  });
+}
+
+const fixedKey = (scheduleId: string) => ['schedules', scheduleId, 'fixed-items'] as const;
+
+/** Qué sale a qué hora en este horario, con el archivo ya resuelto. */
+export function useFixedItems(scheduleId: string) {
+  return useQuery({
+    queryKey: fixedKey(scheduleId),
+    queryFn: () => api<FixedItemView[]>(`/schedules/${encodeURIComponent(scheduleId)}/fixed-items`),
+  });
+}
+
+export function useSetFixedItems(scheduleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SetFixedItemsInput) =>
+      api<void>(`/schedules/${encodeURIComponent(scheduleId)}/fixed-items`, {
+        method: 'PUT',
+        body: input,
+      }),
+    onSuccess: async () => {
+      // Clavar algo mueve la próxima fecha del horario, así que la lista de
+      // horarios también queda vieja.
+      await queryClient.invalidateQueries({ queryKey: fixedKey(scheduleId) });
+      await queryClient.invalidateQueries({ queryKey: listKey });
+    },
   });
 }
 

@@ -7,17 +7,15 @@ import {
   formatDayMinute,
   itemKind,
   SENDER_NAME_MAX_LENGTH,
-  STRATEGY_HINTS,
-  STRATEGY_LABELS,
-  selectionStrategy,
   WEEKDAYS,
   type ScheduleView,
 } from '@droply/contracts';
-import { CalendarClock, Plus, Trash2 } from 'lucide-react';
+import { CalendarClock, Pin, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { FixedItemsDialog } from '@/components/fixed-items-dialog';
 import {
   EditScheduleDialog,
   hourOption,
@@ -76,6 +74,7 @@ import {
   browserTimezone,
   useCreateSchedule,
   useDeleteSchedule,
+  useFixedItems,
   useDeliveries,
   useSchedules,
   useUpdateSchedule,
@@ -220,6 +219,7 @@ function ScheduleRow({ schedule }: { schedule: ScheduleView }) {
             {schedule.libraryName} → {schedule.recipientLabel}
           </ItemTitle>
           <ItemDescription>{describe(schedule)}</ItemDescription>
+          <FixedSummary scheduleId={schedule.id} />
         </ItemContent>
 
         <ItemActions className="items-center">
@@ -238,6 +238,8 @@ function ScheduleRow({ schedule }: { schedule: ScheduleView }) {
             disabled={update.isPending}
             aria-label={schedule.active ? 'Pausar este horario' : 'Reanudar este horario'}
           />
+
+          <FixedItemsDialog schedule={schedule} />
 
           <EditScheduleDialog schedule={schedule} />
 
@@ -284,21 +286,43 @@ function ScheduleRow({ schedule }: { schedule: ScheduleView }) {
   );
 }
 
+/**
+ * Las horas clavadas, debajo de la fila.
+ *
+ * Se ven sin abrir nada porque son la excepción al reparto: el resto de la
+ * franja la ordena el plan del día, y estas horas las eligió el dueño a mano.
+ * Sin verlas no hay forma de saber que están puestas.
+ */
+function FixedSummary({ scheduleId }: { scheduleId: string }) {
+  const fixed = useFixedItems(scheduleId);
+
+  if (!fixed.data || fixed.data.length === 0) return null;
+
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {fixed.data.map((item) => (
+        <Badge key={item.minute} variant="outline" className="font-normal">
+          <Pin className="size-3" />
+          {formatDayMinute(item.minute)} · <span className="truncate">{item.label}</span>
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 /** Qué dice la fila: lo que importa es cuándo sale el próximo, no la regla. */
 function describe(schedule: ScheduleView): string {
   const repeat = `${describeWeekdays(schedule.weekdays)}, de ${formatDayMinute(
     schedule.startMinute,
   )} a ${formatDayMinute(schedule.endMinute)}`;
-  const strategy = STRATEGY_LABELS[schedule.strategy].toLowerCase();
-
   // El remitente solo se nombra cuando es distinto del nombre de la cuenta:
   // repetirlo en todas las filas sería ruido.
   const from = schedule.senderName ? ` Firmado como ${schedule.senderName}.` : '';
 
-  if (!schedule.active) return `${repeat}, ${strategy}. Pausado.${from}`;
-  if (!schedule.nextRunAt) return `${repeat}, ${strategy}. Ya no vuelve a repetirse.${from}`;
+  if (!schedule.active) return `${repeat}. Pausado.${from}`;
+  if (!schedule.nextRunAt) return `${repeat}. Ya no vuelve a repetirse.${from}`;
 
-  return `${repeat}, ${strategy}. El próximo el ${WHEN.format(new Date(schedule.nextRunAt))}.${from}`;
+  return `${repeat}. El próximo el ${WHEN.format(new Date(schedule.nextRunAt))}.${from}`;
 }
 
 function NewScheduleDialog({ id }: { id: string }) {
@@ -336,7 +360,6 @@ function NewScheduleDialog({ id }: { id: string }) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const kindFilter = String(form.get('kindFilter'));
-    const strategy = String(form.get('strategy'));
 
     try {
       await create.mutateAsync({
@@ -347,7 +370,6 @@ function NewScheduleDialog({ id }: { id: string }) {
         startMinute,
         endMinute,
         timezone: browserTimezone(),
-        strategy: selectionStrategy.is(strategy) ? strategy : 'RANDOM',
         kindFilter: itemKind.is(kindFilter) ? kindFilter : null,
       });
 
@@ -466,26 +488,9 @@ function NewScheduleDialog({ id }: { id: string }) {
               </div>
 
               <FieldDescription>
-                Dentro de esa franja se reparten los envíos de cada archivo, según cuántas veces al
-                día pida cada uno.
+                Dentro de esa franja se reparten los envíos. Cada archivo sale las veces al día que
+                le pidas, y todos se intercalan para que no lleguen de golpe.
               </FieldDescription>
-
-              <Field>
-                <FieldLabel htmlFor={`${id}-strategy`}>Cómo elige</FieldLabel>
-                <Select name="strategy" defaultValue="RANDOM">
-                  <SelectTrigger id={`${id}-strategy`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectionStrategy.values.map((strategy) => (
-                      <SelectItem key={strategy} value={strategy}>
-                        {STRATEGY_LABELS[strategy]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>{STRATEGY_HINTS.RANDOM}</FieldDescription>
-              </Field>
 
               <Field>
                 <FieldLabel htmlFor={`${id}-kind`}>Qué manda</FieldLabel>

@@ -34,6 +34,48 @@ export class RecipientNotInLibrary extends PreconditionFailedError {
   }
 }
 
+/**
+ * Se quiso clavar un envío a una hora que queda fuera de la franja.
+ *
+ * La franja es una sola para todo lo que sale: si algo tiene que ir a las 5 de
+ * la mañana, lo que se mueve es el inicio de la franja. Con dos nociones de
+ * "cuándo envío" la pantalla dejaría de poder decir de un vistazo entre qué
+ * horas llega algo.
+ */
+export class FixedItemOutsideWindow extends PreconditionFailedError {
+  constructor() {
+    super(
+      'schedule.fixed_item_outside_window',
+      'Esa hora queda fuera de la franja del horario. Amplía la franja o elige otra hora.',
+    );
+  }
+}
+
+/** El archivo que se quiso clavar no es de la biblioteca de ese horario. */
+export class FixedItemNotInLibrary extends PreconditionFailedError {
+  constructor() {
+    super(
+      'schedule.fixed_item_not_in_library',
+      'Ese archivo no es de la biblioteca de este horario.',
+    );
+  }
+}
+
+/**
+ * El archivo clavado no es de la columna que el horario filtra.
+ *
+ * Dejarlo pasar sería un horario que dice "solo videos" y manda un audio a las
+ * 6: una de las dos cosas está mal y el usuario tiene que decir cuál.
+ */
+export class FixedItemKindFiltered extends PreconditionFailedError {
+  constructor() {
+    super(
+      'schedule.fixed_item_kind_filtered',
+      'Ese archivo no es de la columna que filtra este horario.',
+    );
+  }
+}
+
 /** La regla no vuelve a repetirse nunca: un horario así no dispararía jamás. */
 export class ScheduleNeverRuns extends PreconditionFailedError {
   constructor() {

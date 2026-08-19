@@ -4,9 +4,7 @@ import type {
   MediaSource,
   MessageSender,
   ScheduleReader,
-  SentBag,
 } from '../domain/ports';
-import { selectOne, type Randomness } from '../domain/selection';
 
 /** Qué pasó con una ocurrencia, para que el latido lo deje en el log. */
 export type DispatchOutcome =
@@ -30,11 +28,9 @@ export class DispatchOccurrence {
   constructor(
     private readonly schedules: ScheduleReader,
     private readonly libraries: LibraryCatalog,
-    private readonly bag: SentBag,
     private readonly media: MediaSource,
     private readonly sender: MessageSender,
     private readonly log: DeliveryLog,
-    private readonly random: Randomness,
   ) {}
 
   async execute(
@@ -53,18 +49,17 @@ export class DispatchOccurrence {
       return 'NOT_LINKED';
     }
 
-    const candidates = await this.libraries.candidatesOf(target, occurredAt);
+    // A cada momento del día le corresponde un elemento: no hay nada que
+    // elegir acá, solo preguntar a quién le toca.
+    const itemId = await this.libraries.itemAt(target, occurredAt);
 
-    const sent = new Set(await this.bag.idsOf(scheduleId));
-    const choice = selectOne(target.strategy, candidates, sent, this.random);
-
-    if (!choice) {
+    if (!itemId) {
       await this.record(occurrenceKey, scheduleId, null, occurredAt, 'SKIPPED', 'nada que enviar');
 
       return 'NOTHING_TO_SEND';
     }
 
-    const payload = await this.libraries.payloadOf(choice.chosen.id);
+    const payload = await this.libraries.payloadOf(itemId);
 
     if (!payload) {
       await this.record(occurrenceKey, scheduleId, null, occurredAt, 'SKIPPED', 'nada que enviar');
@@ -84,9 +79,6 @@ export class DispatchOccurrence {
     );
 
     if (!reserved) return 'DUPLICATE';
-
-    if (choice.resetBag) await this.bag.clear(scheduleId);
-    await this.bag.add(scheduleId, payload.itemId);
 
     const bytes = payload.storageKey ? await this.media.bytesOf(payload.storageKey) : null;
     const result = await this.sender.send(

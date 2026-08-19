@@ -8,22 +8,17 @@ import {
   LIBRARY_CATALOG,
   MEDIA_SOURCE,
   MESSAGE_SENDER,
-  RANDOMNESS,
   SCHEDULE_READER,
-  SENT_BAG,
   type DeliveryLog,
   type LibraryCatalog,
   type MediaSource,
   type MessageSender,
   type ScheduleReader,
-  type SentBag,
 } from '../domain/ports';
-import { systemRandomness, type Randomness } from '../domain/selection';
 import {
   PrismaDeliveryLog,
   PrismaLibraryCatalog,
   PrismaScheduleReader,
-  PrismaSentBag,
 } from '../infrastructure/prisma-delivery.adapters';
 import { S3MediaSource } from '../infrastructure/s3-media-source';
 import { TelegramMessageSender } from '../infrastructure/telegram-message-sender';
@@ -41,7 +36,6 @@ import { DeliveriesController } from './deliveries.controller';
 @Module({
   controllers: [DeliveriesController],
   providers: [
-    { provide: RANDOMNESS, useValue: systemRandomness },
     {
       provide: SCHEDULE_READER,
       inject: [PrismaService],
@@ -51,11 +45,6 @@ import { DeliveriesController } from './deliveries.controller';
       provide: LIBRARY_CATALOG,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaLibraryCatalog(prisma),
-    },
-    {
-      provide: SENT_BAG,
-      inject: [PrismaService],
-      useFactory: (prisma: PrismaService) => new PrismaSentBag(prisma),
     },
     {
       provide: DELIVERY_LOG,
@@ -75,24 +64,14 @@ import { DeliveriesController } from './deliveries.controller';
 
     {
       provide: DispatchOccurrence,
-      inject: [
-        SCHEDULE_READER,
-        LIBRARY_CATALOG,
-        SENT_BAG,
-        MEDIA_SOURCE,
-        MESSAGE_SENDER,
-        DELIVERY_LOG,
-        RANDOMNESS,
-      ],
+      inject: [SCHEDULE_READER, LIBRARY_CATALOG, MEDIA_SOURCE, MESSAGE_SENDER, DELIVERY_LOG],
       useFactory: (
         schedules: ScheduleReader,
         libraries: LibraryCatalog,
-        bag: SentBag,
         media: MediaSource,
         sender: MessageSender,
         log: DeliveryLog,
-        random: Randomness,
-      ) => new DispatchOccurrence(schedules, libraries, bag, media, sender, log, random),
+      ) => new DispatchOccurrence(schedules, libraries, media, sender, log),
     },
 
     {

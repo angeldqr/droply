@@ -1,12 +1,6 @@
 import { z } from 'zod';
 import { timezoneSchema } from './identity.js';
-import {
-  itemKind,
-  selectionStrategy,
-  type DeliveryStatus,
-  type ItemKind,
-  type SelectionStrategy,
-} from './primitives.js';
+import { itemKind, type DeliveryStatus, type ItemKind } from './primitives.js';
 
 /** Con qué nombre llega el envío. Vacío significa el nombre de la cuenta. */
 export const SENDER_NAME_MAX_LENGTH = 40;
@@ -85,7 +79,6 @@ export const createScheduleSchema = z
     endMinute: dayMinuteSchema,
     timezone: timezoneSchema,
     senderName: z.string().trim().max(SENDER_NAME_MAX_LENGTH).nullish(),
-    strategy: selectionStrategy.schema.default('RANDOM'),
     /** Sin filtro se envía de las cuatro columnas. */
     kindFilter: itemKind.schema.nullish(),
   })
@@ -101,7 +94,6 @@ export const updateScheduleSchema = z
     endMinute: dayMinuteSchema.optional(),
     timezone: timezoneSchema.optional(),
     senderName: z.string().trim().max(SENDER_NAME_MAX_LENGTH).nullish(),
-    strategy: selectionStrategy.schema.optional(),
     kindFilter: itemKind.schema.nullish(),
     active: z.boolean().optional(),
   })
@@ -128,7 +120,6 @@ export interface ScheduleView {
   readonly timezone: string;
   /** Nulo cuando el horario firma con el nombre de la cuenta. */
   readonly senderName: string | null;
-  readonly strategy: SelectionStrategy;
   readonly kindFilter: ItemKind | null;
   readonly active: boolean;
   /** El próximo envío en UTC, o `null` si ya no vuelve a repetirse. */
@@ -136,17 +127,47 @@ export interface ScheduleView {
   readonly lastRunAt: string | null;
 }
 
-export const STRATEGY_LABELS: Readonly<Record<SelectionStrategy, string>> = {
-  RANDOM: 'Al azar',
-  RANDOM_NO_REPEAT: 'Al azar sin repetir',
-  SEQUENTIAL: 'En orden',
-};
+/** Cuántos envíos fijos caben en un horario. Uno por hora ya sería demasiado. */
+export const FIXED_ITEMS_MAX = 24;
 
-export const STRATEGY_HINTS: Readonly<Record<SelectionStrategy, string>> = {
-  RANDOM: 'Puede repetir antes de recorrerla entera.',
-  RANDOM_NO_REPEAT: 'Recorre toda la biblioteca antes de repetir nada.',
-  SEQUENTIAL: 'Sigue el orden de las columnas, de arriba abajo.',
-};
+/**
+ * Un envío clavado: a esta hora sale este archivo y no otro.
+ *
+ * Existe porque hay cosas que no se dejan al reparto. "El buenos días de las 6"
+ * es siempre el mismo audio, y a la hora que el reparto le tocara no sería el de
+ * las 6. En las horas sin nada fijo manda el plan del día.
+ */
+export const fixedItemSchema = z.object({
+  minute: dayMinuteSchema,
+  itemId: z.uuid(),
+});
+
+/**
+ * La lista entera, no un envío suelto.
+ *
+ * Se reemplaza completa porque así el cliente no tiene que llevar la cuenta de
+ * qué agregó y qué quitó, y mandar dos veces lo mismo deja el horario igual.
+ */
+export const setFixedItemsSchema = z.object({
+  fixedItems: z
+    .array(fixedItemSchema)
+    .max(FIXED_ITEMS_MAX)
+    .refine((items) => new Set(items.map((item) => item.minute)).size === items.length, {
+      message: 'Hay dos envíos fijos a la misma hora.',
+    }),
+});
+
+export type FixedItemInput = z.infer<typeof fixedItemSchema>;
+export type SetFixedItemsInput = z.infer<typeof setFixedItemsSchema>;
+
+/** Un envío fijo tal como lo muestra la pantalla, ya con el archivo resuelto. */
+export interface FixedItemView {
+  readonly minute: number;
+  readonly itemId: string;
+  readonly kind: ItemKind;
+  /** El nombre del archivo, o el principio del texto si es de la columna texto. */
+  readonly label: string;
+}
 
 /** "Lunes a viernes" en vez de listar cinco días uno por uno. */
 export function describeWeekdays(weekdays: readonly number[]): string {

@@ -49,7 +49,6 @@ export class PrismaScheduleRepository implements ScheduleRepository {
         endMinute: snapshot.endMinute,
         timezone: snapshot.timezone,
         senderName: snapshot.senderName,
-        strategy: snapshot.strategy,
         kindFilter: snapshot.kindFilter,
         active: snapshot.active,
         nextRunAt: snapshot.nextRunAt,
@@ -75,7 +74,6 @@ export class PrismaScheduleRepository implements ScheduleRepository {
         endMinute: snapshot.endMinute,
         timezone: snapshot.timezone,
         senderName: snapshot.senderName,
-        strategy: snapshot.strategy,
         kindFilter: snapshot.kindFilter,
         active: snapshot.active,
         nextRunAt: snapshot.nextRunAt,
@@ -100,13 +98,36 @@ export class PrismaScheduleRepository implements ScheduleRepository {
    * escribe el caso de uso enseguida; el préstamo solo cubre el hueco entre una
    * cosa y la otra, para que un proceso que muere a mitad no deje el horario
    * congelado ni lo dispare en bucle.
+   *
+   * El `::int` del préstamo tampoco es adorno. Prisma manda cualquier número de
+   * JavaScript como `bigint`, y `make_interval` solo tiene versión para `int`:
+   * sin la conversión, Postgres responde que no existe ninguna función con esos
+   * tipos y la transacción entera se deshace, así que no se toma ningún horario
+   * y no sale ningún envío.
    */
   claimDue(now: Date, limit: number): Promise<Schedule[]> {
     return this.prisma.$transaction(async (tx) => {
+      /*
+       * `AT TIME ZONE 'UTC'` no es adorno: sin él, el tick no encuentra nada.
+       *
+       * La columna es `timestamp without time zone` y guarda UTC, que es como
+       * Prisma escribe un `DateTime`. Pero un `Date` de JavaScript entra a la
+       * consulta como `timestamptz`, y para comparar los dos Postgres convierte
+       * la columna usando la zona de la sesión. Con la sesión en America/Bogotá,
+       * las 11:00 guardadas se leen como las 16:00 UTC: el horario de las 6 de
+       * la mañana solo parecía vencido a las 11, cinco horas tarde.
+       *
+       * Con la conversión explícita los dos lados son UTC y la zona de la
+       * sesión deja de importar. Las consultas tipadas de Prisma nunca tuvieron
+       * el problema, porque el motor sabe el tipo de la columna; esto solo pasa
+       * en SQL crudo, y acá hace falta crudo por el `FOR UPDATE SKIP LOCKED`.
+       */
       const locked = await tx.$queryRaw<{ id: string }[]>`
         SELECT id
         FROM schedules
-        WHERE active AND next_run_at IS NOT NULL AND next_run_at <= ${now}
+        WHERE active
+          AND next_run_at IS NOT NULL
+          AND next_run_at <= (${now} AT TIME ZONE 'UTC')
         ORDER BY next_run_at
         LIMIT ${limit}
         FOR UPDATE SKIP LOCKED
@@ -119,7 +140,7 @@ export class PrismaScheduleRepository implements ScheduleRepository {
 
       await tx.$executeRaw`
         UPDATE schedules
-        SET next_run_at = next_run_at + make_interval(mins => ${LEASE_MINUTES})
+        SET next_run_at = next_run_at + make_interval(mins => ${LEASE_MINUTES}::int)
         WHERE id = ANY(${ids}::uuid[])
       `;
 
@@ -139,7 +160,6 @@ function toDomain(row: ScheduleRow): Schedule {
     endMinute: row.endMinute,
     timezone: row.timezone,
     senderName: row.senderName,
-    strategy: row.strategy,
     kindFilter: row.kindFilter,
     active: row.active,
     nextRunAt: row.nextRunAt,

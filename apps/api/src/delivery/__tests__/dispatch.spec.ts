@@ -9,9 +9,7 @@ import type {
   Payload,
   ScheduleReader,
   SendResult,
-  SentBag,
 } from '../domain/ports';
-import { selectOne, type Candidate, type Randomness } from '../domain/selection';
 
 const TARGET: DispatchTarget = {
   scheduleId: 'horario-1',
@@ -19,11 +17,11 @@ const TARGET: DispatchTarget = {
   ownerId: 'ana',
   chatId: '555',
   senderName: 'Papá',
-  strategy: 'RANDOM',
   kindFilter: null,
   startMinute: 8 * 60,
   endMinute: 20 * 60,
   timezone: 'America/Bogota',
+  fixedItems: [],
 };
 
 class FakeSchedules implements ScheduleReader {
@@ -42,10 +40,18 @@ class FakeSchedules implements ScheduleReader {
 }
 
 class FakeCatalog implements LibraryCatalog {
-  candidates: Candidate[] = [{ id: 'foto', position: 1, kind: 'IMAGE' }];
+  /** A quién le toca cuando la hora no está clavada. */
+  planned: string | null = 'foto';
 
-  candidatesOf(): Promise<Candidate[]> {
-    return Promise.resolve(this.candidates);
+  /**
+   * El minuto local se resuelve igual que en el de verdad: lo clavado manda
+   * sobre el plan. Bogotá es UTC-5 todo el año, así que acá basta la resta.
+   */
+  itemAt(target: DispatchTarget, occurredAt: Date): Promise<string | null> {
+    const minute = ((occurredAt.getUTCHours() + 19) % 24) * 60 + occurredAt.getUTCMinutes();
+    const pinned = target.fixedItems.find((fixed) => fixed.minute === minute);
+
+    return Promise.resolve(pinned?.itemId ?? this.planned);
   }
 
   payloadOf(itemId: string): Promise<Payload | null> {
@@ -56,28 +62,6 @@ class FakeCatalog implements LibraryCatalog {
       text: 'buenos días',
       storageKey: null,
     });
-  }
-}
-
-class FakeBag implements SentBag {
-  ids: string[] = [];
-  cleared = 0;
-
-  idsOf(): Promise<string[]> {
-    return Promise.resolve(this.ids);
-  }
-
-  add(_scheduleId: string, itemId: string): Promise<void> {
-    this.ids.push(itemId);
-
-    return Promise.resolve();
-  }
-
-  clear(): Promise<void> {
-    this.cleared += 1;
-    this.ids = [];
-
-    return Promise.resolve();
   }
 }
 
@@ -102,13 +86,16 @@ class FakeSender implements MessageSender {
 class FakeLog implements DeliveryLog {
   readonly keys = new Set<string>();
   readonly entries: { status: string; error: string | null }[] = [];
+  readonly attempts: { itemId: string | null }[] = [];
 
   record(attempt: {
     occurrenceKey: string;
+    itemId: string | null;
     status: 'SENT' | 'FAILED' | 'SKIPPED';
     error: string | null;
   }): Promise<boolean> {
     this.entries.push({ status: attempt.status, error: attempt.error });
+    this.attempts.push({ itemId: attempt.itemId });
 
     // El índice único de la base, en miniatura: la segunda vez ya estaba.
     if (this.keys.has(attempt.occurrenceKey)) return Promise.resolve(false);
@@ -124,26 +111,48 @@ class FakeLog implements DeliveryLog {
 }
 
 const media: MediaSource = { bytesOf: () => Promise.resolve(new Uint8Array()) };
-const always = (index: number): Randomness => ({ pick: () => index });
 
 function build() {
   const schedules = new FakeSchedules();
   const catalog = new FakeCatalog();
-  const bag = new FakeBag();
   const sender = new FakeSender();
   const log = new FakeLog();
 
   return {
     schedules,
     catalog,
-    bag,
     sender,
     log,
-    dispatch: new DispatchOccurrence(schedules, catalog, bag, media, sender, log, always(0)),
+    dispatch: new DispatchOccurrence(schedules, catalog, media, sender, log),
   };
 }
 
 const AHORA = new Date('2026-05-11T13:00:00Z');
+
+/**
+ * Hay cosas que no se dejan al reparto. "El buenos días de las 6" es siempre el
+ * mismo audio, y a la hora que el reparto le tocara no sería el de las 6.
+ */
+describe('envío clavado a una hora', () => {
+  /** Las 13:00 UTC son las 8:00 en Bogotá, o sea el minuto 480. */
+  const CLAVADO = { ...TARGET, fixedItems: [{ minute: 480, itemId: 'el-audio' }] };
+
+  it('sale lo clavado y no lo que dice el plan', async () => {
+    const world = build();
+    world.schedules.target = CLAVADO;
+
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-fija')).toBe('SENT');
+    expect(world.log.attempts[0]?.itemId).toBe('el-audio');
+  });
+
+  it('a una hora sin nada clavado sale lo que diga el plan', async () => {
+    const world = build();
+    world.schedules.target = { ...TARGET, fixedItems: [{ minute: 1200, itemId: 'el-audio' }] };
+
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-suelta')).toBe('SENT');
+    expect(world.log.attempts[0]?.itemId).toBe('foto');
+  });
+});
 
 describe('despacho de un envío', () => {
   it('manda y lo deja anotado', async () => {
@@ -177,7 +186,7 @@ describe('despacho de un envío', () => {
 
   it('con la biblioteca vacía no manda nada y lo deja dicho', async () => {
     const world = build();
-    world.catalog.candidates = [];
+    world.catalog.planned = null;
 
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('NOTHING_TO_SEND');
     expect(world.log.entries.at(-1)?.error).toBe('nada que enviar');
@@ -205,55 +214,5 @@ describe('despacho de un envío', () => {
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('FAILED');
     expect(world.schedules.deactivated).toEqual([]);
     expect(world.sender.notices).toHaveLength(0);
-  });
-});
-
-describe('estrategias de selección', () => {
-  const tres: Candidate[] = [
-    { id: 'a', position: 1, kind: 'IMAGE' },
-    { id: 'b', position: 2, kind: 'IMAGE' },
-    { id: 'c', position: 3, kind: 'IMAGE' },
-  ];
-
-  it('en orden sigue las posiciones del tablero', () => {
-    const first = selectOne('SEQUENTIAL', tres, new Set(), always(0));
-    const second = selectOne('SEQUENTIAL', tres, new Set(['a']), always(0));
-
-    expect(first?.chosen.id).toBe('a');
-    expect(second?.chosen.id).toBe('b');
-  });
-
-  it('en orden vuelve a empezar al llegar al final', () => {
-    const wrapped = selectOne('SEQUENTIAL', tres, new Set(['a', 'b', 'c']), always(0));
-
-    expect(wrapped?.chosen.id).toBe('a');
-    expect(wrapped?.resetBag).toBe(true);
-  });
-
-  it('sin repetir no elige lo que ya salió', () => {
-    // El azar apunta al primero de los pendientes, que con "a" y "b" gastados
-    // solo puede ser "c".
-    const choice = selectOne('RANDOM_NO_REPEAT', tres, new Set(['a', 'b']), always(0));
-
-    expect(choice?.chosen.id).toBe('c');
-    expect(choice?.resetBag).toBe(false);
-  });
-
-  it('sin repetir vacía la bolsa cuando ya salió todo', () => {
-    const choice = selectOne('RANDOM_NO_REPEAT', tres, new Set(['a', 'b', 'c']), always(1));
-
-    expect(choice?.chosen.id).toBe('b');
-    expect(choice?.resetBag).toBe(true);
-  });
-
-  it('al azar puede repetir, y por eso no vacía nada', () => {
-    const choice = selectOne('RANDOM', tres, new Set(['a', 'b', 'c']), always(2));
-
-    expect(choice?.chosen.id).toBe('c');
-    expect(choice?.resetBag).toBe(false);
-  });
-
-  it('sin candidatos no elige nada', () => {
-    expect(selectOne('RANDOM', [], new Set(), always(0))).toBeNull();
   });
 });

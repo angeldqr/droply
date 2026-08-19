@@ -2,7 +2,12 @@ import type { Clock } from '../../shared/clock';
 import type { ScheduleId } from '../../shared/identifiers';
 import type { OccurrenceSink } from '../../shared/occurrence-sink';
 import { windowOf } from '../domain/daily-slots';
-import type { LibraryDirectory, OccurrencePlanner, ScheduleRepository } from '../domain/ports';
+import type {
+  FixedItemRepository,
+  LibraryDirectory,
+  OccurrencePlanner,
+  ScheduleRepository,
+} from '../domain/ports';
 
 /** Cuántos vencidos se atienden por vuelta. */
 const BATCH = 50;
@@ -37,6 +42,7 @@ export class RunDueSchedules {
     private readonly planner: OccurrencePlanner,
     private readonly clock: Clock,
     private readonly sink: OccurrenceSink,
+    private readonly fixed: FixedItemRepository,
   ) {}
 
   async execute(): Promise<DueOccurrence[]> {
@@ -65,10 +71,14 @@ export class RunDueSchedules {
        * cambia cuántas veces al día quiere que salga, y con una rejilla
        * guardada habría que acordarse de recalcularla en todos esos sitios.
        */
-      const times = await this.libraries.sendTimesOf(schedule.libraryId, schedule.kindFilter);
+      const items = await this.libraries.planItemsOf(schedule.libraryId, schedule.kindFilter);
+      // Las horas clavadas entran en la rejilla igual que los repartos: sin
+      // ellas, el horario dejaría de despertarse a la hora de su envío fijo en
+      // cuanto se disparara una vez.
+      const fixedMinutes = await this.fixed.minutesOf(schedule.id);
 
       const nextRunAt = this.planner.nextAfter(
-        windowOf(schedule, times),
+        windowOf(schedule, items, fixedMinutes),
         schedule.timezone,
         occurredAt,
       );

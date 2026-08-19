@@ -3,6 +3,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { OCCURRENCE_SINK, type OccurrenceSink } from '../../shared/occurrence-sink';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
+import { ListFixedItems, SetFixedItems } from '../application/fixed-item-use-cases';
 import { RunDueSchedules } from '../application/run-due-schedules';
 import {
   CreateSchedule,
@@ -11,16 +12,19 @@ import {
   UpdateSchedule,
 } from '../application/schedule-use-cases';
 import {
+  FIXED_ITEM_REPOSITORY,
   LIBRARY_DIRECTORY,
   OCCURRENCE_PLANNER,
   RECIPIENT_DIRECTORY,
   SCHEDULE_REPOSITORY,
+  type FixedItemRepository,
   type LibraryDirectory,
   type OccurrencePlanner,
   type RecipientDirectory,
   type ScheduleRepository,
 } from '../domain/ports';
 import {
+  PrismaFixedItemRepository,
   PrismaLibraryDirectory,
   PrismaRecipientDirectory,
 } from '../infrastructure/prisma-directories';
@@ -47,6 +51,11 @@ import { SchedulesController } from './schedules.controller';
       provide: RECIPIENT_DIRECTORY,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaRecipientDirectory(prisma),
+    },
+    {
+      provide: FIXED_ITEM_REPOSITORY,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => new PrismaFixedItemRepository(prisma),
     },
 
     {
@@ -79,13 +88,46 @@ import { SchedulesController } from './schedules.controller';
     },
     {
       provide: UpdateSchedule,
-      inject: [SCHEDULE_REPOSITORY, LIBRARY_DIRECTORY, OCCURRENCE_PLANNER, CLOCK],
+      inject: [
+        SCHEDULE_REPOSITORY,
+        LIBRARY_DIRECTORY,
+        OCCURRENCE_PLANNER,
+        CLOCK,
+        FIXED_ITEM_REPOSITORY,
+      ],
       useFactory: (
         schedules: ScheduleRepository,
         libraries: LibraryDirectory,
         planner: OccurrencePlanner,
         clock: Clock,
-      ) => new UpdateSchedule(schedules, libraries, planner, clock),
+        fixed: FixedItemRepository,
+      ) => new UpdateSchedule(schedules, libraries, planner, clock, fixed),
+    },
+    {
+      provide: ListFixedItems,
+      inject: [SCHEDULE_REPOSITORY, FIXED_ITEM_REPOSITORY, LIBRARY_DIRECTORY],
+      useFactory: (
+        schedules: ScheduleRepository,
+        fixed: FixedItemRepository,
+        libraries: LibraryDirectory,
+      ) => new ListFixedItems(schedules, fixed, libraries),
+    },
+    {
+      provide: SetFixedItems,
+      inject: [
+        SCHEDULE_REPOSITORY,
+        FIXED_ITEM_REPOSITORY,
+        LIBRARY_DIRECTORY,
+        OCCURRENCE_PLANNER,
+        CLOCK,
+      ],
+      useFactory: (
+        schedules: ScheduleRepository,
+        fixed: FixedItemRepository,
+        libraries: LibraryDirectory,
+        planner: OccurrencePlanner,
+        clock: Clock,
+      ) => new SetFixedItems(schedules, fixed, libraries, planner, clock),
     },
     {
       provide: DeleteSchedule,
@@ -94,14 +136,22 @@ import { SchedulesController } from './schedules.controller';
     },
     {
       provide: RunDueSchedules,
-      inject: [SCHEDULE_REPOSITORY, LIBRARY_DIRECTORY, OCCURRENCE_PLANNER, CLOCK, OCCURRENCE_SINK],
+      inject: [
+        SCHEDULE_REPOSITORY,
+        LIBRARY_DIRECTORY,
+        OCCURRENCE_PLANNER,
+        CLOCK,
+        OCCURRENCE_SINK,
+        FIXED_ITEM_REPOSITORY,
+      ],
       useFactory: (
         schedules: ScheduleRepository,
         libraries: LibraryDirectory,
         planner: OccurrencePlanner,
         clock: Clock,
         sink: OccurrenceSink,
-      ) => new RunDueSchedules(schedules, libraries, planner, clock, sink),
+        fixed: FixedItemRepository,
+      ) => new RunDueSchedules(schedules, libraries, planner, clock, sink, fixed),
     },
     {
       provide: ScheduleTicker,

@@ -1,5 +1,4 @@
-import type { Candidate } from './selection';
-import type { DeliveryStatus, ItemKind, SelectionStrategy } from './vocabulary';
+import type { DeliveryStatus, ItemKind } from './vocabulary';
 
 /** Lo que hace falta saber del horario para poder despachar su envío. */
 export interface DispatchTarget {
@@ -10,11 +9,18 @@ export interface DispatchTarget {
   readonly chatId: string | null;
   /** Con qué nombre firma. Ya resuelto: el del horario o el de la cuenta. */
   readonly senderName: string;
-  readonly strategy: SelectionStrategy;
   readonly kindFilter: ItemKind | null;
   readonly startMinute: number;
   readonly endMinute: number;
   readonly timezone: string;
+  /**
+   * Las horas con un envío clavado, y qué sale en cada una.
+   *
+   * Viajan con el objetivo y no se consultan aparte porque hacen falta dos
+   * veces en el mismo despacho: para saber si esta hora tiene dueño, y para
+   * dejar fuera del reparto lo que ya tiene su hora.
+   */
+  readonly fixedItems: readonly { minute: number; itemId: string }[];
 }
 
 export interface ScheduleReader {
@@ -34,22 +40,19 @@ export interface Payload {
 
 export interface LibraryCatalog {
   /**
-   * Los elementos que a esa hora del día les toca salir.
+   * Qué elemento le toca a esa hora exacta, o `null` si no le toca a ninguno.
+   *
+   * No hay nada que elegir: el plan del día reparte los envíos de cada archivo
+   * por la franja y a cada momento le corresponde uno. Lo clavado manda sobre
+   * el plan, porque es una hora que el dueño reservó a mano.
    *
    * **Nunca devuelve nada del baúl.** El baúl es personal: lo que hay ahí no
    * sale hacia nadie hasta que su dueño lo copie a una biblioteca. La regla
    * vive en la consulta y no en quien llama, para que ningún camino nuevo pueda
    * saltársela por descuido.
    */
-  candidatesOf(target: DispatchTarget, occurredAt: Date): Promise<Candidate[]>;
+  itemAt(target: DispatchTarget, occurredAt: Date): Promise<string | null>;
   payloadOf(itemId: string): Promise<Payload | null>;
-}
-
-/** La bolsa del "sin repetir": qué ya salió por este horario. */
-export interface SentBag {
-  idsOf(scheduleId: string): Promise<string[]>;
-  add(scheduleId: string, itemId: string): Promise<void>;
-  clear(scheduleId: string): Promise<void>;
 }
 
 export interface MediaSource {
@@ -116,8 +119,6 @@ export interface DeliveryRecord {
 
 export const SCHEDULE_READER = Symbol('ScheduleReader');
 export const LIBRARY_CATALOG = Symbol('LibraryCatalog');
-export const SENT_BAG = Symbol('SentBag');
 export const MEDIA_SOURCE = Symbol('MediaSource');
 export const MESSAGE_SENDER = Symbol('MessageSender');
 export const DELIVERY_LOG = Symbol('DeliveryLog');
-export const RANDOMNESS = Symbol('Randomness');

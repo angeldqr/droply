@@ -99,7 +99,7 @@ function Board({ libraryId }: { libraryId: string }) {
         <p className="text-muted-foreground mt-6 text-sm">
           {total === 0
             ? 'Todavía está vacía. Agrega lo primero desde el signo de más.'
-            : `${total} ${total === 1 ? 'elemento' : 'elementos'}. El bot elige uno al azar en cada envío.`}
+            : `${total} ${total === 1 ? 'elemento' : 'elementos'}. Cada uno sale las veces al día que le pidas.`}
         </p>
 
         <div className="mt-6">

@@ -5,8 +5,6 @@ import {
   formatDayMinute,
   itemKind,
   SENDER_NAME_MAX_LENGTH,
-  selectionStrategy,
-  STRATEGY_LABELS,
   WEEKDAY_INITIALS,
   WEEKDAY_LABELS,
   WEEKDAYS,
@@ -112,7 +110,6 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const kindFilter = String(form.get('kindFilter'));
-    const strategy = String(form.get('strategy'));
 
     try {
       await update.mutateAsync({
@@ -121,7 +118,6 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
         startMinute,
         endMinute,
         senderName: String(form.get('senderName')),
-        strategy: selectionStrategy.is(strategy) ? strategy : schedule.strategy,
         kindFilter: itemKind.is(kindFilter) ? kindFilter : null,
       });
 
@@ -195,22 +191,6 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
                 </Select>
               </Field>
             </div>
-
-            <Field>
-              <FieldLabel htmlFor={field('strategy')}>Cómo elige</FieldLabel>
-              <Select name="strategy" defaultValue={schedule.strategy}>
-                <SelectTrigger id={field('strategy')}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectionStrategy.values.map((strategy) => (
-                    <SelectItem key={strategy} value={strategy}>
-                      {STRATEGY_LABELS[strategy]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
 
             <Field>
               <FieldLabel htmlFor={field('kind')}>Qué manda</FieldLabel>

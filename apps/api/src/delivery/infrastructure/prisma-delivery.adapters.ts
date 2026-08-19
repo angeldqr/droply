@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { PrismaService } from '../../platform/prisma/prisma.service';
-import { slotsOf } from '../../shared/daily-slots';
+import { planOf } from '../../shared/day-plan';
 import type {
   DeliveryLog,
   DeliveryRecord,
@@ -11,9 +11,7 @@ import type {
   LibraryCatalog,
   Payload,
   ScheduleReader,
-  SentBag,
 } from '../domain/ports';
-import type { Candidate } from '../domain/selection';
 
 /** Violación de índice único, tal como la nombra Postgres a través de Prisma. */
 const UNIQUE_VIOLATION = 'P2002';
@@ -31,13 +29,13 @@ export class PrismaScheduleReader implements ScheduleReader {
         libraryId: true,
         ownerId: true,
         senderName: true,
-        strategy: true,
         kindFilter: true,
         startMinute: true,
         endMinute: true,
         timezone: true,
         owner: { select: { displayName: true } },
         recipient: { select: { externalId: true, verifiedAt: true } },
+        fixedItems: { select: { minute: true, itemId: true } },
       },
     });
 
@@ -51,11 +49,11 @@ export class PrismaScheduleReader implements ScheduleReader {
       chatId: row.recipient.verifiedAt === null ? null : row.recipient.externalId,
       // El nombre del horario manda; si no tiene, firma la cuenta.
       senderName: row.senderName ?? row.owner.displayName,
-      strategy: row.strategy,
       kindFilter: row.kindFilter,
       startMinute: row.startMinute,
       endMinute: row.endMinute,
       timezone: row.timezone,
+      fixedItems: row.fixedItems,
     };
   }
 
@@ -76,11 +74,31 @@ export class PrismaScheduleReader implements ScheduleReader {
 export class PrismaLibraryCatalog implements LibraryCatalog {
   constructor(private readonly prisma: PrismaService) {}
 
-  async candidatesOf(target: DispatchTarget, occurredAt: Date): Promise<Candidate[]> {
+  async itemAt(target: DispatchTarget, occurredAt: Date): Promise<string | null> {
+    const minute = dayMinuteOf(occurredAt, target.timezone);
+
+    /*
+     * Lo clavado manda, y se resuelve sin ir a la base: las horas reservadas
+     * viajan con el objetivo. Si esta hora tiene dueño, no hay más que decidir.
+     */
+    const pinned = target.fixedItems.find((fixed) => fixed.minute === minute);
+
+    if (pinned) return pinned.itemId;
+
     const rows = await this.prisma.libraryItem.findMany({
       where: {
         libraryId: target.libraryId,
         ...(target.kindFilter === null ? {} : { kind: target.kindFilter }),
+        /*
+         * Lo que tiene hora propia no entra en el plan.
+         *
+         * Si el audio de las 6 ocupara además un momento del reparto, el mismo
+         * archivo llegaría más veces de las que su dueño pidió. Clavado
+         * significa clavado: sale a su hora y solo a su hora.
+         */
+        ...(target.fixedItems.length === 0
+          ? {}
+          : { id: { notIn: target.fixedItems.map((fixed) => fixed.itemId) } }),
         // Un archivo a medio subir no se puede enviar. Los textos no tienen
         // subida, y por eso entran siempre.
         OR: [{ storageKey: null }, { mediaReadyAt: { not: null } }],
@@ -92,17 +110,20 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
          */
         library: { isVault: false },
       },
-      select: { id: true, position: true, kind: true, timesPerDay: true },
+      select: { id: true, timesPerDay: true, position: true },
     });
 
-    const minute = dayMinuteOf(occurredAt, target.timezone);
+    /*
+     * El plan se rehace en cada disparo en vez de guardarse.
+     *
+     * Cambia solo cada vez que alguien agrega un archivo, lo quita o le cambia
+     * las veces al día; con un plan guardado habría que acordarse de
+     * recalcularlo en todos esos sitios, y el día que se olvidara uno el
+     * horario mandaría lo que ya no corresponde sin decir nada.
+     */
+    const plan = planOf(rows, target.startMinute, target.endMinute);
 
-    // De todos los de la biblioteca, solo los que a esta hora les toca salir.
-    return rows
-      .filter((row) =>
-        slotsOf(row.timesPerDay, target.startMinute, target.endMinute).includes(minute),
-      )
-      .map((row) => ({ id: row.id, position: row.position, kind: row.kind }));
+    return plan.find((send) => send.minute === minute)?.itemId ?? null;
   }
 
   async payloadOf(itemId: string): Promise<Payload | null> {
@@ -120,31 +141,6 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
       text: row.textContent,
       storageKey: row.storageKey,
     };
-  }
-}
-
-export class PrismaSentBag implements SentBag {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async idsOf(scheduleId: string): Promise<string[]> {
-    const rows = await this.prisma.sentItem.findMany({
-      where: { scheduleId },
-      select: { itemId: true },
-    });
-
-    return rows.map((row) => row.itemId);
-  }
-
-  async add(scheduleId: string, itemId: string): Promise<void> {
-    // Repetido no es un error: la bolsa es un conjunto, no un contador.
-    await this.prisma.sentItem.createMany({
-      data: [{ scheduleId, itemId }],
-      skipDuplicates: true,
-    });
-  }
-
-  async clear(scheduleId: string): Promise<void> {
-    await this.prisma.sentItem.deleteMany({ where: { scheduleId } });
   }
 }
 

@@ -2,7 +2,6 @@ import { InvalidInputError } from '../../shared/domain-error';
 import type { LibraryId, RecipientId, ScheduleId, UserId } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import type { ItemKind } from './item-kind';
-import type { SelectionStrategy } from './selection-strategy';
 
 export const SENDER_NAME_MAX_LENGTH = 40;
 export const MINUTES_IN_A_DAY = 24 * 60;
@@ -17,7 +16,6 @@ export interface ScheduleSnapshot {
   readonly endMinute: number;
   readonly timezone: string;
   readonly senderName: string | null;
-  readonly strategy: SelectionStrategy;
   readonly kindFilter: ItemKind | null;
   readonly active: boolean;
   readonly nextRunAt: Date | null;
@@ -33,7 +31,6 @@ export interface ScheduleFields {
   readonly timezone: string;
   /** Vacío o nulo significa "el nombre de la cuenta". */
   readonly senderName: string | null;
-  readonly strategy: SelectionStrategy;
   readonly kindFilter: ItemKind | null;
 }
 
@@ -116,10 +113,6 @@ export class Schedule {
     return this.state.senderName;
   }
 
-  get strategy(): SelectionStrategy {
-    return this.state.strategy;
-  }
-
   get kindFilter(): ItemKind | null {
     return this.state.kindFilter;
   }
@@ -152,6 +145,17 @@ export class Schedule {
    */
   setActive(active: boolean): void {
     this.state = { ...this.state, active };
+  }
+
+  /**
+   * La rejilla cambió sin que cambiara la regla.
+   *
+   * Pasa cuando se clava o se quita un envío fijo: los días y la franja son los
+   * mismos, pero ahora hay una hora más —o una menos— a la que despertarse, y
+   * la fecha guardada se calculó sin ella.
+   */
+  retime(nextRunAt: Date | null): void {
+    this.state = { ...this.state, nextRunAt };
   }
 
   /**

@@ -1,7 +1,13 @@
 import type { PrismaService } from '../../platform/prisma/prisma.service';
+import type { PlannedItem } from '../../shared/day-plan';
 import type { LibraryId, RecipientId, UserId } from '../../shared/identifiers';
 import type { ItemKind } from '../domain/item-kind';
-import type { LibraryDirectory, RecipientDirectory } from '../domain/ports';
+import type {
+  FixedItem,
+  FixedItemRepository,
+  LibraryDirectory,
+  RecipientDirectory,
+} from '../domain/ports';
 
 /**
  * Los dos datos que scheduling necesita de los otros contextos: cómo se llama
@@ -34,7 +40,7 @@ export class PrismaLibraryDirectory implements LibraryDirectory {
     return row !== null;
   }
 
-  async sendTimesOf(libraryId: LibraryId, kindFilter: ItemKind | null): Promise<number[]> {
+  async planItemsOf(libraryId: LibraryId, kindFilter: ItemKind | null): Promise<PlannedItem[]> {
     const rows = await this.prisma.libraryItem.findMany({
       where: {
         libraryId,
@@ -46,10 +52,72 @@ export class PrismaLibraryDirectory implements LibraryDirectory {
          */
         OR: [{ storageKey: null }, { mediaReadyAt: { not: null } }],
       },
-      select: { timesPerDay: true },
+      // El orden del tablero viaja con el elemento: es lo que decide a qué
+      // hora cae cuando dos piden salir el mismo número de veces.
+      select: { id: true, timesPerDay: true, position: true },
     });
 
-    return rows.map((row) => row.timesPerDay);
+    return rows;
+  }
+
+  async itemsOf(
+    libraryId: LibraryId,
+    itemIds: readonly string[],
+  ): Promise<{ id: string; kind: ItemKind; label: string }[]> {
+    const rows = await this.prisma.libraryItem.findMany({
+      // La biblioteca va en el `where`: un archivo de otra no vuelve, y quien
+      // pregunta se entera comparando cuántos pidió con cuántos recibió.
+      where: { id: { in: [...itemIds] }, libraryId },
+      select: { id: true, kind: true, fileName: true, textContent: true },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      // Un texto no tiene nombre de archivo, así que se muestra por su
+      // principio, que es como se reconoce en el tablero.
+      label: row.fileName ?? (row.textContent ?? '').slice(0, 60),
+    }));
+  }
+}
+
+/**
+ * Los envíos fijos de un horario.
+ *
+ * `replace` borra y vuelve a escribir dentro de una transacción: la pantalla
+ * manda la lista entera, y guardarla en dos pasos sin transacción dejaría al
+ * horario un instante sin ninguno de sus envíos fijos —justo el instante en el
+ * que el tick podría mirarlo.
+ */
+export class PrismaFixedItemRepository implements FixedItemRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async listOf(scheduleId: string): Promise<FixedItem[]> {
+    const rows = await this.prisma.scheduleFixedItem.findMany({
+      where: { scheduleId },
+      orderBy: { minute: 'asc' },
+      select: { minute: true, itemId: true },
+    });
+
+    return rows;
+  }
+
+  async minutesOf(scheduleId: string): Promise<number[]> {
+    const rows = await this.prisma.scheduleFixedItem.findMany({
+      where: { scheduleId },
+      select: { minute: true },
+    });
+
+    return rows.map((row) => row.minute);
+  }
+
+  async replace(scheduleId: string, items: readonly FixedItem[]): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.scheduleFixedItem.deleteMany({ where: { scheduleId } }),
+      this.prisma.scheduleFixedItem.createMany({
+        data: items.map((item) => ({ scheduleId, minute: item.minute, itemId: item.itemId })),
+      }),
+    ]);
   }
 }
 

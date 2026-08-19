@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../shared/clock';
+import type { PlannedItem } from '../../shared/day-plan';
 import { LibraryId, RecipientId, ScheduleId, UserId } from '../../shared/identifiers';
 import { RunDueSchedules } from '../application/run-due-schedules';
-import type { LibraryDirectory, OccurrencePlanner, ScheduleRepository } from '../domain/ports';
+import type {
+  FixedItemRepository,
+  LibraryDirectory,
+  OccurrencePlanner,
+  ScheduleRepository,
+} from '../domain/ports';
 import { Schedule } from '../domain/schedule';
 import { WindowOccurrencePlanner } from '../infrastructure/window-occurrence-planner';
 
@@ -59,7 +65,7 @@ class InMemorySchedules implements ScheduleRepository {
 
 /** La biblioteca de mentira: solo importa cuántas veces al día pide cada cosa. */
 class FakeLibraries implements LibraryDirectory {
-  timesPerDay: number[] = [1];
+  items: PlannedItem[] = [{ id: 'foto', timesPerDay: 1, position: 1 }];
 
   nameOf(): Promise<string | null> {
     return Promise.resolve('Fotos');
@@ -69,10 +75,21 @@ class FakeLibraries implements LibraryDirectory {
     return Promise.resolve(true);
   }
 
-  sendTimesOf(): Promise<number[]> {
-    return Promise.resolve(this.timesPerDay);
+  planItemsOf(): Promise<PlannedItem[]> {
+    return Promise.resolve(this.items);
+  }
+
+  itemsOf(): Promise<{ id: string; kind: 'AUDIO'; label: string }[]> {
+    return Promise.resolve([]);
   }
 }
+
+/** Sin envíos fijos: la rejilla sale entera de los repartos. */
+const sinFijos: FixedItemRepository = {
+  listOf: () => Promise.resolve([]),
+  replace: () => Promise.resolve(),
+  minutesOf: () => Promise.resolve([]),
+};
 
 function build(startingAt: Date) {
   const schedules = new InMemorySchedules();
@@ -96,7 +113,7 @@ function build(startingAt: Date) {
     libraries,
     clock,
     emitted,
-    run: new RunDueSchedules(schedules, libraries, planner, clock, sink),
+    run: new RunDueSchedules(schedules, libraries, planner, clock, sink, sinFijos),
   };
 }
 
@@ -119,7 +136,6 @@ function schedule(firstRunAt: Date, now: Date, weekdays = DIARIO_8.weekdays): Sc
       endMinute: DIARIO_8.endMinute,
       timezone: 'America/Bogota',
       senderName: null,
-      strategy: 'RANDOM',
       kindFilter: null,
     },
     firstRunAt,
@@ -204,7 +220,7 @@ describe('la vuelta del planificador', () => {
     const now = new Date('2026-05-10T13:05:00Z');
     const world = build(now);
 
-    world.libraries.timesPerDay = [3];
+    world.libraries.items = [{ id: 'audio', timesPerDay: 3, position: 1 }];
     await world.schedules.add(schedule(new Date('2026-05-10T13:00:00Z'), now));
 
     await world.run.execute();

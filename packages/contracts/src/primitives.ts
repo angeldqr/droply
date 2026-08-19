@@ -22,9 +22,6 @@ export type Channel = (typeof channel.values)[number];
 export const mediaStatus = vocabulary(['PENDING', 'READY', 'FAILED'] as const);
 export type MediaStatus = (typeof mediaStatus.values)[number];
 
-export const selectionStrategy = vocabulary(['RANDOM', 'RANDOM_NO_REPEAT', 'SEQUENTIAL'] as const);
-export type SelectionStrategy = (typeof selectionStrategy.values)[number];
-
 export const deliveryStatus = vocabulary(['SENT', 'FAILED', 'SKIPPED'] as const);
 export type DeliveryStatus = (typeof deliveryStatus.values)[number];
 
