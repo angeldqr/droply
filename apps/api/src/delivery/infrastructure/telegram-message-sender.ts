@@ -71,26 +71,6 @@ export class TelegramMessageSender implements MessageSender {
     return this.call(method, form);
   }
 
-  /**
-   * El aviso de que un horario se apagó solo.
-   *
-   * **No se le manda a nadie por Telegram**, y es a propósito. El único chat que
-   * la aplicación conoce de una cuenta es el de sus destinatarios, que son otras
-   * personas: mandarle a la madre de alguien un aviso de que un envío falló
-   * sería contarle a un tercero cómo anda la cuenta ajena.
-   *
-   * El dueño se entera donde corresponde: el horario aparece pausado y el
-   * historial de la pantalla de horarios muestra el intento con su motivo.
-   *
-   * ponytail: cuando haya avisos dentro de la aplicación, este método los
-   * escribe. Hasta entonces queda en el log del servidor.
-   */
-  notifyOwner(ownerId: string, text: string): Promise<void> {
-    this.logger.warn(`Aviso para la cuenta ${ownerId}: ${text}`);
-
-    return Promise.resolve();
-  }
-
   private async call(method: string, body: unknown): Promise<SendResult> {
     try {
       const response = await fetch(`${this.base}/${method}`, {

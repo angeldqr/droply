@@ -22,7 +22,7 @@ export type Channel = (typeof channel.values)[number];
 export const mediaStatus = vocabulary(['PENDING', 'READY', 'FAILED'] as const);
 export type MediaStatus = (typeof mediaStatus.values)[number];
 
-export const deliveryStatus = vocabulary(['SENT', 'FAILED', 'SKIPPED'] as const);
+export const deliveryStatus = vocabulary(['SENT', 'FAILED', 'SKIPPED', 'RETRYING'] as const);
 export type DeliveryStatus = (typeof deliveryStatus.values)[number];
 
 export const userRole = vocabulary(['USER', 'ADMIN'] as const);

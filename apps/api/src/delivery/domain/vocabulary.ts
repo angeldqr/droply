@@ -10,8 +10,13 @@ export const ITEM_KINDS = ['AUDIO', 'VIDEO', 'IMAGE', 'TEXT'] as const;
 
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
-/** Cómo terminó un intento. Es también el enum de la base. */
-export const DELIVERY_STATUSES = ['SENT', 'FAILED', 'SKIPPED'] as const;
+/**
+ * Cómo terminó un intento. Es también el enum de la base.
+ *
+ * `RETRYING` es el único que no es un final: la ocurrencia falló por algo
+ * pasajero y tiene hora para volver a intentarlo.
+ */
+export const DELIVERY_STATUSES = ['SENT', 'FAILED', 'SKIPPED', 'RETRYING'] as const;
 
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 

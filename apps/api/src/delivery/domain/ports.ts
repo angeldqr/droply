@@ -84,27 +84,86 @@ export interface MessageSender {
     caption: string,
     bytes: Uint8Array | null,
   ): Promise<SendResult>;
-  /** Un aviso al dueño cuando su horario se apaga solo. */
-  notifyOwner(ownerId: string, text: string): Promise<void>;
+}
+
+/**
+ * Le deja un aviso al dueño **dentro de la aplicación**.
+ *
+ * No por Telegram: el único chat que conocemos de una cuenta es el de sus
+ * destinatarios, y esos son otras personas. Contarle a la madre de alguien que
+ * a su hijo le falló un envío es contarle a un tercero cómo anda una cuenta
+ * ajena.
+ */
+export interface NoticeWriter {
+  write(ownerId: string, text: string): Promise<void>;
+}
+
+/** Una ocurrencia que fallo por algo pasajero y espera su siguiente intento. */
+export interface PendingRetry {
+  readonly scheduleId: string;
+  readonly occurrenceKey: string;
+  readonly occurredAt: Date;
+  readonly retryCount: number;
+  /**
+   * El elemento que se eligió en el primer intento.
+   *
+   * Se guarda y no se vuelve a calcular: si alguien agregó un archivo entre
+   * medias, el plan del día ya dice otra cosa, y lo que estaba a medio salir
+   * era el de antes.
+   */
+  readonly itemId: string;
 }
 
 export interface DeliveryLog {
   /**
-   * Registra el intento. Devuelve `false` si esa ocurrencia ya estaba anotada,
-   * que es como se evita mandar dos veces lo mismo: la unicidad la decide el
-   * índice de la base, no una consulta previa que dos réplicas podrían pasar a
-   * la vez.
+   * Reserva la ocurrencia. Devuelve `false` si ya estaba tomada.
+   *
+   * **Solo inserta.** Si la clave ya existe no toca la fila: quien la tomó
+   * primero es el dueño del envío, y pisarle el resultado borraría lo que ya
+   * había averiguado. La unicidad la decide el índice de la base y no una
+   * consulta previa, que dos réplicas podrían pasar a la vez.
    */
-  record(attempt: {
+  reserve(attempt: {
     scheduleId: string;
     itemId: string | null;
     occurrenceKey: string;
     occurredAt: Date;
     status: DeliveryStatus;
-    providerMessageId: string | null;
     error: string | null;
   }): Promise<boolean>;
+
+  /** Anota en qué quedó la ocurrencia que ya estaba reservada. */
+  settle(
+    occurrenceKey: string,
+    result: {
+      status: DeliveryStatus;
+      itemId?: string | null;
+      providerMessageId?: string | null;
+      error: string | null;
+      retryCount?: number;
+      nextAttemptAt?: Date | null;
+    },
+  ): Promise<void>;
+
+  /**
+   * Toma los reintentos vencidos y los deja tomados, igual que el calendario
+   * hace con los horarios: bloquea las filas y se salta las que otro ya tenga.
+   */
+  claimDueRetries(now: Date, limit: number): Promise<PendingRetry[]>;
+
   recent(ownerId: string, limit: number): Promise<DeliveryRecord[]>;
+}
+
+/** Lo que la pantalla muestra de un aviso. */
+export interface NoticeRecord {
+  readonly id: string;
+  readonly text: string;
+  readonly createdAt: Date;
+}
+
+export interface NoticeReader {
+  unreadOf(ownerId: string): Promise<NoticeRecord[]>;
+  markRead(ownerId: string, noticeId: string): Promise<void>;
 }
 
 export interface DeliveryRecord {
@@ -122,3 +181,5 @@ export const LIBRARY_CATALOG = Symbol('LibraryCatalog');
 export const MEDIA_SOURCE = Symbol('MediaSource');
 export const MESSAGE_SENDER = Symbol('MessageSender');
 export const DELIVERY_LOG = Symbol('DeliveryLog');
+export const NOTICE_WRITER = Symbol('NoticeWriter');
+export const NOTICE_READER = Symbol('NoticeReader');

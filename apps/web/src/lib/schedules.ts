@@ -4,6 +4,7 @@ import type {
   CreateScheduleInput,
   DeliveryRecordView,
   FixedItemView,
+  NoticeView,
   ScheduleView,
   SetFixedItemsInput,
   UpdateScheduleInput,
@@ -31,6 +32,33 @@ export function useDeliveries() {
     queryKey: ['deliveries'],
     queryFn: () => api<DeliveryRecordView[]>('/deliveries'),
     refetchInterval: 60_000,
+  });
+}
+
+const noticesKey = ['notices'] as const;
+
+/**
+ * Los avisos sin leer.
+ *
+ * Se recargan solos cada minuto por lo mismo que el historial: los envíos
+ * ocurren sin que nadie esté mirando la pantalla, así que no hay ninguna acción
+ * a la que colgar la invalidación.
+ */
+export function useNotices() {
+  return useQuery({
+    queryKey: noticesKey,
+    queryFn: () => api<NoticeView[]>('/notices'),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkNoticeRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (noticeId: string) =>
+      api<void>(`/notices/${encodeURIComponent(noticeId)}/read`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: noticesKey }),
   });
 }
 

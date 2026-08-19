@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FixedClock } from '../../shared/clock';
 import { DispatchOccurrence } from '../application/dispatch-occurrence';
 import type {
   DeliveryLog,
@@ -7,9 +8,11 @@ import type {
   MediaSource,
   MessageSender,
   Payload,
+  NoticeWriter,
   ScheduleReader,
   SendResult,
 } from '../domain/ports';
+import type { DeliveryStatus } from '../domain/vocabulary';
 
 const TARGET: DispatchTarget = {
   scheduleId: 'horario-1',
@@ -54,80 +57,152 @@ class FakeCatalog implements LibraryCatalog {
     return Promise.resolve(pinned?.itemId ?? this.planned);
   }
 
+  /** Un texto por defecto, que no necesita bajar bytes de ningún lado. */
+  payload: Payload | null = null;
+
   payloadOf(itemId: string): Promise<Payload | null> {
-    return Promise.resolve({
-      itemId,
-      kind: 'TEXT',
-      fileName: null,
-      text: 'buenos días',
-      storageKey: null,
-    });
+    return Promise.resolve(
+      this.payload ?? {
+        itemId,
+        kind: 'TEXT',
+        fileName: null,
+        text: 'buenos días',
+        storageKey: null,
+      },
+    );
   }
 }
 
 class FakeSender implements MessageSender {
   result: SendResult = { messageId: '1', failure: null };
   sent: { chatId: string; caption: string }[] = [];
-  notices: string[] = [];
 
   send(chatId: string, _payload: Payload, caption: string): Promise<SendResult> {
     this.sent.push({ chatId, caption });
 
     return Promise.resolve(this.result);
   }
+}
 
-  notifyOwner(_ownerId: string, text: string): Promise<void> {
-    this.notices.push(text);
+class FakeNotices implements NoticeWriter {
+  readonly written: string[] = [];
+
+  write(_ownerId: string, text: string): Promise<void> {
+    this.written.push(text);
 
     return Promise.resolve();
   }
 }
 
-class FakeLog implements DeliveryLog {
-  readonly keys = new Set<string>();
-  readonly entries: { status: string; error: string | null }[] = [];
-  readonly attempts: { itemId: string | null }[] = [];
+/** Una fila de `delivery_attempts`, con lo que los tests miran de ella. */
+interface Row {
+  status: DeliveryStatus;
+  itemId: string | null;
+  error: string | null;
+  retryCount: number;
+  nextAttemptAt: Date | null;
+}
 
-  record(attempt: {
+class FakeLog implements DeliveryLog {
+  readonly rows = new Map<string, Row>();
+
+  reserve(attempt: {
     occurrenceKey: string;
     itemId: string | null;
-    status: 'SENT' | 'FAILED' | 'SKIPPED';
+    status: DeliveryStatus;
     error: string | null;
   }): Promise<boolean> {
-    this.entries.push({ status: attempt.status, error: attempt.error });
-    this.attempts.push({ itemId: attempt.itemId });
+    // El índice único de la base, en miniatura: si ya estaba, no se toca.
+    if (this.rows.has(attempt.occurrenceKey)) return Promise.resolve(false);
 
-    // El índice único de la base, en miniatura: la segunda vez ya estaba.
-    if (this.keys.has(attempt.occurrenceKey)) return Promise.resolve(false);
-
-    this.keys.add(attempt.occurrenceKey);
+    this.rows.set(attempt.occurrenceKey, {
+      status: attempt.status,
+      itemId: attempt.itemId,
+      error: attempt.error,
+      retryCount: 0,
+      nextAttemptAt: null,
+    });
 
     return Promise.resolve(true);
+  }
+
+  settle(
+    occurrenceKey: string,
+    result: {
+      status: DeliveryStatus;
+      itemId?: string | null;
+      error: string | null;
+      retryCount?: number;
+      nextAttemptAt?: Date | null;
+    },
+  ): Promise<void> {
+    const row = this.rows.get(occurrenceKey);
+
+    if (!row) throw new Error(`se resolvió una ocurrencia sin reservar: ${occurrenceKey}`);
+
+    this.rows.set(occurrenceKey, {
+      ...row,
+      status: result.status,
+      error: result.error,
+      ...(result.itemId === undefined ? {} : { itemId: result.itemId }),
+      ...(result.retryCount === undefined ? {} : { retryCount: result.retryCount }),
+      ...(result.nextAttemptAt === undefined ? {} : { nextAttemptAt: result.nextAttemptAt }),
+    });
+
+    return Promise.resolve();
+  }
+
+  claimDueRetries(): Promise<never[]> {
+    return Promise.resolve([]);
   }
 
   recent(): Promise<never[]> {
     return Promise.resolve([]);
   }
+
+  /** La única fila que los tests usan, porque casi todos despachan una. */
+  only(): Row {
+    const [row] = [...this.rows.values()];
+
+    if (!row) throw new Error('no se anotó ninguna ocurrencia');
+
+    return row;
+  }
 }
 
-const media: MediaSource = { bytesOf: () => Promise.resolve(new Uint8Array()) };
+/** El almacenamiento, que se puede poner de mal humor. */
+class FakeMedia implements MediaSource {
+  falla = false;
+
+  bytesOf(): Promise<Uint8Array> {
+    if (this.falla) return Promise.reject(new Error('MinIO no responde'));
+
+    return Promise.resolve(new Uint8Array());
+  }
+}
+
+const AHORA = new Date('2026-05-11T13:00:00Z');
 
 function build() {
   const schedules = new FakeSchedules();
   const catalog = new FakeCatalog();
   const sender = new FakeSender();
   const log = new FakeLog();
+  const media = new FakeMedia();
+  const notices = new FakeNotices();
+  const clock = new FixedClock(AHORA);
 
   return {
     schedules,
     catalog,
     sender,
     log,
-    dispatch: new DispatchOccurrence(schedules, catalog, media, sender, log),
+    media,
+    notices,
+    clock,
+    dispatch: new DispatchOccurrence(schedules, catalog, media, sender, log, notices, clock),
   };
 }
-
-const AHORA = new Date('2026-05-11T13:00:00Z');
 
 /**
  * Hay cosas que no se dejan al reparto. "El buenos días de las 6" es siempre el
@@ -142,7 +217,7 @@ describe('envío clavado a una hora', () => {
     world.schedules.target = CLAVADO;
 
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-fija')).toBe('SENT');
-    expect(world.log.attempts[0]?.itemId).toBe('el-audio');
+    expect(world.log.only().itemId).toBe('el-audio');
   });
 
   it('a una hora sin nada clavado sale lo que diga el plan', async () => {
@@ -150,7 +225,7 @@ describe('envío clavado a una hora', () => {
     world.schedules.target = { ...TARGET, fixedItems: [{ minute: 1200, itemId: 'el-audio' }] };
 
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-suelta')).toBe('SENT');
-    expect(world.log.attempts[0]?.itemId).toBe('foto');
+    expect(world.log.only().itemId).toBe('foto');
   });
 });
 
@@ -189,7 +264,7 @@ describe('despacho de un envío', () => {
     world.catalog.planned = null;
 
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('NOTHING_TO_SEND');
-    expect(world.log.entries.at(-1)?.error).toBe('nada que enviar');
+    expect(world.log.only().error).toBe('nada que enviar');
   });
 
   it('un fallo permanente apaga el horario y avisa al dueño', async () => {
@@ -201,18 +276,171 @@ describe('despacho de un envío', () => {
 
     expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('FAILED');
     expect(world.schedules.deactivated).toEqual(['horario-1']);
-    expect(world.sender.notices).toHaveLength(1);
+    expect(world.notices.written).toHaveLength(1);
   });
 
-  it('un fallo pasajero no apaga nada: la próxima ocurrencia reintenta', async () => {
+  it('un fallo pasajero no apaga nada: queda esperando su reintento', async () => {
     const world = build();
     world.sender.result = {
       messageId: null,
       failure: { permanent: false, reason: 'no se pudo conectar' },
     };
 
-    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('FAILED');
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('RETRYING');
     expect(world.schedules.deactivated).toEqual([]);
-    expect(world.sender.notices).toHaveLength(0);
+    expect(world.notices.written).toHaveLength(0);
+  });
+});
+
+/**
+ * Un bache de red no puede costar un envío. Antes lo costaba: el intento
+ * quedaba `FAILED` y esa ocurrencia no volvía nunca.
+ */
+describe('reintentos con espera creciente', () => {
+  /** Deja el envío fallando por algo pasajero. */
+  function conFalloPasajero() {
+    const world = build();
+
+    world.sender.result = {
+      messageId: null,
+      failure: { permanent: false, reason: 'no se pudo conectar' },
+    };
+
+    return world;
+  }
+
+  it('el primero espera un minuto', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    const row = world.log.only();
+
+    expect(row.status).toBe('RETRYING');
+    expect(row.retryCount).toBe(1);
+    expect(row.nextAttemptAt?.toISOString()).toBe('2026-05-11T13:01:00.000Z');
+  });
+
+  it('las esperas crecen: uno, cinco y veinticinco minutos', async () => {
+    const world = conFalloPasajero();
+    const esperas: (string | undefined)[] = [];
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+    esperas.push(world.log.only().nextAttemptAt?.toISOString());
+
+    for (const intento of [1, 2]) {
+      await world.dispatch.retry({
+        scheduleId: 'horario-1',
+        occurrenceKey: 'clave-1',
+        occurredAt: AHORA,
+        retryCount: intento,
+        itemId: 'foto',
+      });
+      esperas.push(world.log.only().nextAttemptAt?.toISOString());
+    }
+
+    expect(esperas).toEqual([
+      '2026-05-11T13:01:00.000Z',
+      '2026-05-11T13:05:00.000Z',
+      '2026-05-11T13:25:00.000Z',
+    ]);
+  });
+
+  it('al cuarto intento se rinde, lo dice y avisa', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    const outcome = await world.dispatch.retry({
+      scheduleId: 'horario-1',
+      occurrenceKey: 'clave-1',
+      occurredAt: AHORA,
+      retryCount: 3,
+      itemId: 'foto',
+    });
+
+    expect(outcome).toBe('FAILED');
+    expect(world.log.only().status).toBe('FAILED');
+    expect(world.log.only().error).toContain('3 reintentos');
+    // El dueño se entera dentro de la aplicación, que es el único sitio donde
+    // se le puede avisar sin escribirle al chat de otra persona.
+    expect(world.notices.written).toHaveLength(1);
+  });
+
+  it('un reintento que sale bien deja la ocurrencia enviada y sin hora', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    world.sender.result = { messageId: '42', failure: null };
+
+    const outcome = await world.dispatch.retry({
+      scheduleId: 'horario-1',
+      occurrenceKey: 'clave-1',
+      occurredAt: AHORA,
+      retryCount: 1,
+      itemId: 'foto',
+    });
+
+    expect(outcome).toBe('SENT');
+    expect(world.log.only().status).toBe('SENT');
+    expect(world.log.only().nextAttemptAt).toBeNull();
+  });
+
+  it('deja una sola fila para la ocurrencia, pase lo que pase', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+    await world.dispatch.retry({
+      scheduleId: 'horario-1',
+      occurrenceKey: 'clave-1',
+      occurredAt: AHORA,
+      retryCount: 1,
+      itemId: 'foto',
+    });
+
+    /*
+     * Es lo que hace que el historial siga siendo legible y que la clave de
+     * idempotencia siga sirviendo: un reintento actualiza su fila, no crea otra.
+     */
+    expect(world.log.rows.size).toBe(1);
+  });
+
+  it('el almacenamiento caído también se reintenta', async () => {
+    const world = build();
+
+    world.catalog.payload = {
+      itemId: 'foto',
+      kind: 'IMAGE',
+      fileName: 'foto.jpg',
+      text: null,
+      storageKey: 'ana/biblioteca/foto',
+    };
+    world.media.falla = true;
+
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('RETRYING');
+    expect(world.log.only().error).toBe('no se pudo leer el archivo');
+    // No se llegó a hablar con Telegram, así que no hay nada enviado.
+    expect(world.sender.sent).toHaveLength(0);
+  });
+
+  it('un reintento manda el mismo elemento que se eligió, no el que toque ahora', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    // El plan cambió entre medias porque alguien agregó un archivo.
+    world.catalog.planned = 'otra-cosa';
+    world.sender.result = { messageId: '42', failure: null };
+
+    await world.dispatch.retry({
+      scheduleId: 'horario-1',
+      occurrenceKey: 'clave-1',
+      occurredAt: AHORA,
+      retryCount: 1,
+      itemId: 'foto',
+    });
+
+    expect(world.log.only().itemId).toBe('foto');
   });
 });

@@ -9,12 +9,20 @@ import type {
   DeliveryRecord,
   DispatchTarget,
   LibraryCatalog,
+  NoticeReader,
+  NoticeRecord,
+  NoticeWriter,
   Payload,
+  PendingRetry,
   ScheduleReader,
 } from '../domain/ports';
+import type { DeliveryStatus } from '../domain/vocabulary';
 
 /** Violación de índice único, tal como la nombra Postgres a través de Prisma. */
 const UNIQUE_VIOLATION = 'P2002';
+
+/** Lo que se aparta un reintento tomado, para que un proceso muerto no lo pierda. */
+const LEASE_MINUTES = 1;
 
 export class PrismaScheduleReader implements ScheduleReader {
   private readonly logger = new Logger(PrismaScheduleReader.name);
@@ -147,13 +155,12 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
 export class PrismaDeliveryLog implements DeliveryLog {
   constructor(private readonly prisma: PrismaService) {}
 
-  async record(attempt: {
+  async reserve(attempt: {
     scheduleId: string;
     itemId: string | null;
     occurrenceKey: string;
     occurredAt: Date;
-    status: 'SENT' | 'FAILED' | 'SKIPPED';
-    providerMessageId: string | null;
+    status: DeliveryStatus;
     error: string | null;
   }): Promise<boolean> {
     try {
@@ -162,32 +169,120 @@ export class PrismaDeliveryLog implements DeliveryLog {
       return true;
     } catch (caught) {
       /*
-       * Ya había una anotación para esa ocurrencia.
+       * Ya había una anotación para esa ocurrencia, así que es de otro.
        *
-       * Puede ser otra réplica que se adelantó —y entonces acá no hay que
-       * mandar nada— o esta misma vuelta completando el resultado del envío que
-       * ya reservó. Los dos casos se resuelven igual: se actualiza el resultado
-       * y se responde "ya estaba".
+       * **No se toca la fila.** Quien la reservó primero es el dueño del envío,
+       * y pisarle el resultado borraría lo que ya hubiera averiguado —el
+       * identificador del mensaje, o que estaba esperando un reintento.
        */
       if (
         caught instanceof Prisma.PrismaClientKnownRequestError &&
         caught.code === UNIQUE_VIOLATION
       ) {
-        await this.prisma.deliveryAttempt.update({
-          where: { occurrenceKey: attempt.occurrenceKey },
-          data: {
-            status: attempt.status,
-            itemId: attempt.itemId,
-            providerMessageId: attempt.providerMessageId,
-            error: attempt.error,
-          },
-        });
-
         return false;
       }
 
       throw caught;
     }
+  }
+
+  async settle(
+    occurrenceKey: string,
+    result: {
+      status: DeliveryStatus;
+      itemId?: string | null;
+      providerMessageId?: string | null;
+      error: string | null;
+      retryCount?: number;
+      nextAttemptAt?: Date | null;
+    },
+  ): Promise<void> {
+    await this.prisma.deliveryAttempt.update({
+      where: { occurrenceKey },
+      data: {
+        status: result.status,
+        error: result.error,
+        ...(result.itemId === undefined ? {} : { itemId: result.itemId }),
+        ...(result.providerMessageId === undefined
+          ? {}
+          : { providerMessageId: result.providerMessageId }),
+        ...(result.retryCount === undefined ? {} : { retryCount: result.retryCount }),
+        ...(result.nextAttemptAt === undefined ? {} : { nextAttemptAt: result.nextAttemptAt }),
+      },
+    });
+  }
+
+  /**
+   * Igual que el calendario toma sus horarios vencidos: bloquea las filas y se
+   * salta las que otro proceso ya tenga, para que un reintento no salga dos
+   * veces con más de una réplica.
+   *
+   * El `AT TIME ZONE 'UTC'` es obligatorio y no adorno: la columna es
+   * `timestamp` sin zona y un `Date` entra como `timestamptz`, así que sin él
+   * Postgres compararía usando la zona de la sesión y los reintentos vencerían
+   * con horas de desfase.
+   */
+  claimDueRetries(now: Date, limit: number): Promise<PendingRetry[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id
+        FROM delivery_attempts
+        WHERE status = 'RETRYING'
+          AND next_attempt_at IS NOT NULL
+          AND next_attempt_at <= (${now} AT TIME ZONE 'UTC')
+        ORDER BY next_attempt_at
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      `;
+
+      if (locked.length === 0) return [];
+
+      const ids = locked.map((row) => row.id);
+      const rows = await tx.deliveryAttempt.findMany({
+        where: { id: { in: ids } },
+        select: {
+          scheduleId: true,
+          occurrenceKey: true,
+          occurredAt: true,
+          retryCount: true,
+          itemId: true,
+        },
+      });
+
+      /*
+       * Se adelanta un minuto la hora del siguiente intento, como préstamo.
+       *
+       * Es el mismo arreglo que usa el calendario. La hora buena la escribe el
+       * despacho enseguida; el préstamo solo cubre el hueco entre una cosa y la
+       * otra, para que un proceso que muere a mitad no deje el reintento
+       * disparándose cada minuto **ni desaparecido para siempre**, que es lo que
+       * pasaría si acá se pusiera la hora en nulo.
+       *
+       * El `::int` no es adorno: Prisma manda los números como `bigint` y
+       * `make_interval` solo tiene versión para `int`.
+       */
+      await tx.$executeRaw`
+        UPDATE delivery_attempts
+        SET next_attempt_at = next_attempt_at + make_interval(mins => ${LEASE_MINUTES}::int)
+        WHERE id = ANY(${ids}::uuid[])
+      `;
+
+      // Un reintento sin elemento no puede existir: solo se llega a RETRYING
+      // después de haber elegido uno. Si aparece, se deja pasar.
+      return rows.flatMap((row) =>
+        row.itemId === null
+          ? []
+          : [
+              {
+                scheduleId: row.scheduleId,
+                occurrenceKey: row.occurrenceKey,
+                occurredAt: row.occurredAt,
+                retryCount: row.retryCount,
+                itemId: row.itemId,
+              },
+            ],
+      );
+    });
   }
 
   async recent(ownerId: string, limit: number): Promise<DeliveryRecord[]> {
@@ -224,4 +319,35 @@ function dayMinuteOf(moment: Date, timezone: string): number {
   const local = DateTime.fromJSDate(moment, { zone: timezone });
 
   return local.isValid ? local.hour * 60 + local.minute : 0;
+}
+
+/**
+ * Los avisos del dueño, dentro de la aplicación.
+ *
+ * Escribir y leer están en la misma clase porque son la misma tabla y dos
+ * líneas cada uno; separarlos en dos adaptadores sería ceremonia. Los puertos
+ * sí están separados: quien envía solo puede escribir.
+ */
+export class PrismaNotices implements NoticeWriter, NoticeReader {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async write(ownerId: string, text: string): Promise<void> {
+    await this.prisma.notice.create({ data: { id: randomUUID(), ownerId, text } });
+  }
+
+  async unreadOf(ownerId: string): Promise<NoticeRecord[]> {
+    return this.prisma.notice.findMany({
+      where: { ownerId, readAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, text: true, createdAt: true },
+    });
+  }
+
+  async markRead(ownerId: string, noticeId: string): Promise<void> {
+    // El dueño va en el `where`: nadie marca como leído el aviso de otro.
+    await this.prisma.notice.updateMany({
+      where: { id: noticeId, ownerId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
 }

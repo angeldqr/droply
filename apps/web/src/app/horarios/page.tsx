@@ -16,6 +16,7 @@ import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { FixedItemsDialog } from '@/components/fixed-items-dialog';
+import { Notices } from '@/components/notices';
 import {
   EditScheduleDialog,
   hourOption,
@@ -95,6 +96,12 @@ function Contents() {
 
   return (
     <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      {/*
+        Los avisos van antes que nada: quien entra acá porque no le llegó algo
+        tiene que encontrar el porqué sin buscarlo.
+      */}
+      <Notices />
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-4xl">Horarios</h1>

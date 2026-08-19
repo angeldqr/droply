@@ -192,8 +192,21 @@ export interface DeliveryRecordView {
   readonly occurredAt: string;
 }
 
+/**
+ * Un aviso de la aplicación para el dueño de la cuenta.
+ *
+ * No va por Telegram: el único chat que la aplicación conoce de una cuenta es
+ * el de sus destinatarios, y esos son otras personas.
+ */
+export interface NoticeView {
+  readonly id: string;
+  readonly text: string;
+  readonly createdAt: string;
+}
+
 export const DELIVERY_STATUS_LABELS: Readonly<Record<DeliveryStatus, string>> = {
   SENT: 'Enviado',
   FAILED: 'Falló',
   SKIPPED: 'Sin enviar',
+  RETRYING: 'Reintentando',
 };
