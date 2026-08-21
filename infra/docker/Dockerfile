@@ -21,7 +21,6 @@ COPY packages/contracts/package.json packages/contracts/
 COPY packages/tooling/package.json packages/tooling/
 COPY packages/ui/package.json packages/ui/
 COPY apps/api/package.json apps/api/
-COPY apps/worker/package.json apps/worker/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
@@ -32,9 +31,6 @@ RUN pnpm --filter @droply/contracts build \
 
 FROM build AS build-api
 RUN pnpm --filter @droply/api build
-
-FROM build AS build-worker
-RUN pnpm --filter @droply/worker build
 
 FROM build AS build-web
 RUN pnpm --filter @droply/web build
@@ -47,15 +43,6 @@ COPY --from=build-api --chown=node:node /app /app
 WORKDIR /app/apps/api
 USER node
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
-
-FROM base AS worker
-ENV NODE_ENV=production
-# ffmpeg lo necesita el pipeline de media para leer duración y sacar miniaturas.
-RUN apk add --no-cache ffmpeg
-COPY --from=build-worker --chown=node:node /app /app
-WORKDIR /app/apps/worker
-USER node
 CMD ["node", "dist/main.js"]
 
 FROM base AS web

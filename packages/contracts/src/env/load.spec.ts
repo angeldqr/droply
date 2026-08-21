@@ -6,7 +6,6 @@ import { apiEnvSchema } from './schema.js';
 const validEnv = {
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://droply:secreto@localhost:5432/droply',
-  REDIS_URL: 'redis://localhost:6379',
   STORAGE_ENDPOINT: 'http://localhost:9000',
   STORAGE_REGION: 'us-east-1',
   STORAGE_BUCKET: 'droply-media',

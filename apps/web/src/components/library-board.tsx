@@ -457,8 +457,9 @@ function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
                    * para que el archivo no quede accesible.
                    *
                    * ponytail: se muestra el original encogido y no una
-                   * miniatura de verdad; generarlas pide un worker con sharp, y
-                   * hasta que una biblioteca grande se sienta lenta no compensa.
+                   * miniatura de verdad; generarlas pide un proceso aparte con
+                   * sharp, y hasta que una biblioteca grande se sienta lenta no
+                   * compensa.
                    */
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

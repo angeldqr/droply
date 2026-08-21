@@ -23,10 +23,16 @@ const port = z.coerce.number().int().min(1).max(65535);
 const optional = <T extends z.ZodType>(schema: T) =>
   z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
 
-export const sharedEnvSchema = z.object({
+/**
+ * Todo lo que el API necesita del entorno.
+ *
+ * Estuvo partido en un esquema compartido y uno propio mientras hubo dos
+ * procesos. Con uno solo, la partición solo obligaba a mirar en dos sitios para
+ * saber si una variable hacía falta.
+ */
+export const apiEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().startsWith('postgresql://', 'Debe ser una URL de Postgres'),
-  REDIS_URL: z.string().startsWith('redis://', 'Debe ser una URL de Redis'),
 
   STORAGE_ENDPOINT: z.url(),
   STORAGE_REGION: z.string().min(1),
@@ -44,10 +50,7 @@ export const sharedEnvSchema = z.object({
 
   WEB_URL: z.url(),
   API_URL: z.url(),
-});
 
-/** Las dos apps mandan correo, así que comparten estas variables. */
-const mailEnv = {
   /**
    * `log` escribe el enlace de verificación en la consola en vez de mandarlo.
    * Es cómodo en desarrollo y peligroso en cualquier otro lado: ese enlace
@@ -60,10 +63,6 @@ const mailEnv = {
   SMTP_USER: optional(z.string()),
   SMTP_PASSWORD: optional(z.string()),
   MAIL_FROM: z.email(),
-};
-
-export const apiEnvSchema = sharedEnvSchema.extend({
-  ...mailEnv,
 
   API_PORT: port.default(3001),
 
@@ -93,10 +92,4 @@ export const apiEnvSchema = sharedEnvSchema.extend({
   ADMIN_INITIAL_PASSWORD: optional(z.string().min(PASSWORD_MIN_LENGTH)),
 });
 
-export const workerEnvSchema = sharedEnvSchema.extend({
-  ...mailEnv,
-});
-
-export type SharedEnv = z.infer<typeof sharedEnvSchema>;
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
-export type WorkerEnv = z.infer<typeof workerEnvSchema>;

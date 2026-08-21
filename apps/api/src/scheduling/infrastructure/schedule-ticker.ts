@@ -14,7 +14,8 @@ const TICK_MS = 60_000;
  *
  * ponytail: si algún día hace falta más de un proceso enviando, esto pasa a
  * encolar `delivery.dispatch` con la clave de idempotencia que el tick ya
- * calcula, y el temporizador se muda al worker. El caso de uso no se entera.
+ * calcula, y el temporizador se muda al proceso que consuma esa cola — que
+ * habría que escribir, porque hoy no existe. El caso de uso no se entera.
  */
 export class ScheduleTicker implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(ScheduleTicker.name);

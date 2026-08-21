@@ -30,7 +30,7 @@ openssl rand -base64 32
 
 El token del bot lo entrega [@BotFather](https://t.me/BotFather) con `/newbot`.
 
-Necesitas Postgres 18 y un Redis en ejecución, alcanzables desde las URL que configuraste en el `.env`. En Windows, [Memurai](https://www.memurai.com/) hace de Redis.
+Necesitas Postgres 18 en ejecución, alcanzable desde la URL que configuraste en el `.env`.
 
 El almacenamiento compatible con S3 lo da el binario de [MinIO](https://dl.min.io/server/minio/release/windows-amd64/minio.exe), y **no hace falta lanzarlo a mano**: `pnpm --filter @droply/api dev` lo levanta suelto antes de arrancar, crea el bucket si falta y no lo vuelve a tocar. Deja el binario en `.tools/minio.exe` dentro del repositorio o en `%USERPROFILE%\minio\minio.exe`, o apunta a él con `MINIO_BINARY` en el `.env`. Para levantarlo por separado: `pnpm run dev:storage`.
 
@@ -67,8 +67,7 @@ pnpm dev
 
 ```
 apps/
-  api/        HTTP, autenticación, webhook de Telegram
-  worker/     scheduler y envíos
+  api/        HTTP, autenticación, webhook de Telegram, latido de envíos
   web/        interfaz
 packages/
   contracts/  esquemas Zod compartidos entre api y web
@@ -100,7 +99,7 @@ En la máquina virtual todo corre con Docker Compose. Un solo `Dockerfile` con t
 docker compose --env-file .env -f infra/compose.yml --profile apps up -d --build
 ```
 
-Solo se publican al exterior los puertos que un navegador necesita alcanzar: la web, el API y el puerto S3 del almacenamiento. Postgres, Redis y la consola de administración quedan atados a `127.0.0.1`, así que para entrar hay que pasar por un túnel SSH.
+Solo se publican al exterior los puertos que un navegador necesita alcanzar: la web, el API y el puerto S3 del almacenamiento. Postgres y la consola de administración quedan atados a `127.0.0.1`, así que para entrar hay que pasar por un túnel SSH.
 
 Falta poner un proxy inverso con TLS delante. Hoy los tres puertos públicos hablan HTTP en claro.
 
