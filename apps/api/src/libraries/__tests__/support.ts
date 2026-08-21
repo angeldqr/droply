@@ -1,7 +1,11 @@
 import { FixedClock } from '../../shared/clock';
 import { UserId, type IdGenerator } from '../../shared/identifiers';
 import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
-import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
+import {
+  ConfirmMediaUpload,
+  RequestMediaUpload,
+  SweepStaleUploads,
+} from '../application/media-use-cases';
 import { CopyFromVault, OpenVault } from '../application/vault-use-cases';
 import {
   CreateLibrary,
@@ -51,6 +55,7 @@ export function buildLibraries(startingAt = new Date('2026-08-17T09:00:00.000Z')
     move: new MoveItem(libraries, items, clock),
     requestUpload: new RequestMediaUpload(libraries, items, storage, ids, clock),
     confirmUpload: new ConfirmMediaUpload(libraries, items, storage, clock),
+    sweepUploads: new SweepStaleUploads(items, storage, clock),
     openVault: new OpenVault(libraries, items, storage, ids, clock),
     copyFromVault: new CopyFromVault(libraries, items, storage, ids, clock),
   };

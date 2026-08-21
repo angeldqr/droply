@@ -64,6 +64,18 @@ export interface LibraryItemRepository {
   save(item: LibraryItem): Promise<void>;
   savePositions(items: readonly LibraryItem[]): Promise<void>;
   remove(id: LibraryItemId, libraryId: LibraryId): Promise<void>;
+  /**
+   * Las subidas que nunca llegaron: permiso firmado, fila creada y archivo que
+   * no apareció nunca en el bucket.
+   *
+   * Es la única lectura sin dueño de todo el contexto, y a propósito: no la
+   * pide nadie desde una pantalla, la hace la aplicación sola para no ir
+   * juntando filas y objetos que no apuntan a nada.
+   */
+  staleUploads(
+    before: Date,
+    limit: number,
+  ): Promise<{ id: LibraryItemId; libraryId: LibraryId; storageKey: string }[]>;
 }
 
 /**

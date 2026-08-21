@@ -82,3 +82,18 @@ export class ScheduleNeverRuns extends PreconditionFailedError {
     super('schedule.never_runs', 'Esa repetición no vuelve a ocurrir.');
   }
 }
+
+/**
+ * La cuenta llegó al tope de horarios encendidos.
+ *
+ * Se dice al crear uno y al volver a encender otro, que son las dos formas de
+ * pasarse. Apagar alguno deja sitio.
+ */
+export class TooManyActiveSchedules extends PreconditionFailedError {
+  constructor(max: number) {
+    super(
+      'schedule.too_many_active',
+      `No puedes tener más de ${max} horarios encendidos. Apaga alguno.`,
+    );
+  }
+}

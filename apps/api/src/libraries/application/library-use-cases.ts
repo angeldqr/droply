@@ -7,9 +7,9 @@ import {
   type UserId,
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
-import { LibraryNotFound, VaultNotEditable } from '../domain/errors';
+import { LibraryNotFound, TooManyLibraries, VaultNotEditable } from '../domain/errors';
 import type { ItemKind } from '../domain/item-kind';
-import { Library } from '../domain/library';
+import { Library, MAX_PER_ACCOUNT } from '../domain/library';
 import type { LibraryItem } from '../domain/library-item';
 import type { LibraryItemRepository, LibraryRepository, MediaStorage } from '../domain/ports';
 import { mediaPrefixOf } from './media-use-cases';
@@ -34,7 +34,14 @@ export class CreateLibrary {
   async execute(
     ownerId: UserId,
     fields: LibraryFields,
-  ): Promise<Result<Library, InvalidInputError>> {
+  ): Promise<Result<Library, InvalidInputError | TooManyLibraries>> {
+    // El tope se cuenta acá y no en un guard: es una regla del negocio, y en un
+    // guard quedaría fuera de los tests del caso de uso. La lista propia ya
+    // está acotada por este mismo número, así que contarla no cuesta nada.
+    if ((await this.libraries.listOwnedBy(ownerId)).length >= MAX_PER_ACCOUNT) {
+      return err(new TooManyLibraries(MAX_PER_ACCOUNT));
+    }
+
     const library = Library.create({
       id: LibraryId.from(this.ids.generate()),
       ownerId,

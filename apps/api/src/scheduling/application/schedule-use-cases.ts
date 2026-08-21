@@ -14,6 +14,7 @@ import {
   RecipientNotLinked,
   ScheduleNeverRuns,
   ScheduleNotFound,
+  TooManyActiveSchedules,
 } from '../domain/errors';
 import type {
   FixedItemRepository,
@@ -23,7 +24,7 @@ import type {
   ScheduleRepository,
 } from '../domain/ports';
 import { windowOf } from '../domain/daily-slots';
-import { Schedule, type ScheduleFields } from '../domain/schedule';
+import { MAX_ACTIVE_PER_ACCOUNT, Schedule, type ScheduleFields } from '../domain/schedule';
 
 /** El horario más los nombres que la pantalla necesita para poder mostrarlo. */
 export interface ScheduleWithNames {
@@ -88,9 +89,15 @@ export class CreateSchedule {
       | RecipientNotLinked
       | RecipientNotInLibrary
       | ScheduleNeverRuns
+      | TooManyActiveSchedules
       | InvalidInputError
     >
   > {
+    // Un horario nace encendido, así que crear uno estando en el tope es una de
+    // las dos formas de pasarse. La otra la cubre `UpdateSchedule`.
+    if (await this.atActiveCap(ownerId))
+      return err(new TooManyActiveSchedules(MAX_ACTIVE_PER_ACCOUNT));
+
     // Biblioteca y destinatario se comprueban contra el dueño antes de nada:
     // un horario hacia lo ajeno no puede llegar a existir.
     if (!(await this.libraries.nameOf(target.libraryId, ownerId))) {
@@ -134,6 +141,12 @@ export class CreateSchedule {
 
     return ok(schedule.value);
   }
+
+  private async atActiveCap(ownerId: UserId): Promise<boolean> {
+    const own = await this.schedules.listOwnedBy(ownerId);
+
+    return own.filter((schedule) => schedule.active).length >= MAX_ACTIVE_PER_ACCOUNT;
+  }
 }
 
 export class UpdateSchedule {
@@ -152,11 +165,25 @@ export class UpdateSchedule {
   ): Promise<
     Result<
       Schedule,
-      ScheduleNotFound | ScheduleNeverRuns | FixedItemOutsideWindow | InvalidInputError
+      | ScheduleNotFound
+      | ScheduleNeverRuns
+      | FixedItemOutsideWindow
+      | TooManyActiveSchedules
+      | InvalidInputError
     >
   > {
     const schedule = await this.schedules.findOwned(scheduleId, ownerId);
     if (!schedule) return err(new ScheduleNotFound());
+
+    // Solo al encender uno que estaba apagado: guardar cualquier otro cambio de
+    // un horario que ya estaba encendido no aumenta nada.
+    if (changes.active === true && !schedule.active) {
+      const own = await this.schedules.listOwnedBy(ownerId);
+
+      if (own.filter((other) => other.active).length >= MAX_ACTIVE_PER_ACCOUNT) {
+        return err(new TooManyActiveSchedules(MAX_ACTIVE_PER_ACCOUNT));
+      }
+    }
 
     const fields: ScheduleFields = {
       weekdays: changes.weekdays ?? schedule.weekdays,

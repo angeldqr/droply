@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../shared/clock';
-import { DispatchOccurrence } from '../application/dispatch-occurrence';
+import { DispatchOccurrence, MAX_PER_DAY } from '../application/dispatch-occurrence';
 import type {
   DeliveryLog,
   DispatchTarget,
@@ -150,6 +150,21 @@ class FakeLog implements DeliveryLog {
     });
 
     return Promise.resolve();
+  }
+
+  /**
+   * Lo que la cuenta ya llevaba enviado antes del test.
+   *
+   * Se pone a mano porque llegar al tope enviando de verdad pediría quinientas
+   * vueltas; lo que salga durante el test sí se cuenta de las filas, para que
+   * la comparación se pruebe de verdad y no contra un número congelado.
+   */
+  priorSent = 0;
+
+  countSentSince(): Promise<number> {
+    const sent = [...this.rows.values()].filter((row) => row.status === 'SENT');
+
+    return Promise.resolve(this.priorSent + sent.length);
   }
 
   claimDueRetries(): Promise<never[]> {
@@ -442,5 +457,50 @@ describe('reintentos con espera creciente', () => {
     });
 
     expect(world.log.only().itemId).toBe('foto');
+  });
+
+  it('pasado el tope diario no sale nada y queda dicho en el historial', async () => {
+    const world = build();
+    world.log.priorSent = MAX_PER_DAY;
+
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('OVER_DAILY_LIMIT');
+    expect(world.sender.sent).toHaveLength(0);
+    expect(world.log.only().status).toBe('SKIPPED');
+    expect(world.log.only().error).toBe('tope diario de envíos alcanzado');
+  });
+
+  it('el que hace el número quinientos sale, y el siguiente ya no', async () => {
+    const world = build();
+    world.log.priorSent = MAX_PER_DAY - 1;
+
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-1')).toBe('SENT');
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-2')).toBe('OVER_DAILY_LIMIT');
+
+    // Y lo saltado no engorda la cuenta: si contara, una cuenta que tocó el
+    // tope una vez no volvería a enviar nunca.
+    expect(await world.dispatch.execute('horario-1', AHORA, 'clave-3')).toBe('OVER_DAILY_LIMIT');
+    expect(world.sender.sent).toHaveLength(1);
+  });
+
+  it('un reintento no vuelve a pagar el tope diario', async () => {
+    const world = conFalloPasajero();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    // La cuenta se pasó del tope mientras esta ocurrencia esperaba. Ya estaba
+    // reservada, así que sale igual: cobrársela otra vez sería castigar dos
+    // veces el mismo envío por un fallo de red.
+    world.log.priorSent = MAX_PER_DAY;
+    world.sender.result = { messageId: '42', failure: null };
+
+    const outcome = await world.dispatch.retry({
+      scheduleId: 'horario-1',
+      occurrenceKey: 'clave-1',
+      occurredAt: AHORA,
+      retryCount: 1,
+      itemId: 'foto',
+    });
+
+    expect(outcome).toBe('SENT');
   });
 });

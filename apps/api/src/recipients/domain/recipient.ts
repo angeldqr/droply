@@ -5,6 +5,15 @@ import { RecipientAlreadyLinked } from './errors';
 
 export const LABEL_MAX_LENGTH = 40;
 
+/**
+ * A cuánta gente puede escribirle una cuenta.
+ *
+ * Es el tope que de verdad importa: cada destinatario es una persona real que
+ * va a recibir mensajes, así que sin número esto es una lista de difusión. Con
+ * cincuenta se cubre a la familia y los amigos, que es para lo que se hizo.
+ */
+export const MAX_PER_ACCOUNT = 50;
+
 /** Hoy solo Telegram. El canal existe porque la fase 2 del producto trae otro. */
 export type RecipientChannel = 'TELEGRAM';
 

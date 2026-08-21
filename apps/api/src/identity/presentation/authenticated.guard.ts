@@ -20,7 +20,9 @@ import {
 @Injectable()
 export class AuthenticatedGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    // Explícito como los demás: sin `emitDecoratorMetadata` —que no emite el
+    // transpilador de los tests— la inyección por tipo no existe en runtime.
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(ACCESS_TOKEN_ISSUER) private readonly accessTokens: AccessTokenIssuer,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}

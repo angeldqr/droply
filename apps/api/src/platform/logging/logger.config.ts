@@ -23,7 +23,10 @@ const REDACTED = [
 export function loggerConfig(isDevelopment: boolean): Params {
   return {
     pinoHttp: {
-      level: isDevelopment ? 'debug' : 'info',
+      // `LOG_LEVEL` manda si está puesta: es la forma de bajarle el volumen a
+      // un servidor ruidoso sin tocar el código, y la que usan las pruebas de
+      // extremo a extremo para no enterrar sus fallos en peticiones.
+      level: process.env['LOG_LEVEL'] ?? (isDevelopment ? 'debug' : 'info'),
       redact: { paths: REDACTED, censor: '[oculto]' },
       // Las dos sondas de salud golpean seguido y no aportan nada al log.
       autoLogging: {

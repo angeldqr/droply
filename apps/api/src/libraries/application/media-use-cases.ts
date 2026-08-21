@@ -139,9 +139,9 @@ export class ConfirmMediaUpload {
     // le cortó la respuesta y el archivo ya estaba arriba.
     if (item.isReady) return ok(item);
 
-    // ponytail: una subida que nunca llegó deja el elemento pendiente a la
-    // vista, y el usuario lo quita desde el menú de la tarjeta. Un barrido
-    // periódico de pendientes viejos entra con el endurecimiento de la fase 7.
+    // Una subida que nunca llegó deja el elemento pendiente a la vista, y el
+    // usuario lo quita desde el menú de la tarjeta. Al que no quite nadie lo
+    // recoge `SweepStaleUploads` pasado un día.
     const found = await this.storage.inspect(item.storageKey);
     if (!found) return err(new MediaNotUploaded());
 
@@ -155,8 +155,8 @@ export class ConfirmMediaUpload {
 
     // ponytail: se verifica el tipo y el tamaño, y nada más. Duración,
     // dimensiones y miniatura piden bajar el archivo entero y llamar a ffprobe,
-    // o sea un worker con cola; entra cuando el envío por Telegram quiera la
-    // duración o el tablero se sienta lento con los originales.
+    // o sea un proceso aparte con cola; entra cuando el envío por Telegram
+    // quiera la duración o el tablero se sienta lento con los originales.
     const now = this.clock.now();
 
     item.markReady(found.sizeBytes, now);
@@ -191,5 +191,51 @@ export class ConfirmMediaUpload {
     await this.libraries.save(library);
 
     return err(error);
+  }
+}
+
+/**
+ * Cuánto se espera antes de dar una subida por perdida.
+ *
+ * Un día es de sobra: entre firmar el permiso y que el navegador suba pasan
+ * segundos, y el permiso ya venció mucho antes. Esperar tanto es a propósito,
+ * porque el precio de equivocarse es borrarle a alguien un archivo que sí
+ * había subido.
+ */
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/** Cuántas se recogen por vuelta. Con una al día, nunca hay una cola larga. */
+const SWEEP_BATCH = 200;
+
+/**
+ * Recoge las subidas que se quedaron a medias.
+ *
+ * Pedir el permiso crea la fila antes de que el archivo exista: si el navegador
+ * se cae, se cierra la pestaña o el usuario se arrepiente, queda un elemento
+ * pendiente para siempre. Uno no molesta; los de un año sí, y peor si el objeto
+ * llegó a subirse a medias, porque entonces ocupa disco que nadie va a reclamar.
+ *
+ * No toca `updatedAt` de la biblioteca: esa fecha cuenta lo que hizo su dueño,
+ * y una limpieza de la casa no es algo que él hiciera.
+ */
+export class SweepStaleUploads {
+  constructor(
+    private readonly items: LibraryItemRepository,
+    private readonly storage: MediaStorage,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(): Promise<number> {
+    const before = new Date(this.clock.now().getTime() - STALE_AFTER_MS);
+    const stale = await this.items.staleUploads(before, SWEEP_BATCH);
+
+    for (const row of stale) {
+      // El objeto antes que la fila, igual que al descartar: al revés, un
+      // borrado que fallara dejaría un archivo suelto sin nada que lo apunte.
+      await this.storage.remove(row.storageKey);
+      await this.items.remove(row.id, row.libraryId);
+    }
+
+    return stale.length;
   }
 }

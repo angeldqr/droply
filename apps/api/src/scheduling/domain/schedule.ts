@@ -6,6 +6,15 @@ import type { ItemKind } from './item-kind';
 export const SENDER_NAME_MAX_LENGTH = 40;
 export const MINUTES_IN_A_DAY = 24 * 60;
 
+/**
+ * Cuántos horarios puede tener encendidos una cuenta a la vez.
+ *
+ * Se cuentan los encendidos y no todos: uno apagado no despierta al latido ni
+ * manda nada, así que guardarlo no le cuesta a nadie. Lo que hay que acotar es
+ * cuánto trabajo pide una cuenta cada minuto.
+ */
+export const MAX_ACTIVE_PER_ACCOUNT = 50;
+
 export interface ScheduleSnapshot {
   readonly id: ScheduleId;
   readonly ownerId: UserId;

@@ -5,9 +5,10 @@ import { err, ok, type Result } from '../../shared/result';
 import {
   AccountNotVerified,
   RecipientNotFound,
+  TooManyRecipients,
   type RecipientAlreadyLinked,
 } from '../domain/errors';
-import { Recipient } from '../domain/recipient';
+import { MAX_PER_ACCOUNT, Recipient } from '../domain/recipient';
 import type { AccountStatus, LinkCodeFactory, RecipientRepository } from '../domain/ports';
 
 /**
@@ -45,11 +46,17 @@ export class CreateRecipient {
   async execute(
     ownerId: UserId,
     label: string,
-  ): Promise<Result<IssuedRecipient, AccountNotVerified | InvalidInputError>> {
+  ): Promise<Result<IssuedRecipient, AccountNotVerified | TooManyRecipients | InvalidInputError>> {
     // La puerta está acá y no en un guard de framework: es una regla del
     // negocio, y un guard la dejaría fuera de los tests del caso de uso.
     if (!(await this.accounts.hasVerifiedEmail(ownerId))) {
       return err(new AccountNotVerified());
+    }
+
+    // El tope va después de la verificación: quien todavía no confirmó su
+    // correo no tiene por qué enterarse de cuántos destinatarios caben.
+    if ((await this.recipients.listOwnedBy(ownerId)).length >= MAX_PER_ACCOUNT) {
+      return err(new TooManyRecipients(MAX_PER_ACCOUNT));
     }
 
     const now = this.clock.now();

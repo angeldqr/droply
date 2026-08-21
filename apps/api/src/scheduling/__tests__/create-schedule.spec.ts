@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import type { Clock } from '../../shared/clock';
 import type { PlannedItem } from '../../shared/day-plan';
-import type { IdGenerator, LibraryId, RecipientId, UserId } from '../../shared/identifiers';
-import { CreateSchedule } from '../application/schedule-use-cases';
+import type {
+  IdGenerator,
+  LibraryId,
+  RecipientId,
+  ScheduleId,
+  UserId,
+} from '../../shared/identifiers';
+import { CreateSchedule, UpdateSchedule } from '../application/schedule-use-cases';
 import type { ItemKind } from '../domain/item-kind';
 import type {
   DailyWindow,
+  FixedItem,
+  FixedItemRepository,
   LibraryDirectory,
   OccurrencePlanner,
   RecipientDirectory,
   ScheduleRepository,
 } from '../domain/ports';
-import type { Schedule, ScheduleFields } from '../domain/schedule';
+import { MAX_ACTIVE_PER_ACCOUNT, type Schedule, type ScheduleFields } from '../domain/schedule';
 
 const ANA = '11111111-1111-4111-8111-111111111111' as UserId;
 const ALBUM = '22222222-2222-4222-8222-222222222222' as LibraryId;
@@ -70,12 +78,13 @@ class FakeRecipients implements RecipientDirectory {
 class CollectingSchedules implements ScheduleRepository {
   readonly added: Schedule[] = [];
 
+  /** Lo que se guardó, que es lo que devolvería el repositorio de verdad. */
   listOwnedBy(): Promise<Schedule[]> {
-    return Promise.resolve([]);
+    return Promise.resolve(this.added);
   }
 
-  findOwned(): Promise<Schedule | null> {
-    return Promise.resolve(null);
+  findOwned(id: ScheduleId): Promise<Schedule | null> {
+    return Promise.resolve(this.added.find((schedule) => schedule.id === id) ?? null);
   }
 
   add(schedule: Schedule): Promise<void> {
@@ -103,21 +112,36 @@ const planner: OccurrencePlanner = {
   nextAfter: (_window: DailyWindow) => new Date('2026-08-20T13:00:00.000Z'),
 };
 
+/** Ningún envío clavado: acá no se prueba eso. */
+const fixed: FixedItemRepository = {
+  listOf: () => Promise.resolve([] as FixedItem[]),
+  replace: () => Promise.resolve(),
+  minutesOf: () => Promise.resolve([]),
+};
+
 function build(linked = true) {
   const schedules = new CollectingSchedules();
   let next = 0;
-  const ids: IdGenerator = { generate: () => `55555555-5555-4555-8555-55555555555${next++}` };
+  const ids: IdGenerator = {
+    // Con un contador pelado al final se pasaría de largo del grupo en cuanto
+    // haya más de diez, y el tope necesita cincuenta.
+    generate: () => `55555555-5555-4555-8555-${String((next += 1)).padStart(12, '0')}`,
+  };
+
+  const clock = { now: () => NOW } satisfies Clock;
+  const libraries = new FakeLibraries();
 
   return {
     schedules,
     create: new CreateSchedule(
       schedules,
-      new FakeLibraries(),
+      libraries,
       new FakeRecipients(linked),
       planner,
       ids,
-      { now: () => NOW } satisfies Clock,
+      clock,
     ),
+    update: new UpdateSchedule(schedules, libraries, planner, clock, fixed),
   };
 }
 
@@ -163,5 +187,47 @@ describe('crear un horario', () => {
 
     expect(result.ok).toBe(true);
     expect(schedules.added).toHaveLength(1);
+  });
+
+  it('con el tope de encendidos alcanzado no deja crear otro', async () => {
+    const { create, schedules } = build();
+
+    for (let n = 0; n < MAX_ACTIVE_PER_ACCOUNT; n += 1) {
+      expect((await create.execute(ANA, { libraryId: ALBUM, recipientId: MAMA }, FIELDS)).ok).toBe(
+        true,
+      );
+    }
+
+    const passed = await create.execute(ANA, { libraryId: ALBUM, recipientId: MAMA }, FIELDS);
+
+    expect(passed.ok).toBe(false);
+    if (!passed.ok) expect(passed.error.code).toBe('schedule.too_many_active');
+    expect(schedules.added).toHaveLength(MAX_ACTIVE_PER_ACCOUNT);
+  });
+
+  /*
+   * El camino por el que se colaría el número cincuenta y uno: apagar uno para
+   * hacer sitio, crear el nuevo, y volver a encender el que se apagó. Contar
+   * solo al crear dejaría esa puerta abierta.
+   */
+  it('apagar uno para crear otro no sirve para encenderlos todos', async () => {
+    const { create, update, schedules } = build();
+
+    for (let n = 0; n < MAX_ACTIVE_PER_ACCOUNT; n += 1) {
+      await create.execute(ANA, { libraryId: ALBUM, recipientId: MAMA }, FIELDS);
+    }
+
+    const first = schedules.added[0];
+    if (!first) throw new Error('no se creó ninguno');
+
+    expect((await update.execute(ANA, first.id, { active: false })).ok).toBe(true);
+    expect((await create.execute(ANA, { libraryId: ALBUM, recipientId: MAMA }, FIELDS)).ok).toBe(
+      true,
+    );
+
+    const back = await update.execute(ANA, first.id, { active: true });
+
+    expect(back.ok).toBe(false);
+    if (!back.ok) expect(back.error.code).toBe('schedule.too_many_active');
   });
 });

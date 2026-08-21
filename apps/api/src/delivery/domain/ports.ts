@@ -151,6 +151,16 @@ export interface DeliveryLog {
    */
   claimDueRetries(now: Date, limit: number): Promise<PendingRetry[]>;
 
+  /**
+   * Cuántos envíos salieron **de verdad** desde ese instante, para toda la
+   * cuenta. Es lo que hace cumplir el tope diario.
+   *
+   * Solo los `SENT`: lo que se saltó por el propio tope no puede contar para el
+   * tope, o la cuenta quedaría bloqueada para siempre en cuanto lo tocara una
+   * vez.
+   */
+  countSentSince(ownerId: string, since: Date): Promise<number>;
+
   recent(ownerId: string, limit: number): Promise<DeliveryRecord[]>;
 }
 

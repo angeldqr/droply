@@ -81,3 +81,15 @@ export class MediaTooLarge extends InvalidInputError {
     super('item.media_too_large', 'El archivo no entra en esta columna.');
   }
 }
+
+/**
+ * La cuenta llegó al tope de bibliotecas.
+ *
+ * El número va en el mensaje: un tope que no se dice es una pared invisible, y
+ * quien la choca no sabe si es un error suyo o de la aplicación.
+ */
+export class TooManyLibraries extends PreconditionFailedError {
+  constructor(max: number) {
+    super('library.too_many', `No puedes tener más de ${max} bibliotecas. Borra alguna.`);
+  }
+}

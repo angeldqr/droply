@@ -50,3 +50,13 @@ export class RecipientAlreadyLinked extends PreconditionFailedError {
     super('recipient.already_linked', 'Este destinatario ya está vinculado.');
   }
 }
+
+/** La cuenta llegó al tope de destinatarios. */
+export class TooManyRecipients extends PreconditionFailedError {
+  constructor(max: number) {
+    super(
+      'recipient.too_many',
+      `No puedes tener más de ${max} destinatarios. Borra alguno para agregar otro.`,
+    );
+  }
+}

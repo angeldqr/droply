@@ -5,6 +5,17 @@ import { err, ok, type Result } from '../../shared/result';
 export const NAME_MAX_LENGTH = 60;
 export const DESCRIPTION_MAX_LENGTH = 240;
 
+/**
+ * Cuántas bibliotecas puede tener una cuenta.
+ *
+ * No es una restricción de producto sino un tope: sin ninguno, una cuenta puede
+ * crear filas sin fin. Veinte es más de lo que nadie ha necesitado y sigue
+ * siendo un número que un humano podría llegar a mirar de una vez.
+ *
+ * El baúl no cuenta: no lo creó el usuario y no puede borrarlo.
+ */
+export const MAX_PER_ACCOUNT = 20;
+
 export interface LibrarySnapshot {
   readonly id: LibraryId;
   readonly ownerId: UserId;

@@ -124,6 +124,25 @@ export class InMemoryLibraryItemRepository implements LibraryItemRepository {
     return Promise.resolve();
   }
 
+  /** La misma firma que la consulta real: con clave, sin verificar y vieja. */
+  staleUploads(
+    before: Date,
+    limit: number,
+  ): Promise<{ id: LibraryItemId; libraryId: LibraryId; storageKey: string }[]> {
+    const stale = [...this.rows.values()]
+      .filter((item) => item.storageKey !== null && !item.isReady && item.createdAt < before)
+      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .slice(0, limit);
+
+    return Promise.resolve(
+      stale.map((item) => ({
+        id: item.id,
+        libraryId: item.libraryId,
+        storageKey: item.storageKey ?? '',
+      })),
+    );
+  }
+
   countsOf(libraryId: LibraryId): Record<ItemKind, number> {
     const counts = emptyCounts();
 

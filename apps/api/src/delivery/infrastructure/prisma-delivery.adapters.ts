@@ -285,6 +285,12 @@ export class PrismaDeliveryLog implements DeliveryLog {
     });
   }
 
+  countSentSince(ownerId: string, since: Date): Promise<number> {
+    return this.prisma.deliveryAttempt.count({
+      where: { schedule: { ownerId }, status: 'SENT', occurredAt: { gte: since } },
+    });
+  }
+
   async recent(ownerId: string, limit: number): Promise<DeliveryRecord[]> {
     const rows = await this.prisma.deliveryAttempt.findMany({
       where: { schedule: { ownerId } },

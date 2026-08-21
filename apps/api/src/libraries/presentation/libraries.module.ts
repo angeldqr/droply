@@ -14,7 +14,11 @@ import {
   ListLibraryRecipients,
   SetLibraryRecipients,
 } from '../application/library-recipient-use-cases';
-import { ConfirmMediaUpload, RequestMediaUpload } from '../application/media-use-cases';
+import {
+  ConfirmMediaUpload,
+  RequestMediaUpload,
+  SweepStaleUploads,
+} from '../application/media-use-cases';
 import { CopyFromVault, OpenVault } from '../application/vault-use-cases';
 import {
   CreateLibrary,
@@ -45,6 +49,7 @@ import {
 } from '../infrastructure/prisma-library-recipient.repository';
 import { PrismaLibraryRepository } from '../infrastructure/prisma-library.repository';
 import { S3MediaStorage } from '../infrastructure/s3-media-storage';
+import { UploadSweeper } from '../infrastructure/upload-sweeper';
 import { LibrariesController } from './libraries.controller';
 
 /*
@@ -184,6 +189,17 @@ import { LibrariesController } from './libraries.controller';
         storage: MediaStorage,
         clock: Clock,
       ) => new ConfirmMediaUpload(libraries, items, storage, clock),
+    },
+    {
+      provide: SweepStaleUploads,
+      inject: [LIBRARY_ITEM_REPOSITORY, MEDIA_STORAGE, CLOCK],
+      useFactory: (items: LibraryItemRepository, storage: MediaStorage, clock: Clock) =>
+        new SweepStaleUploads(items, storage, clock),
+    },
+    {
+      provide: UploadSweeper,
+      inject: [SweepStaleUploads],
+      useFactory: (sweep: SweepStaleUploads) => new UploadSweeper(sweep),
     },
 
     {

@@ -13,7 +13,15 @@ import type {
 
 /** Qué pasó con una ocurrencia, para que el latido lo deje en el log. */
 export type DispatchOutcome =
-  'SENT' | 'DUPLICATE' | 'NOTHING_TO_SEND' | 'NOT_LINKED' | 'RETRYING' | 'FAILED' | 'GONE';
+  | 'SENT'
+  | 'DUPLICATE'
+  | 'NOTHING_TO_SEND'
+  | 'NOT_LINKED'
+  | 'RETRYING'
+  | 'FAILED'
+  | 'GONE'
+  /** La cuenta ya gastó su tope de envíos del día. */
+  | 'OVER_DAILY_LIMIT';
 
 /**
  * Cuánto se espera antes de cada reintento, en minutos.
@@ -26,6 +34,22 @@ export type DispatchOutcome =
 const BACKOFF_MINUTES = [1, 5, 25];
 
 const MINUTE_MS = 60 * 1000;
+
+const DAY_MS = 24 * 60 * MINUTE_MS;
+
+/**
+ * Cuántos envíos puede sacar una cuenta en un día.
+ *
+ * Es el único tope que acota lo que sale hacia afuera: los demás cuentan filas,
+ * este cuenta mensajes a personas reales. Quinientos es mucho más de lo que un
+ * uso normal alcanza —la franja de un horario no da para tantos— y sigue
+ * cortando en seco una biblioteca de mil archivos apuntada a treinta chats.
+ *
+ * Se mide contra las últimas veinticuatro horas y no contra el día del
+ * calendario: no hay un día común para toda la cuenta, porque cada horario
+ * tiene su zona.
+ */
+export const MAX_PER_DAY = 500;
 
 /**
  * Manda lo que le tocaba a un horario en un instante concreto.
@@ -78,6 +102,12 @@ export class DispatchOccurrence {
       await this.skip(scheduleId, occurrenceKey, occurredAt, 'nada que enviar');
 
       return 'NOTHING_TO_SEND';
+    }
+
+    if ((await this.log.countSentSince(target.ownerId, this.dayAgo())) >= MAX_PER_DAY) {
+      await this.skip(scheduleId, occurrenceKey, occurredAt, 'tope diario de envíos alcanzado');
+
+      return 'OVER_DAILY_LIMIT';
     }
 
     /*
@@ -247,6 +277,17 @@ export class DispatchOccurrence {
     });
 
     return 'RETRYING';
+  }
+
+  /**
+   * Hace veinticuatro horas. El tope diario se mide contra esta ventana móvil.
+   *
+   * Los reintentos no lo consultan a propósito: esa ocurrencia ya está
+   * reservada desde su primer intento y pasó el tope entonces. Volver a
+   * cobrárselo sería castigar dos veces el mismo envío por un fallo de red.
+   */
+  private dayAgo(): Date {
+    return new Date(this.clock.now().getTime() - DAY_MS);
   }
 
   /** Los bytes, o `'unavailable'` si el almacenamiento no contestó. */

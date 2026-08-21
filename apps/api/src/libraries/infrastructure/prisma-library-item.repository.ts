@@ -91,6 +91,35 @@ export class PrismaLibraryItemRepository implements LibraryItemRepository {
   async remove(id: LibraryItemId, libraryId: LibraryId): Promise<void> {
     await this.prisma.libraryItem.deleteMany({ where: { id, libraryId } });
   }
+
+  async staleUploads(
+    before: Date,
+    limit: number,
+  ): Promise<{ id: LibraryItemId; libraryId: LibraryId; storageKey: string }[]> {
+    const rows = await this.prisma.libraryItem.findMany({
+      // Con clave de objeto, sin verificar y de hace rato: las tres a la vez
+      // son la firma exacta de una subida que se quedó a medias.
+      where: { storageKey: { not: null }, mediaReadyAt: null, createdAt: { lt: before } },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      select: { id: true, libraryId: true, storageKey: true },
+    });
+
+    // El `where` ya deja fuera las que no tienen clave; el `flatMap` está para
+    // que el tipo lo diga también, sin un `?? ''` que acabaría borrando la raíz
+    // del bucket si alguien tocara la consulta.
+    return rows.flatMap((row) =>
+      row.storageKey === null
+        ? []
+        : [
+            {
+              id: LibraryItemId.from(row.id),
+              libraryId: LibraryId.from(row.libraryId),
+              storageKey: row.storageKey,
+            },
+          ],
+    );
+  }
 }
 
 function toDomain(row: ItemRow): LibraryItem {
