@@ -49,3 +49,71 @@ jobs:
       - run: pnpm run build
         env:
           NODE_ENV: production
+
+  e2e:
+    name: Camino completo contra Postgres
+    runs-on: ubuntu-latest
+
+    # Va en su propio trabajo y no dentro de `verify` por dos razones: necesita
+    # una base de datos, que al resto no le hace falta, y así corre en paralelo
+    # en vez de alargar la comprobación de todos los dias.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: droply
+          POSTGRES_PASSWORD: droply
+          POSTGRES_DB: droply
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U droply"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build --filter=@droply/contracts
+
+      # Explícito y no confiando en el `postinstall` de @prisma/client: pnpm 10
+      # bloquea los scripts de las dependencias salvo que se aprueben, y estas
+      # pruebas necesitan el cliente y su motor, no solo los tipos.
+      - run: pnpm --filter @droply/api exec prisma generate
+
+      # Los secretos se generan en el momento en vez de escribirlos acá.
+      # Ninguno protege nada —la base se tira al terminar el trabajo— y así no
+      # queda en el repositorio nada con forma de secreto que revisar.
+      - name: Entorno de mentira
+        run: |
+          echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "JWT_ACCESS_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+          echo "TELEGRAM_WEBHOOK_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+          echo "TELEGRAM_BOT_TOKEN=123456789:$(openssl rand -hex 20 | cut -c1-35)" >> "$GITHUB_ENV"
+
+      - run: pnpm --filter @droply/api test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://droply:droply@localhost:5432/droply?schema=public
+          # Telegram y el correo van doblados en las propias pruebas, así que
+          # estas variables solo tienen que existir para que el esquema pase.
+          TELEGRAM_BOT_USERNAME: droply_bot
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_REGION: us-east-1
+          STORAGE_BUCKET: droply-media
+          STORAGE_ACCESS_KEY: sin-uso
+          STORAGE_SECRET_KEY: sin-uso
+          SMTP_HOST: localhost
+          MAIL_FROM: no-responder@droply.test
+          WEB_URL: http://localhost:3000
+          API_URL: http://localhost:3001

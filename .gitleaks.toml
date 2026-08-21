@@ -15,6 +15,18 @@ description = "Secreto asignado directo en un archivo versionado"
 regex = '''(?i)\b(JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|ENCRYPTION_KEY|STORAGE_SECRET_KEY|POSTGRES_PASSWORD|TELEGRAM_WEBHOOK_SECRET)\s*=\s*['"]?[^\s'"#]{8,}'''
 tags = ["env", "secret"]
 
+# Un valor que es una sustitución del shell no es un secreto escrito: en
+# `CLAVE=$(openssl rand -base64 32)` lo que queda versionado es la orden que
+# genera el valor, no el valor. Pasaba con las variables de mentira del trabajo
+# de CI. Va como excepción de esta regla y no del archivo entero, para que ese
+# mismo archivo siga vigilado si alguien pega un secreto de verdad.
+#
+# Sin lookahead porque gitleaks usa RE2 y no los tiene.
+[rules.allowlist]
+description = "El valor lo genera o lo lee el shell, no está escrito"
+regexTarget = "match"
+regexes = ['''=\s*['"]?\$[({]''']
+
 [allowlist]
 description = "El ejemplo lleva las claves vacías a propósito"
 paths = ['''\.env\.example$''']

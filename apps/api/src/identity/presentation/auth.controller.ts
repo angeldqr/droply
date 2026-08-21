@@ -1,7 +1,6 @@
 import {
   Controller,
   Delete,
-  Get,
   HttpCode,
   HttpStatus,
   Inject,
@@ -36,7 +35,7 @@ import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { Public } from '../../platform/http/public.decorator';
 import { Roles } from '../../platform/http/roles.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
-import { InvalidInputError, NotFoundError } from '../../shared/domain-error';
+import { InvalidInputError } from '../../shared/domain-error';
 import { UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
 import {
@@ -56,7 +55,6 @@ import { RegisterUserUseCase } from '../application/register-user.use-case';
 import type { AuthenticatedSession } from '../application/session-issuer';
 import { ResendVerificationUseCase } from '../application/resend-verification.use-case';
 import { VerifyEmailUseCase } from '../application/verify-email.use-case';
-import { USER_REPOSITORY, type UserRepository } from '../domain/ports';
 import type { User } from '../domain/user';
 import { IS_PRODUCTION } from './tokens';
 
@@ -87,7 +85,6 @@ export class AuthController {
     @Inject(DeleteAccount) private readonly deleteAccount: DeleteAccount,
     @Inject(RequestPasswordReset) private readonly requestPasswordReset: RequestPasswordReset,
     @Inject(ResetPassword) private readonly resetPassword: ResetPassword,
-    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(IS_PRODUCTION) private readonly isProduction: boolean,
   ) {}
 
@@ -245,17 +242,6 @@ export class AuthController {
     @Param('userId') userId: string,
   ): Promise<void> {
     orThrow(await this.deleteAccount.execute(actorId, toUserId(userId)));
-  }
-
-  @Get('me')
-  async me(@CurrentUserId() userId: UserId): Promise<AuthenticatedUser> {
-    const user = await this.users.findById(userId);
-
-    // El token es válido pero la cuenta ya no está: se borró mientras la
-    // sesión seguía viva.
-    if (!user) throw new NotFoundError('la cuenta', 'auth.user_gone');
-
-    return toAuthenticatedUser(user);
   }
 
   private respond(authenticated: AuthenticatedSession, reply: FastifyReply): SessionResponse {
