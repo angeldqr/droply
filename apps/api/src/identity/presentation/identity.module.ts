@@ -51,6 +51,7 @@ import { PrismaPasswordResetRepository } from '../infrastructure/prisma-password
 import { PrismaRefreshTokenRepository } from '../infrastructure/prisma-refresh-token.repository';
 import { PrismaUserRepository } from '../infrastructure/prisma-user.repository';
 import { Sha256SecretTokenFactory } from '../infrastructure/sha256-secret-token-factory';
+import { ResendMailer } from '../infrastructure/resend-mailer';
 import { SmtpMailer } from '../infrastructure/smtp-mailer';
 import { AuthController } from './auth.controller';
 import { AuthenticatedGuard } from './authenticated.guard';
@@ -114,10 +115,17 @@ import { IS_PRODUCTION } from './tokens';
           return new LoggingMailer();
         }
 
+        if (env.MAIL_TRANSPORT === 'resend') {
+          logger.log(`Los correos salen por Resend desde ${env.MAIL_FROM}.`);
+
+          // El esquema del entorno ya exigió la clave para este transporte.
+          return new ResendMailer({ apiKey: env.RESEND_API_KEY ?? '', from: env.MAIL_FROM });
+        }
+
         logger.log(`Los correos salen por SMTP hacia ${env.SMTP_HOST}:${env.SMTP_PORT}.`);
 
         return new SmtpMailer({
-          host: env.SMTP_HOST,
+          host: env.SMTP_HOST ?? '',
           port: env.SMTP_PORT,
           user: env.SMTP_USER,
           password: env.SMTP_PASSWORD,

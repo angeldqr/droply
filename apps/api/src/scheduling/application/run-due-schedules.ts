@@ -75,10 +75,10 @@ export class RunDueSchedules {
       // Las horas clavadas entran en la rejilla igual que los repartos: sin
       // ellas, el horario dejaría de despertarse a la hora de su envío fijo en
       // cuanto se disparara una vez.
-      const fixedMinutes = await this.fixed.minutesOf(schedule.id);
+      const fixedSlots = await this.fixed.listOf(schedule.id);
 
       const nextRunAt = this.planner.nextAfter(
-        windowOf(schedule, items, fixedMinutes),
+        windowOf(schedule, items, fixedSlots),
         schedule.timezone,
         occurredAt,
       );

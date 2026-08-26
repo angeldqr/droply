@@ -41,15 +41,30 @@ describe('la rejilla del horario', () => {
   it('una hora clavada entra aunque el plan no la pise', () => {
     // 7:15 no sale del reparto: está solo porque alguien clavó algo ahí, y sin
     // ella el horario no se despertaría a esa hora.
-    expect(gridOf([item('a', 1, 1)], 480, 1200, [435])).toEqual([435, 480]);
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 435, itemId: 'b' }])).toEqual([
+      435, 480,
+    ]);
   });
 
-  it('una hora clavada que ya estaba no se duplica', () => {
-    expect(gridOf([item('a', 1, 1)], 480, 1200, [480])).toEqual([480]);
+  it('lo clavado sale del reparto y deja su hora sola', () => {
+    // Clavar 'a' es todo lo que 'a' hace ese día: no cuenta además para sus
+    // veces al día, así que la rejilla es solo su hora.
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 480, itemId: 'a' }])).toEqual([480]);
+  });
+
+  /*
+   * El caso que se perdía en silencio: el reparto de 'a' cae justo en la hora
+   * que 'b' tiene clavada. A esa hora manda lo clavado, así que sin correr a
+   * 'a' su envío de ese día no salía y nadie se enteraba.
+   */
+  it('corre el reparto que caería sobre una hora clavada', () => {
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 480, itemId: 'b' }])).toEqual([
+      480, 481,
+    ]);
   });
 
   it('con la biblioteca vacía la rejilla es la de lo clavado', () => {
-    expect(gridOf([], 480, 1200, [600])).toEqual([600]);
+    expect(gridOf([], 480, 1200, [{ minute: 600, itemId: 'a' }])).toEqual([600]);
   });
 });
 

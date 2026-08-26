@@ -1,0 +1,37 @@
+# El proxy inverso que pone TLS delante de todo.
+#
+# Caddy pide y renueva los certificados de Let's Encrypt solo; lo unico que hay
+# que darle es un dominio que apunte a esta maquina y los puertos 80 y 443
+# abiertos. El 80 no es opcional: es por donde se valida el certificado.
+#
+# Tres nombres y no uno, y los tres tienen que colgar del mismo dominio
+# registrable: la cookie de refresco sale con `sameSite=strict`, asi que
+# `droply.app` y `api.droply.app` valen, pero dos dominios distintos no.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# La aplicacion.
+{$WEB_DOMAIN} {
+	reverse_proxy web:3000
+}
+
+# El API.
+{$API_DOMAIN} {
+	reverse_proxy api:3001
+}
+
+# El almacenamiento.
+#
+# Tiene que ir por HTTPS igual que los otros dos, y no por comodidad: el
+# navegador sube el archivo directo aca desde una pagina servida por HTTPS, y
+# una peticion en claro desde una pagina segura la bloquea el propio navegador
+# por contenido mixto. Sin esto no se puede subir nada.
+#
+# Caddy conserva la cabecera Host, que es justo lo que hace falta: la firma del
+# permiso de subida se calcula sobre ese nombre, asi que STORAGE_ENDPOINT tiene
+# que valer https://{$STORAGE_DOMAIN} y coincidir con lo que llega aca.
+{$STORAGE_DOMAIN} {
+	reverse_proxy minio:9000
+}

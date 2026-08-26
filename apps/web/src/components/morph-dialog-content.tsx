@@ -15,6 +15,13 @@ import { DialogClose, DialogContent } from '@/components/ui/dialog';
  * envoltorio, que pasa a ser el único hijo.
  *
  * También aprovecha para decir "Cerrar": el del registro viene en inglés.
+ *
+ * El `min-w-0` no es decorativo: este envoltorio es un ítem de rejilla del
+ * `DialogContent`, y un ítem de rejilla trae `min-width: auto`, o sea que no
+ * baja del ancho mínimo de su contenido. Sin él, el `-mx-4` del pie —pensado
+ * para cancelar el `p-4` de un padre directo— estiraba el envoltorio más ancho
+ * que la tarjeta, y como es el contexto de posicionamiento de la X, la X se
+ * pintaba fuera. Junto con ella se salía todo lo demás.
  */
 export function MorphDialogContent({
   toProps,
@@ -27,7 +34,7 @@ export function MorphDialogContent({
 }) {
   return (
     <DialogContent {...toProps} showCloseButton={false} {...(className ? { className } : {})}>
-      <div className="relative grid gap-4">
+      <div className="relative grid min-w-0 gap-4">
         {children}
 
         <DialogClose asChild>

@@ -129,20 +129,25 @@ export class SetFixedItems {
       }
     }
 
-    await this.fixed.replace(scheduleId, items);
-
+    /*
+     * La próxima vuelta se calcula **antes** de escribir nada.
+     *
+     * Estaba al revés, y entonces un `ScheduleNeverRuns` devolvía error después
+     * de haber guardado las horas: el usuario veía que no se pudo y al reabrir
+     * el diálogo se las encontraba puestas. El cálculo no necesita que la tabla
+     * esté escrita —mira `items`, que ya está acá—, así que ordenarlo alcanza y
+     * no hace falta una transacción para las dos cosas.
+     */
     const planItems = await this.libraries.planItemsOf(schedule.libraryId, schedule.kindFilter);
     const nextRunAt = this.planner.nextAfter(
-      windowOf(
-        schedule,
-        planItems,
-        items.map((item) => item.minute),
-      ),
+      windowOf(schedule, planItems, items),
       schedule.timezone,
       this.clock.now(),
     );
 
     if (!nextRunAt) return err(new ScheduleNeverRuns());
+
+    await this.fixed.replace(scheduleId, items);
 
     schedule.retime(nextRunAt);
     await this.schedules.save(schedule);

@@ -119,6 +119,21 @@ export interface PasswordResetMail {
   readonly resetUrl: string;
 }
 
+/**
+ * Manda los dos correos que existen.
+ *
+ * **Ninguno de los dos falla.** Un correo que no sale no puede tumbar la
+ * petición que lo pidió: el registro ya guardó la cuenta y el token, así que
+ * reventar ahí deja al usuario creado y al administrador mirando un 500 sin
+ * saber qué quedó hecho. Y en el pedido de restablecer contraseña sería peor,
+ * porque esa ruta responde igual exista la cuenta o no justamente para no
+ * delatar qué correos están registrados: si fallara solo cuando el usuario
+ * existe, el fallo del correo se convertiría en el buscador que se evitó.
+ *
+ * Quien implemente esto registra el fallo y devuelve. El camino de salida
+ * cuando el correo no llega es el reenvío, y para las contraseñas, la
+ * contraseña temporal que da quien administra.
+ */
 export interface Mailer {
   sendVerification(mail: VerificationMail): Promise<void>;
   sendPasswordReset(mail: PasswordResetMail): Promise<void>;

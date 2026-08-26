@@ -43,6 +43,12 @@ export function planOf(
   items: readonly PlannedItem[],
   startMinute: number,
   endMinute: number,
+  /**
+   * Minutos que ya tienen dueño y el reparto no puede pisar: las horas
+   * clavadas. Sin esto, un envío automático que cayera justo en una hora
+   * clavada se perdía sin dejar rastro, porque a esa hora manda lo clavado.
+   */
+  reserved: readonly number[] = [],
 ): PlannedSend[] {
   const sends = items
     .flatMap((item) => {
@@ -56,11 +62,14 @@ export function planOf(
     })
     .sort((left, right) => left.share - right.share || left.position - right.position);
 
+  const taken = new Set<number>(reserved);
+
   if (sends.length === 0) return [];
-  if (sends.length === 1) return [{ minute: startMinute, itemId: sends[0]?.itemId ?? '' }];
+  if (sends.length === 1) {
+    return [{ minute: free(startMinute, taken, endMinute), itemId: sends[0]?.itemId ?? '' }];
+  }
 
   const step = (endMinute - startMinute) / (sends.length - 1);
-  const taken = new Set<number>();
 
   return sends.map((send, index) => ({
     minute: free(Math.round(startMinute + step * index), taken, endMinute),

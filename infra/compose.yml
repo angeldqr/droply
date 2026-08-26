@@ -2,12 +2,13 @@ name: droply
 
 # Este archivo es el mecanismo de deploy en la máquina virtual.
 #
-# Regla de exposición: solo salen a la red pública los puertos que un navegador
-# necesita alcanzar. Postgres y la consola de MinIO quedan atados a
-# 127.0.0.1, así que para entrar hay que pasar por un túnel SSH.
+# Regla de exposición: a la red pública sale **solo Caddy**, por el 80 y el 443.
+# Todo lo demás queda atado a 127.0.0.1 o sin publicar, alcanzable únicamente
+# desde dentro de la red de compose; para entrar a Postgres o a la consola de
+# MinIO hay que pasar por un túnel SSH.
 #
-# Pendiente antes de producción: un proxy inverso con TLS delante de web, api y
-# el puerto S3 de MinIO. Hoy los tres hablan HTTP en claro.
+# Los tres nombres que atiende Caddy tienen que colgar del mismo dominio
+# registrable, porque la cookie de refresco sale con `sameSite=strict`.
 
 services:
   postgres:
@@ -15,6 +16,15 @@ services:
     # ambos entornos se paga tarde y con una migración que no aplica.
     image: postgres:18-alpine
     restart: unless-stopped
+    # Con 4 GB en la máquina y cuatro servicios encima, los valores de fábrica
+    # de Postgres —pensados para tenerla entera— dejan sin aire al resto.
+    # `max_connections` baja de 100 a 30: el pool de Prisma pide tres.
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
+      -c max_connections=30
+    mem_limit: 1g
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-droply}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
@@ -30,17 +40,21 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    # Fijada, igual que Postgres. Un `latest` cambia solo el día que alguien
+    # redespliega, y esto es donde están los archivos de todo el mundo.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    mem_limit: 512m
     environment:
       MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:?falta STORAGE_ACCESS_KEY en .env}
       MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:?falta STORAGE_SECRET_KEY en .env}
     ports:
-      # El puerto S3 sí es público: el navegador sube los archivos directo acá
-      # con una URL firmada, sin pasar por el API.
-      - '9000:9000'
-      # La consola de administración, no.
+      # El puerto S3 ya no sale a la red: el navegador sigue subiendo directo
+      # aquí con su URL firmada, pero pasando por Caddy, que le pone el TLS.
+      # Una subida en claro desde una página HTTPS la bloquea el navegador.
+      - '127.0.0.1:9000:9000'
+      # La consola de administración, tampoco.
       - '127.0.0.1:9001:9001'
     volumes:
       - minio-data:/data
@@ -53,7 +67,7 @@ services:
   # Crea el bucket una vez y se apaga. Queda privado: el contenido solo sale
   # por URL firmada.
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy
@@ -86,13 +100,19 @@ services:
       dockerfile: infra/docker/Dockerfile
       target: api
     restart: unless-stopped
+    # 768 MB con un archivo de cincuenta megas en vuelo —y son dos copias
+    # mientras se sube a Telegram— deja margen de sobra. El reparto es
+    # secuencial, así que esto no crece con el número de horarios.
+    mem_limit: 768m
     env_file: ../.env
     environment:
       # Dentro de la red de compose los servicios se llaman por su nombre, no
       # por localhost.
       DATABASE_URL: postgresql://${POSTGRES_USER:-droply}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-droply}?schema=public
-    ports:
-      - '3001:3001'
+    # Sin puertos publicados: se llega por Caddy. Dentro de la red de compose
+    # los servicios se alcanzan por su nombre.
+    expose:
+      - '3001'
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,12 +125,47 @@ services:
       context: ..
       dockerfile: infra/docker/Dockerfile
       target: web
+      args:
+        # Se incrusta al construir, no al arrancar. Ver el Dockerfile.
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN:?falta API_DOMAIN en .env}
     restart: unless-stopped
-    ports:
-      - '3000:3000'
+    mem_limit: 512m
+    expose:
+      - '3000'
     depends_on:
       - api
+
+  # El único que da la cara a internet.
+  #
+  # Pide y renueva los certificados solo. El volumen `caddy-data` es lo que
+  # guarda esos certificados: sin él, cada reinicio pediría unos nuevos y Let's
+  # Encrypt corta por límite de peticiones a la quinta o sexta vez.
+  caddy:
+    profiles: ['apps']
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:?falta WEB_DOMAIN en .env}
+      API_DOMAIN: ${API_DOMAIN:?falta API_DOMAIN en .env}
+      STORAGE_DOMAIN: ${STORAGE_DOMAIN:?falta STORAGE_DOMAIN en .env}
+      ACME_EMAIL: ${ACME_EMAIL:?falta ACME_EMAIL en .env}
+    ports:
+      # El 80 no es opcional aunque todo vaya por HTTPS: es por donde Let's
+      # Encrypt valida que el dominio es tuyo, y también redirige al 443.
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - api
+      - minio
 
 volumes:
   postgres-data:
   minio-data:
+  caddy-data:
+  caddy-config:

@@ -93,15 +93,81 @@ Las dependencias apuntan siempre hacia adentro, y eso no depende de la buena vol
 
 ## Deploy
 
-En la máquina virtual todo corre con Docker Compose. Un solo `Dockerfile` con tres destinos construye las tres apps.
+En la máquina virtual todo corre con Docker Compose. Un solo `Dockerfile` con dos destinos construye las dos apps, y Caddy pone el TLS delante.
+
+A la red pública sale **solo Caddy**, por el 80 y el 443. Postgres, MinIO y las dos apps quedan dentro de la red de compose; para entrar a Postgres o a la consola de MinIO hay que pasar por un túnel SSH.
+
+### Antes del primer despliegue
+
+**1. Tres nombres DNS apuntando a la máquina.** Tienen que colgar del mismo dominio registrable, porque la cookie de refresco sale con `sameSite=strict`:
+
+| Nombre | Qué atiende |
+| --- | --- |
+| `droply.app` | la aplicación |
+| `api.droply.app` | el API |
+| `archivos.droply.app` | el almacenamiento |
+
+El tercero no es un lujo: el navegador sube los archivos directo ahí, y una petición en claro desde una página HTTPS la bloquea el propio navegador.
+
+**2. Swap.** Ese `--build` compila el front en la misma máquina que ya tiene Postgres y MinIO encima, y un `next build` se come más de dos gigas. Sin swap el despliegue muere a mitad sin decir por qué:
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+**3. El dominio verificado en Resend**, con los registros DNS que te da su panel. Sin eso los correos salen y no llegan.
+
+**4. El `.env`**, copiado de `.env.example`. Los secretos se generan, no se inventan:
+
+```bash
+openssl rand -base64 48   # JWT_ACCESS_SECRET y TELEGRAM_WEBHOOK_SECRET
+openssl rand -base64 32   # ENCRYPTION_KEY (32 bytes exactos)
+```
+
+Y las URLs, que en producción no son las de desarrollo:
+
+```
+WEB_URL=https://droply.app
+API_URL=https://api.droply.app
+NEXT_PUBLIC_API_URL=https://api.droply.app
+STORAGE_ENDPOINT=https://archivos.droply.app
+TELEGRAM_WEBHOOK_URL=https://api.droply.app/api/telegram/webhook
+MAIL_TRANSPORT=resend
+WEB_DOMAIN=droply.app
+API_DOMAIN=api.droply.app
+STORAGE_DOMAIN=archivos.droply.app
+```
+
+`NEXT_PUBLIC_API_URL` la incrusta Next **al construir**, no al arrancar: cambiar de dominio obliga a reconstruir el front.
+
+### Levantarlo
 
 ```bash
 docker compose --env-file .env -f infra/compose.yml --profile apps up -d --build
 ```
 
-Solo se publican al exterior los puertos que un navegador necesita alcanzar: la web, el API y el puerto S3 del almacenamiento. Postgres y la consola de administración quedan atados a `127.0.0.1`, así que para entrar hay que pasar por un túnel SSH.
+Las migraciones corren solas al arrancar el API, antes que el servidor. Si fallan, el contenedor no arranca, que es lo correcto.
 
-Falta poner un proxy inverso con TLS delante. Hoy los tres puertos públicos hablan HTTP en claro.
+### Comprobar que quedó bien
+
+En este orden, porque cada uno depende del anterior:
+
+```bash
+docker compose -f infra/compose.yml logs api | grep -i "prisma\|bot\|correo"
+```
+
+- **Que entra alguien.** Es lo que demuestra que `argon2` cargó. Si falla el login con un error del módulo nativo, es eso.
+- **Que el bot dice `Bot escuchando por webhook`.** Si dice sondeo largo, falta `TELEGRAM_WEBHOOK_URL`.
+- **Que el correo dice `salen por Resend`.** Si dice SMTP o `MAIL_TRANSPORT=log`, no va a llegar nada.
+- **Subir una imagen.** Es lo que prueba de golpe el certificado del almacenamiento y que la firma cuadra con el dominio.
+
+### La máquina es de 4 GB y un núcleo
+
+Los contenedores llevan techo de memoria en el compose y Postgres va ajustado a esa medida: con los valores de fábrica se comporta como si tuviera la máquina entera.
+
+Queda sin hacer **construir fuera de la máquina**. El swap es la red de seguridad, no la solución: con un núcleo el build tarda y compite con los envíos. Lo que corresponde es construir las imágenes en CI, publicarlas y que el servidor solo haga `pull`.
 
 ## Secretos
 

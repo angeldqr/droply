@@ -31,6 +31,37 @@ describe('loadEnv', () => {
     expect(env.STORAGE_SIGNED_URL_TTL_SECONDS).toBe(900);
   });
 
+  /*
+   * Cada transporte de correo pide lo suyo. Sin esto, un servidor arranca sano
+   * y no manda ni un correo hasta que alguien intenta registrarse: el peor
+   * momento para enterarse.
+   */
+  it('con resend exige la clave de la API', () => {
+    const sinClave = { ...validEnv, MAIL_TRANSPORT: 'resend' };
+
+    expect(() => loadEnv(apiEnvSchema, sinClave as NodeJS.ProcessEnv)).toThrowError(
+      /RESEND_API_KEY/,
+    );
+  });
+
+  it('con resend no exige nada de SMTP', () => {
+    const { SMTP_HOST: _descartado, ...sinSmtp } = validEnv;
+    const env = loadEnv(apiEnvSchema, {
+      ...sinSmtp,
+      MAIL_TRANSPORT: 'resend',
+      RESEND_API_KEY: 're_loquesea',
+    });
+
+    expect(env.MAIL_TRANSPORT).toBe('resend');
+    expect(env.SMTP_HOST).toBeUndefined();
+  });
+
+  it('con smtp exige el host', () => {
+    const { SMTP_HOST: _descartado, ...sinHost } = validEnv;
+
+    expect(() => loadEnv(apiEnvSchema, sinHost as NodeJS.ProcessEnv)).toThrowError(/SMTP_HOST/);
+  });
+
   it('nombra todas las variables que fallan, no solo la primera', () => {
     const broken = { ...validEnv, JWT_ACCESS_SECRET: 'corto', MAIL_FROM: 'no-es-un-mail' };
 

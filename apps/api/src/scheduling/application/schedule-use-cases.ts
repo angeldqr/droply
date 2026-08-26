@@ -205,14 +205,16 @@ export class UpdateSchedule {
       fields.endMinute !== schedule.endMinute ||
       fields.weekdays.join() !== schedule.weekdays.join();
 
-    const fixedMinutes = await this.fixed.minutesOf(scheduleId);
+    const fixedSlots = await this.fixed.listOf(scheduleId);
 
     /*
      * Estrechar la franja dejaría envíos fijos fuera de ella, y hay que decirlo
      * en vez de tirarlos en silencio: son horas que el dueño eligió a mano, y
      * perderlas por cambiar la franja se descubriría el día que no llegue nada.
      */
-    if (fixedMinutes.some((minute) => minute < fields.startMinute || minute > fields.endMinute)) {
+    if (
+      fixedSlots.some((slot) => slot.minute < fields.startMinute || slot.minute > fields.endMinute)
+    ) {
       return err(new FixedItemOutsideWindow());
     }
 
@@ -221,7 +223,7 @@ export class UpdateSchedule {
           windowOf(
             fields,
             await this.libraries.planItemsOf(schedule.libraryId, fields.kindFilter),
-            fixedMinutes,
+            fixedSlots,
           ),
           fields.timezone,
           this.clock.now(),

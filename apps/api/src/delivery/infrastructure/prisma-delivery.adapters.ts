@@ -129,7 +129,12 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
      * recalcularlo en todos esos sitios, y el día que se olvidara uno el
      * horario mandaría lo que ya no corresponde sin decir nada.
      */
-    const plan = planOf(rows, target.startMinute, target.endMinute);
+    const plan = planOf(
+      rows,
+      target.startMinute,
+      target.endMinute,
+      target.fixedItems.map((fixed) => fixed.minute),
+    );
 
     return plan.find((send) => send.minute === minute)?.itemId ?? null;
   }

@@ -8,19 +8,31 @@ import type { DailyWindow } from './ports';
  * plan del día: cada elemento aporta tantos momentos como veces al día pida, y
  * todos se intercalan dentro de la franja.
  *
- * `fixedMinutes` son las horas con un envío clavado. Entran aunque el plan no
- * las pise: si alguien pide algo a las 7:15, el horario tiene que despertarse a
- * las 7:15 aunque nada más salga a esa hora.
+ * `fixed` son los envíos clavados. Sus horas entran aunque el plan no las pise:
+ * si alguien pide algo a las 7:15, el horario tiene que despertarse a las 7:15
+ * aunque nada más salga a esa hora.
+ *
+ * **La rejilla tiene que calcular el mismo plan que el despacho**, o el horario
+ * se despierta a horas en las que no hay nada y calla en las que sí. Por eso
+ * acá se repiten las dos reglas que aplica `itemAt`: lo clavado sale del pool
+ * —tiene hora propia y no cuenta para sus veces al día— y sus minutos quedan
+ * reservados para que el reparto no los pise.
  */
 export function windowOf(
   fields: { weekdays: readonly number[]; startMinute: number; endMinute: number },
   items: readonly PlannedItem[] = [],
-  fixedMinutes: readonly number[] = [],
+  fixed: readonly FixedSlot[] = [],
 ): DailyWindow {
   return {
     weekdays: fields.weekdays,
-    minutes: gridOf(items, fields.startMinute, fields.endMinute, fixedMinutes),
+    minutes: gridOf(items, fields.startMinute, fields.endMinute, fixed),
   };
+}
+
+/** Una hora clavada: lo mínimo que la rejilla necesita saber de ella. */
+export interface FixedSlot {
+  readonly minute: number;
+  readonly itemId: string;
 }
 
 /** Todos los minutos del día en los que el horario tiene algo que enviar. */
@@ -28,11 +40,15 @@ export function gridOf(
   items: readonly PlannedItem[],
   startMinute: number,
   endMinute: number,
-  fixedMinutes: readonly number[] = [],
+  fixed: readonly FixedSlot[] = [],
 ): number[] {
+  const reserved = fixed.map((slot) => slot.minute);
+  const clavados = new Set(fixed.map((slot) => slot.itemId));
+  const pool = items.filter((item) => !clavados.has(item.id));
+
   const minutes = new Set<number>([
-    ...minutesOf(planOf(items, startMinute, endMinute)),
-    ...fixedMinutes,
+    ...minutesOf(planOf(pool, startMinute, endMinute, reserved)),
+    ...reserved,
   ]);
 
   // Sin nada que enviar el horario sigue vivo: mira a la hora de inicio para
