@@ -1,6 +1,6 @@
 'use client';
 
-import type { UploadTicketView } from '@droply/contracts';
+import type { UploadTicketView } from '@reconectate/contracts';
 
 /**
  * Manda el archivo al almacenamiento, no al API.

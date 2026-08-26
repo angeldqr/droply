@@ -24,11 +24,11 @@ export function verificationEmail(mail: VerificationMail): {
     'El enlace vence en una hora. Si no fuiste tú, ignora este mensaje: sin abrirlo, la cuenta no se activa.';
 
   return {
-    subject: 'Confirma tu correo en Droply',
+    subject: 'Confirma tu correo en Reconéctate',
     text: [
       `Hola ${mail.displayName},`,
       '',
-      'Para terminar de crear tu cuenta en Droply, abre este enlace:',
+      'Para terminar de crear tu cuenta en Reconéctate, abre este enlace:',
       mail.verificationUrl,
       '',
       cierre,
@@ -57,7 +57,7 @@ export function passwordResetEmail(mail: PasswordResetMail): {
     'El enlace vence en una hora y sirve una sola vez. Si no lo pediste, ignora este mensaje: tu contraseña sigue siendo la de siempre.';
 
   return {
-    subject: 'Vuelve a entrar a Droply',
+    subject: 'Vuelve a entrar a Reconéctate',
     text: [
       `Hola ${mail.displayName},`,
       '',
@@ -87,7 +87,7 @@ function shell(content: {
 <html lang="es">
   <body style="margin:0;padding:32px;background:${FONDO};font-family:ui-sans-serif,system-ui,sans-serif;color:${TINTA}">
     <div style="max-width:480px;margin:0 auto;background:${PAPEL};border:1px solid ${TINTA};padding:32px">
-      <p style="margin:0 0 24px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:${SUAVE}">Droply</p>
+      <p style="margin:0 0 24px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:${SUAVE}">Reconéctate</p>
       <p style="margin:0 0 16px;font-size:16px">Hola ${escapeHtml(content.displayName)},</p>
       <p style="margin:0 0 24px;font-size:16px;line-height:1.6">${escapeHtml(content.lead)}</p>
       <p style="margin:0 0 24px">

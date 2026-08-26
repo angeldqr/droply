@@ -8,7 +8,7 @@ import type {
   ScheduleView,
   SetFixedItemsInput,
   UpdateScheduleInput,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 

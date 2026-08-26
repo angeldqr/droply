@@ -3,7 +3,7 @@ import {
   createRecipientSchema,
   type CreateRecipientInput,
   type RecipientView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';

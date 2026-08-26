@@ -6,7 +6,7 @@ import {
   LIBRARY_DESCRIPTION_MAX_LENGTH,
   LIBRARY_NAME_MAX_LENGTH,
   type LibrarySummary,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { LibraryBig, Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { FormEvent } from 'react';

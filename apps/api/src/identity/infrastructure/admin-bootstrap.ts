@@ -56,7 +56,7 @@ export class AdminBootstrap implements OnApplicationBootstrap {
 
       existing.promoteToAdmin();
       await this.users.save(existing);
-      this.logger.log(`${this.config.email} ahora administra Droply.`);
+      this.logger.log(`${this.config.email} ahora administra Reconéctate.`);
 
       return;
     }

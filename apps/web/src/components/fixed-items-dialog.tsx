@@ -6,7 +6,7 @@ import {
   formatDayMinute,
   type LibraryItemView,
   type ScheduleView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { Pin, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';

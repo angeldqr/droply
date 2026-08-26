@@ -1,6 +1,6 @@
 'use client';
 
-import type { RecipientView } from '@droply/contracts';
+import type { RecipientView } from '@reconectate/contracts';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

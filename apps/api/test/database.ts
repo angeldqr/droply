@@ -14,7 +14,7 @@ import { config } from 'dotenv';
  * debería tener. Un esquema lo crea cualquiera que sea dueño de la base, así
  * que esto corre sin tocar los permisos de Postgres.
  */
-export const TEST_SCHEMA = 'droply_test';
+export const TEST_SCHEMA = 'reconectate_test';
 
 /** La URL de la aplicación, apuntada al esquema de pruebas. */
 export function testDatabaseUrl(): string {

@@ -1,5 +1,5 @@
-import { baseConfig } from '@droply/tooling/eslint/base';
-import { cleanArchitectureConfig } from '@droply/tooling/eslint/clean-architecture';
+import { baseConfig } from '@reconectate/tooling/eslint/base';
+import { cleanArchitectureConfig } from '@reconectate/tooling/eslint/clean-architecture';
 
 export default [
   ...baseConfig,

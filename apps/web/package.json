@@ -1,5 +1,5 @@
 {
-  "name": "@droply/web",
+  "name": "@reconectate/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@droply/contracts": "workspace:*",
-    "@droply/ui": "workspace:*",
+    "@reconectate/contracts": "workspace:*",
+    "@reconectate/ui": "workspace:*",
     "@tabler/icons-react": "^3.46.0",
     "@tanstack/react-query": "^5.62.11",
     "blendy": "^0.0.1",
@@ -32,7 +32,7 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
-    "@droply/tooling": "workspace:*",
+    "@reconectate/tooling": "workspace:*",
     "@eslint/eslintrc": "^3.2.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.2",

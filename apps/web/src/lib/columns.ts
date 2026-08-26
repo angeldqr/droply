@@ -1,4 +1,4 @@
-import type { ItemKind } from '@droply/contracts';
+import type { ItemKind } from '@reconectate/contracts';
 
 /**
  * El color de cada columna, con su tinta.

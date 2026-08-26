@@ -5,7 +5,7 @@ import {
   RECIPIENT_LABEL_MAX_LENGTH,
   type RecipientStatus,
   type RecipientView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { Link2, MailCheck, Plus, Send, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';

@@ -1,9 +1,9 @@
-import { channel, RECIPIENT_LABEL_MAX_LENGTH } from '@droply/contracts';
+import { channel, RECIPIENT_LABEL_MAX_LENGTH } from '@reconectate/contracts';
 import { describe, expect, it } from 'vitest';
 import { LABEL_MAX_LENGTH, type RecipientChannel } from './recipient';
 
 /**
- * El núcleo no puede importar `@droply/contracts`, así que lo que el contrato
+ * El núcleo no puede importar `@reconectate/contracts`, así que lo que el contrato
  * valida en el borde está escrito otra vez acá adentro. Si se separan, el front
  * dejaría escribir algo que el servidor después rechaza sin explicación, o
  * peor: guardaríamos un canal que el contrato ni siquiera sabe nombrar.

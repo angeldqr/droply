@@ -1,3 +1,3 @@
-import { baseConfig } from '@droply/tooling/eslint/base';
+import { baseConfig } from '@reconectate/tooling/eslint/base';
 
 export default [...baseConfig];

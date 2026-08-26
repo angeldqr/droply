@@ -6,8 +6,8 @@ import type { PrismaService } from '../src/platform/prisma/prisma.service';
 import { RunDueSchedules } from '../src/scheduling/application/run-due-schedules';
 import { resetDatabase, startApi, type TestApi } from './api';
 
-const ADMIN = { email: 'quien.administra@droply.test', password: 'una-contrasena-larga' };
-const ANA = { email: 'ana@droply.test', password: 'otra-contrasena-larga' };
+const ADMIN = { email: 'quien.administra@reconectate.test', password: 'una-contrasena-larga' };
+const ANA = { email: 'ana@reconectate.test', password: 'otra-contrasena-larga' };
 const CHAT = '987654321';
 
 let api: TestApi;

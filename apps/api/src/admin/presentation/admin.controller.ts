@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Param } from '@nestjs/common';
-import type { AccountDetailView, AccountSummaryView } from '@droply/contracts';
+import type { AccountDetailView, AccountSummaryView } from '@reconectate/contracts';
 import { Roles } from '../../platform/http/roles.decorator';
 import { UserId } from '../../shared/identifiers';
 import { InvalidInputError, NotFoundError } from '../../shared/domain-error';

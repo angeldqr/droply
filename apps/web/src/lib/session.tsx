@@ -1,6 +1,6 @@
 'use client';
 
-import type { AuthenticatedUser, LoginInput, SessionResponse } from '@droply/contracts';
+import type { AuthenticatedUser, LoginInput, SessionResponse } from '@reconectate/contracts';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, renewSession, setAccessToken, setSessionLostHandler } from './api';

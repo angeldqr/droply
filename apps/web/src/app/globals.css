@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@droply/ui/tokens.css';
+@import '@reconectate/ui/tokens.css';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
@@ -104,7 +104,7 @@
 }
 /*
  * ---------------------------------------------------------------------------
- * Droply sobre shadcn
+ * Reconéctate sobre shadcn
  * ---------------------------------------------------------------------------
  *
  * `shadcn init` deja su paleta neutra: todo gris. Acá se reasignan sus

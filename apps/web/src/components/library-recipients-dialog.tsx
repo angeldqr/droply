@@ -1,6 +1,6 @@
 'use client';
 
-import type { LibrarySummary } from '@droply/contracts';
+import type { LibrarySummary } from '@reconectate/contracts';
 import { Send, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

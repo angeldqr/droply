@@ -1,5 +1,5 @@
 {
-  "extends": "@droply/tooling/tsconfig/next.json",
+  "extends": "@reconectate/tooling/tsconfig/next.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

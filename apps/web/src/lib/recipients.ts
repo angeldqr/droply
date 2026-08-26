@@ -1,6 +1,6 @@
 'use client';
 
-import type { CreateRecipientInput, RecipientView } from '@droply/contracts';
+import type { CreateRecipientInput, RecipientView } from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 

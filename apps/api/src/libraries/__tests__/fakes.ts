@@ -181,7 +181,7 @@ export class InMemoryMediaStorage implements MediaStorage {
     this.tickets.set(key, { mimeType, maxBytes });
 
     return Promise.resolve({
-      url: 'https://almacenamiento.invalido/droply-media',
+      url: 'https://almacenamiento.invalido/reconectate-media',
       fields: { key, 'Content-Type': mimeType },
     });
   }
@@ -205,7 +205,7 @@ export class InMemoryMediaStorage implements MediaStorage {
   }
 
   linkTo(key: string): Promise<string> {
-    return Promise.resolve(`https://almacenamiento.invalido/droply-media/${key}?firma=x`);
+    return Promise.resolve(`https://almacenamiento.invalido/reconectate-media/${key}?firma=x`);
   }
 
   remove(key: string): Promise<void> {

@@ -2,8 +2,8 @@ import { jwtVerify, SignJWT } from 'jose';
 import { UserId } from '../../shared/identifiers';
 import type { AccessTokenClaims, AccessTokenIssuer } from '../domain/ports';
 
-const ISSUER = 'droply';
-const AUDIENCE = 'droply-web';
+const ISSUER = 'reconectate';
+const AUDIENCE = 'reconectate-web';
 
 export class JwtAccessTokenIssuer implements AccessTokenIssuer {
   private readonly key: Uint8Array;

@@ -1,4 +1,4 @@
-# droply
+# Reconéctate
 
 Arma bibliotecas de audios, videos, imágenes y textos, y deja que un bot envíe uno al azar a quien indiques, en el horario que elijas.
 
@@ -32,7 +32,7 @@ El token del bot lo entrega [@BotFather](https://t.me/BotFather) con `/newbot`.
 
 Necesitas Postgres 18 en ejecución, alcanzable desde la URL que configuraste en el `.env`.
 
-El almacenamiento compatible con S3 lo da el binario de [MinIO](https://dl.min.io/server/minio/release/windows-amd64/minio.exe), y **no hace falta lanzarlo a mano**: `pnpm --filter @droply/api dev` lo levanta suelto antes de arrancar, crea el bucket si falta y no lo vuelve a tocar. Deja el binario en `.tools/minio.exe` dentro del repositorio o en `%USERPROFILE%\minio\minio.exe`, o apunta a él con `MINIO_BINARY` en el `.env`. Para levantarlo por separado: `pnpm run dev:storage`.
+El almacenamiento compatible con S3 lo da el binario de [MinIO](https://dl.min.io/server/minio/release/windows-amd64/minio.exe), y **no hace falta lanzarlo a mano**: `pnpm --filter @reconectate/api dev` lo levanta suelto antes de arrancar, crea el bucket si falta y no lo vuelve a tocar. Deja el binario en `.tools/minio.exe` dentro del repositorio o en `%USERPROFILE%\minio\minio.exe`, o apunta a él con `MINIO_BINARY` en el `.env`. Para levantarlo por separado: `pnpm run dev:storage`.
 
 La consola de administración queda en http://localhost:9001. El bucket se llama como diga `STORAGE_BUCKET` y se deja privado: el contenido solo sale por URL firmada.
 
@@ -49,7 +49,7 @@ Docker no hace falta en desarrollo, solo para el despliegue.
 Crea la base y el rol una sola vez, tomando la contraseña del propio `.env` para no escribirla en ningún lado:
 
 ```bash
-psql -U postgres -h 127.0.0.1 -v pw="$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)" -c "CREATE ROLE droply LOGIN PASSWORD :'pw';" -c "CREATE DATABASE droply OWNER droply;"
+psql -U postgres -h 127.0.0.1 -v pw="$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)" -c "CREATE ROLE reconectate LOGIN PASSWORD :'pw';" -c "CREATE DATABASE reconectate OWNER reconectate;"
 ```
 
 Después:
@@ -103,9 +103,9 @@ A la red pública sale **solo Caddy**, por el 80 y el 443. Postgres, MinIO y las
 
 | Nombre | Qué atiende |
 | --- | --- |
-| `droply.app` | la aplicación |
-| `api.droply.app` | el API |
-| `archivos.droply.app` | el almacenamiento |
+| `reconectate.cloud` | la aplicación |
+| `api.reconectate.cloud` | el API |
+| `archivos.reconectate.cloud` | el almacenamiento |
 
 El tercero no es un lujo: el navegador sube los archivos directo ahí, y una petición en claro desde una página HTTPS la bloquea el propio navegador.
 
@@ -129,15 +129,15 @@ openssl rand -base64 32   # ENCRYPTION_KEY (32 bytes exactos)
 Y las URLs, que en producción no son las de desarrollo:
 
 ```
-WEB_URL=https://droply.app
-API_URL=https://api.droply.app
-NEXT_PUBLIC_API_URL=https://api.droply.app
-STORAGE_ENDPOINT=https://archivos.droply.app
-TELEGRAM_WEBHOOK_URL=https://api.droply.app/api/telegram/webhook
+WEB_URL=https://reconectate.cloud
+API_URL=https://api.reconectate.cloud
+NEXT_PUBLIC_API_URL=https://api.reconectate.cloud
+STORAGE_ENDPOINT=https://archivos.reconectate.cloud
+TELEGRAM_WEBHOOK_URL=https://api.reconectate.cloud/api/telegram/webhook
 MAIL_TRANSPORT=resend
-WEB_DOMAIN=droply.app
-API_DOMAIN=api.droply.app
-STORAGE_DOMAIN=archivos.droply.app
+WEB_DOMAIN=reconectate.cloud
+API_DOMAIN=api.reconectate.cloud
+STORAGE_DOMAIN=archivos.reconectate.cloud
 ```
 
 `NEXT_PUBLIC_API_URL` la incrusta Next **al construir**, no al arrancar: cambiar de dominio obliga a reconstruir el front.

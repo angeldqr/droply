@@ -23,7 +23,7 @@ export function AuthShell({
           href="/"
           className="text-muted-foreground hover:text-foreground font-mono text-xs uppercase tracking-[0.2em] transition-colors"
         >
-          Droply
+          Reconéctate
         </Link>
 
         <Card className="border-border mt-6 border">

@@ -3,7 +3,7 @@
 /**
  * Encoge una imagen en el navegador antes de subirla.
  *
- * El techo de diez megas no es de Droply: es lo que acepta el Bot API de
+ * El techo de diez megas no es de Reconéctate: es lo que acepta el Bot API de
  * Telegram en una foto. Antes ese techo rechazaba el archivo y el usuario tenía
  * que arreglárselas; ahora se comprime acá y el techo se aplica al resultado.
  *

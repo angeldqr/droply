@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { apiEnvSchema, loadEnv, type ApiEnv } from '@droply/contracts';
+import { apiEnvSchema, loadEnv, type ApiEnv } from '@reconectate/contracts';
 
 export const ENV = Symbol('ApiEnv');
 export type { ApiEnv };

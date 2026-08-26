@@ -1,5 +1,5 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import type { DeliveryRecordView } from '@droply/contracts';
+import type { DeliveryRecordView } from '@reconectate/contracts';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import type { UserId } from '../../shared/identifiers';
 import { DELIVERY_LOG, type DeliveryLog } from '../domain/ports';

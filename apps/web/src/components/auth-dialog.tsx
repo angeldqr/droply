@@ -42,7 +42,7 @@ export function AuthDialog({ modo }: { modo: 'entrar' }) {
         <div>
           <DialogHeader className="sr-only">
             <DialogTitle>Entrar</DialogTitle>
-            <DialogDescription>Entra con tu cuenta de Droply.</DialogDescription>
+            <DialogDescription>Entra con tu cuenta de Reconéctate.</DialogDescription>
           </DialogHeader>
 
           <SignInForm

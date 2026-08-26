@@ -1,5 +1,5 @@
 {
-  "name": "droply",
+  "name": "reconectate",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
@@ -22,7 +22,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@droply/tooling": "workspace:*",
+    "@reconectate/tooling": "workspace:*",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.11",
     "prettier": "^3.4.2",

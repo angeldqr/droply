@@ -4,7 +4,7 @@ import {
   LIBRARY_DESCRIPTION_MAX_LENGTH,
   LIBRARY_NAME_MAX_LENGTH,
   type LibrarySummary,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';

@@ -1,6 +1,6 @@
 'use client';
 
-import { COLUMN_ORDER, countLabel } from '@droply/contracts';
+import { COLUMN_ORDER, countLabel } from '@reconectate/contracts';
 import { AppShell } from '@/components/app-shell';
 import { LibraryBoard } from '@/components/library-board';
 import { RequireSession } from '@/components/require-session';

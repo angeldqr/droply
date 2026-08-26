@@ -60,7 +60,7 @@ export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: Reac
     <div className="flex min-h-dvh w-full flex-col md:flex-row">
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className="bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:h-dvh md:justify-between md:gap-8">
-          <DroplyNav />
+          <ReconectateNav />
         </SidebarBody>
       </Sidebar>
 
@@ -120,7 +120,7 @@ const ADMIN_SECTION = {
   items: [{ href: '/admin', label: 'Administración', icon: ShieldCheck }],
 } as const;
 
-function DroplyNav() {
+function ReconectateNav() {
   const { user, signOut } = useSession();
   const pathname = usePathname();
   const groups = [...SECTIONS, ...(user?.role === 'ADMIN' ? [ADMIN_SECTION] : [])];
@@ -283,7 +283,7 @@ function Wordmark() {
         aria-hidden
         className="bg-sidebar-primary size-7 shrink-0 rounded-full rounded-tl-sm shadow-sm"
       />
-      <Reveal className="font-display text-lg font-semibold">Droply</Reveal>
+      <Reveal className="font-display text-lg font-semibold">Reconéctate</Reveal>
     </Link>
   );
 }

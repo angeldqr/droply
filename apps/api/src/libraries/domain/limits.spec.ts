@@ -3,13 +3,13 @@ import {
   LIBRARY_NAME_MAX_LENGTH,
   TEXT_ITEM_MAX_LENGTH,
   TIMES_PER_DAY_MAX as TIMES_PER_DAY_MAX_CONTRACT,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { describe, expect, it } from 'vitest';
 import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from './library';
 import { TEXT_MAX_LENGTH, TIMES_PER_DAY_MAX } from './library-item';
 
 /**
- * El núcleo no puede importar `@droply/contracts`, así que cada límite está
+ * El núcleo no puede importar `@reconectate/contracts`, así que cada límite está
  * escrito dos veces: una para validar en el borde y avisar al usuario mientras
  * escribe, otra para hacerlo cumplir en el dominio. Si se separan, el front
  * dejaría escribir algo que el servidor después rechaza sin explicación.

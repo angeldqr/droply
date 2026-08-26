@@ -32,7 +32,7 @@ describe('Email', () => {
 
   it('acepta direcciones legítimas que un regex estricto suele romper', () => {
     for (const entrada of [
-      'ana+droply@ejemplo.com',
+      'ana+reconectate@ejemplo.com',
       "o'brien@ejemplo.com",
       'ana_perez@sub.dominio.com.co',
     ]) {

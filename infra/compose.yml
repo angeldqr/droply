@@ -1,4 +1,4 @@
-name: droply
+name: reconectate
 
 # Este archivo es el mecanismo de deploy en la máquina virtual.
 #
@@ -26,15 +26,16 @@ services:
       -c max_connections=30
     mem_limit: 1g
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-droply}
+      POSTGRES_USER: ${POSTGRES_USER:-reconectate}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
-      POSTGRES_DB: ${POSTGRES_DB:-droply}
+      POSTGRES_DB: ${POSTGRES_DB:-reconectate}
     ports:
       - '127.0.0.1:5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-droply} -d ${POSTGRES_DB:-droply}']
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-reconectate} -d ${POSTGRES_DB:-reconectate}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -72,7 +73,7 @@ services:
       minio:
         condition: service_healthy
     environment:
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-droply-media}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-reconectate-media}
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
       STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
     entrypoint: >
@@ -108,7 +109,7 @@ services:
     environment:
       # Dentro de la red de compose los servicios se llaman por su nombre, no
       # por localhost.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-droply}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-droply}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reconectate}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-reconectate}?schema=public
     # Sin puertos publicados: se llega por Caddy. Dentro de la red de compose
     # los servicios se alcanzan por su nombre.
     expose:

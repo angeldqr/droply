@@ -5,7 +5,7 @@ import type {
   AccountSummaryView,
   RegisterInput,
   TemporaryPasswordView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 

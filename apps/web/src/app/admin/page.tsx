@@ -4,7 +4,7 @@ import {
   PASSWORD_MIN_LENGTH,
   type AccountSummaryView,
   type RegisterInput,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { ChevronRight, ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -58,7 +58,7 @@ function Contents() {
       <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
         <Alert variant="destructive">
           <AlertTitle>Esta sección no es para tu cuenta</AlertTitle>
-          <AlertDescription>Solo quien administra Droply puede entrar acá.</AlertDescription>
+          <AlertDescription>Solo quien administra Reconéctate puede entrar acá.</AlertDescription>
         </Alert>
       </div>
     );

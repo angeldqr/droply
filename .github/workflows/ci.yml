@@ -36,7 +36,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm run build --filter=@droply/contracts
+      - run: pnpm run build --filter=@reconectate/contracts
 
       - run: pnpm run lint
 
@@ -61,13 +61,13 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: droply
-          POSTGRES_PASSWORD: droply
-          POSTGRES_DB: droply
+          POSTGRES_USER: reconectate
+          POSTGRES_PASSWORD: reconectate
+          POSTGRES_DB: reconectate
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U droply"
+          --health-cmd "pg_isready -U reconectate"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -84,12 +84,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm run build --filter=@droply/contracts
+      - run: pnpm run build --filter=@reconectate/contracts
 
       # Explícito y no confiando en el `postinstall` de @prisma/client: pnpm 10
       # bloquea los scripts de las dependencias salvo que se aprueben, y estas
       # pruebas necesitan el cliente y su motor, no solo los tipos.
-      - run: pnpm --filter @droply/api exec prisma generate
+      - run: pnpm --filter @reconectate/api exec prisma generate
 
       # Los secretos se generan en el momento en vez de escribirlos acá.
       # Ninguno protege nada —la base se tira al terminar el trabajo— y así no
@@ -101,19 +101,19 @@ jobs:
           echo "TELEGRAM_WEBHOOK_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
           echo "TELEGRAM_BOT_TOKEN=123456789:$(openssl rand -hex 20 | cut -c1-35)" >> "$GITHUB_ENV"
 
-      - run: pnpm --filter @droply/api test:e2e
+      - run: pnpm --filter @reconectate/api test:e2e
         env:
           NODE_ENV: test
-          DATABASE_URL: postgresql://droply:droply@localhost:5432/droply?schema=public
+          DATABASE_URL: postgresql://reconectate:reconectate@localhost:5432/reconectate?schema=public
           # Telegram y el correo van doblados en las propias pruebas, así que
           # estas variables solo tienen que existir para que el esquema pase.
-          TELEGRAM_BOT_USERNAME: droply_bot
+          TELEGRAM_BOT_USERNAME: reconectate_bot
           STORAGE_ENDPOINT: http://localhost:9000
           STORAGE_REGION: us-east-1
-          STORAGE_BUCKET: droply-media
+          STORAGE_BUCKET: reconectate-media
           STORAGE_ACCESS_KEY: sin-uso
           STORAGE_SECRET_KEY: sin-uso
           SMTP_HOST: localhost
-          MAIL_FROM: no-responder@droply.test
+          MAIL_FROM: no-responder@reconectate.test
           WEB_URL: http://localhost:3000
           API_URL: http://localhost:3001

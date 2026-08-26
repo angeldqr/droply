@@ -31,7 +31,7 @@ import {
   type SetTimesPerDayInput,
   type RequestUploadInput,
   type StartUploadResult,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { InvalidInputError } from '../../shared/domain-error';

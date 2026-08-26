@@ -5,21 +5,21 @@ import { apiEnvSchema } from './schema.js';
 
 const validEnv = {
   NODE_ENV: 'test',
-  DATABASE_URL: 'postgresql://droply:secreto@localhost:5432/droply',
+  DATABASE_URL: 'postgresql://reconectate:secreto@localhost:5432/reconectate',
   STORAGE_ENDPOINT: 'http://localhost:9000',
   STORAGE_REGION: 'us-east-1',
-  STORAGE_BUCKET: 'droply-media',
+  STORAGE_BUCKET: 'reconectate-media',
   STORAGE_ACCESS_KEY: 'minio-access',
   STORAGE_SECRET_KEY: 'minio-secret',
   ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
   TELEGRAM_BOT_TOKEN: `123456789:${'a'.repeat(35)}`,
-  TELEGRAM_BOT_USERNAME: 'droply_bot',
+  TELEGRAM_BOT_USERNAME: 'reconectate_bot',
   WEB_URL: 'http://localhost:3000',
   API_URL: 'http://localhost:3001',
   JWT_ACCESS_SECRET: 'x'.repeat(48),
   TELEGRAM_WEBHOOK_SECRET: 'z'.repeat(48),
   SMTP_HOST: 'localhost',
-  MAIL_FROM: 'no-responder@droply.app',
+  MAIL_FROM: 'no-responder@reconectate.cloud',
 };
 
 describe('loadEnv', () => {

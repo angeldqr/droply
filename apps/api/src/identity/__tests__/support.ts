@@ -54,7 +54,7 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
     mailer,
     ids,
     clock,
-    'https://droply.test',
+    'https://reconectate.test',
   );
 
   const sessions = new SessionIssuer(
@@ -72,7 +72,7 @@ export function buildIdentity(startingAt = new Date('2026-08-17T09:00:00.000Z'))
     mailer,
     ids,
     clock,
-    'https://droply.test',
+    'https://reconectate.test',
   );
 
   /** Un almacenamiento de mentira que solo apunta a quién se le vació. */

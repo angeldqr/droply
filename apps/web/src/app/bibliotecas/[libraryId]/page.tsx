@@ -1,6 +1,6 @@
 'use client';
 
-import { COLUMN_ORDER, countLabel } from '@droply/contracts';
+import { COLUMN_ORDER, countLabel } from '@reconectate/contracts';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';

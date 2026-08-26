@@ -1,6 +1,6 @@
 'use client';
 
-import { COLUMN_LABELS, type ItemKind, type LibraryItemView } from '@droply/contracts';
+import { COLUMN_LABELS, type ItemKind, type LibraryItemView } from '@reconectate/contracts';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

@@ -8,7 +8,7 @@ importers:
 
   .:
     devDependencies:
-      '@droply/tooling':
+      '@reconectate/tooling':
         specifier: workspace:*
         version: link:packages/tooling
       husky:
@@ -41,7 +41,7 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1112.0
         version: 3.1112.0
-      '@droply/contracts':
+      '@reconectate/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       '@fastify/cookie':
@@ -102,7 +102,7 @@ importers:
         specifier: ^4.0.5
         version: 4.4.3
     devDependencies:
-      '@droply/tooling':
+      '@reconectate/tooling':
         specifier: workspace:*
         version: link:../../packages/tooling
       '@nestjs/cli':
@@ -141,10 +141,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@droply/contracts':
+      '@reconectate/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@droply/ui':
+      '@reconectate/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tabler/icons-react':
@@ -202,7 +202,7 @@ importers:
         specifier: ^4.0.5
         version: 4.4.3
     devDependencies:
-      '@droply/tooling':
+      '@reconectate/tooling':
         specifier: workspace:*
         version: link:../../packages/tooling
       '@eslint/eslintrc':
@@ -239,7 +239,7 @@ importers:
         specifier: ^4.0.5
         version: 4.4.3
     devDependencies:
-      '@droply/tooling':
+      '@reconectate/tooling':
         specifier: workspace:*
         version: link:../tooling
       '@types/node':
@@ -291,7 +291,7 @@ importers:
         specifier: ^2.5.5
         version: 2.6.1
     devDependencies:
-      '@droply/tooling':
+      '@reconectate/tooling':
         specifier: workspace:*
         version: link:../tooling
       eslint:

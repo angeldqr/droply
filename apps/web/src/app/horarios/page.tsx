@@ -9,7 +9,7 @@ import {
   SENDER_NAME_MAX_LENGTH,
   WEEKDAYS,
   type ScheduleView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { CalendarClock, Pin, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';

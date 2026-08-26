@@ -24,7 +24,9 @@ export default function EntrarPage() {
           >
             ¿Olvidaste tu contraseña?
           </Link>
-          <span className="mt-2 block">¿No tienes cuenta? Pídesela a quien administra Droply.</span>
+          <span className="mt-2 block">
+            ¿No tienes cuenta? Pídesela a quien administra Reconéctate.
+          </span>
         </>
       }
     >

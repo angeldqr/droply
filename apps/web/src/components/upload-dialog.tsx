@@ -6,7 +6,7 @@ import {
   megabytes,
   requestUploadSchema,
   type UploadableKind,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { MorphDialogContent } from '@/components/morph-dialog-content';

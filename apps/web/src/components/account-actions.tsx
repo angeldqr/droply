@@ -1,6 +1,6 @@
 'use client';
 
-import type { AccountSummaryView } from '@droply/contracts';
+import type { AccountSummaryView } from '@reconectate/contracts';
 import { KeyRound, MoreHorizontal, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

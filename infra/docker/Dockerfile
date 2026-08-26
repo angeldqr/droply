@@ -44,11 +44,11 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @droply/contracts build \
-  && pnpm --filter @droply/api exec prisma generate
+RUN pnpm --filter @reconectate/contracts build \
+  && pnpm --filter @reconectate/api exec prisma generate
 
 FROM build AS build-api
-RUN pnpm --filter @droply/api build
+RUN pnpm --filter @reconectate/api build
 
 FROM build AS build-web
 # Next incrusta las `NEXT_PUBLIC_*` en el JavaScript que descarga el navegador,
@@ -57,7 +57,7 @@ FROM build AS build-web
 # entra no es nadie. Cambiar de dominio obliga a reconstruir el front.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN pnpm --filter @droply/web build
+RUN pnpm --filter @reconectate/web build
 
 # --- destinos ----------------------------------------------------------------
 

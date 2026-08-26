@@ -25,7 +25,7 @@ const sans = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: 'Droply',
+  title: 'Reconéctate',
   description: 'Bibliotecas de contenido que llegan solas, a la hora que elijas.',
 };
 

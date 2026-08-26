@@ -6,7 +6,7 @@
 #
 # Tres nombres y no uno, y los tres tienen que colgar del mismo dominio
 # registrable: la cookie de refresco sale con `sameSite=strict`, asi que
-# `droply.app` y `api.droply.app` valen, pero dos dominios distintos no.
+# `reconectate.cloud` y `api.reconectate.cloud` valen, pero dos dominios distintos no.
 
 {
 	email {$ACME_EMAIL}

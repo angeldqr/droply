@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { UserRole } from '@droply/contracts';
+import type { UserRole } from '@reconectate/contracts';
 
 export const REQUIRED_ROLE = 'http:role';
 

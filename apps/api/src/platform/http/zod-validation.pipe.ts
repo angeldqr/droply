@@ -4,7 +4,7 @@ import { InvalidInputError } from '../../shared/domain-error';
 
 /**
  * Valida el cuerpo, los params o el query contra un esquema de
- * `@droply/contracts` y devuelve el dato ya tipado. Lo que no está en el
+ * `@reconectate/contracts` y devuelve el dato ya tipado. Lo que no está en el
  * esquema se descarta, así nada inesperado llega al caso de uso.
  */
 @Injectable()

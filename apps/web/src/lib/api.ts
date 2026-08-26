@@ -1,4 +1,4 @@
-import type { SessionResponse } from '@droply/contracts';
+import type { SessionResponse } from '@reconectate/contracts';
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 /**

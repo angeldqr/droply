@@ -265,7 +265,7 @@ model Schedule {
   /// Con qué nombre firma este horario sus envios. Nulo = el nombre de la
   /// cuenta, que es el caso normal. Existe porque quien manda no siempre es el
   /// dueño de la cuenta: un padre que le programa cosas a su hijo quiere que
-  /// llegue firmado como el, no como Droply.
+  /// llegue firmado como el, no como Reconéctate.
   senderName String? @map("sender_name")
 
   /// Si esta puesto, solo se eligen elementos de esa columna.

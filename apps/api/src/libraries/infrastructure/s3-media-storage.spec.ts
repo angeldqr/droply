@@ -9,7 +9,7 @@ import { S3MediaStorage } from './s3-media-storage';
 const APAGADO = {
   STORAGE_ENDPOINT: 'http://127.0.0.1:1',
   STORAGE_REGION: 'us-east-1',
-  STORAGE_BUCKET: 'droply-media',
+  STORAGE_BUCKET: 'reconectate-media',
   STORAGE_ACCESS_KEY: 'llave',
   STORAGE_SECRET_KEY: 'secreto',
   STORAGE_SIGNED_URL_TTL_SECONDS: 900,
@@ -34,7 +34,7 @@ describe('el almacenamiento con el servicio caído', () => {
   it('firmar no toca la red, así que sigue funcionando', async () => {
     // Firmar es criptografía local: la pantalla puede seguir mostrando la
     // biblioteca aunque el almacenamiento esté caído.
-    await expect(storage.linkTo('ana/biblioteca/elemento')).resolves.toContain('droply-media');
+    await expect(storage.linkTo('ana/biblioteca/elemento')).resolves.toContain('reconectate-media');
   });
 
   it('en cambio inspeccionar sí necesita la red y avisa del fallo', async () => {

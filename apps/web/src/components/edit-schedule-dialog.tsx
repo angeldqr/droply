@@ -9,7 +9,7 @@ import {
   WEEKDAY_LABELS,
   WEEKDAYS,
   type ScheduleView,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { Pencil } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';

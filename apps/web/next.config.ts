@@ -4,7 +4,7 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@droply/ui', '@droply/contracts'],
+  transpilePackages: ['@reconectate/ui', '@reconectate/contracts'],
   // Empaqueta el servidor con solo las dependencias que usa, para la imagen.
   output: 'standalone',
   outputFileTracingRoot: join(import.meta.dirname, '../../'),

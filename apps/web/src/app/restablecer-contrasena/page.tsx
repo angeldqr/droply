@@ -1,6 +1,6 @@
 'use client';
 
-import { PASSWORD_MIN_LENGTH } from '@droply/contracts';
+import { PASSWORD_MIN_LENGTH } from '@reconectate/contracts';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';

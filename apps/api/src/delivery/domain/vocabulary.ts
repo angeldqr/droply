@@ -1,7 +1,7 @@
 /**
  * Los vocabularios que este contexto necesita nombrar.
  *
- * Son copias: el núcleo no puede importar `@droply/contracts` ni el dominio de
+ * Son copias: el núcleo no puede importar `@reconectate/contracts` ni el dominio de
  * otro contexto, así que las columnas y el resultado de un envío están escritos
  * otra vez acá. El test guardián de al lado los ata al contrato y falla si
  * alguno se separa.

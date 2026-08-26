@@ -1,6 +1,6 @@
 /**
  * Las cuatro columnas del tablero. Se repite acá en vez de importarse de
- * `@droply/contracts` porque el núcleo no depende de paquetes externos; un test
+ * `@reconectate/contracts` porque el núcleo no depende de paquetes externos; un test
  * comprueba que las dos listas coincidan.
  */
 export const ITEM_KINDS = ['AUDIO', 'VIDEO', 'IMAGE', 'TEXT'] as const;

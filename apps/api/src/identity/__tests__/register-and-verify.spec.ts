@@ -10,7 +10,7 @@ describe('registro', () => {
 
     expect(result.ok).toBe(true);
     expect(world.mailer.sent).toHaveLength(1);
-    expect(world.mailer.lastUrl).toContain('https://droply.test/verificar-correo?token=');
+    expect(world.mailer.lastUrl).toContain('https://reconectate.test/verificar-correo?token=');
   });
 
   it('normaliza el correo para que no entren dos cuentas de la misma persona', async () => {

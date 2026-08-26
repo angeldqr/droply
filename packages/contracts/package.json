@@ -1,5 +1,5 @@
 {
-  "name": "@droply/contracts",
+  "name": "@reconectate/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -27,7 +27,7 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
-    "@droply/tooling": "workspace:*",
+    "@reconectate/tooling": "workspace:*",
     "@types/node": "^22.10.2",
     "eslint": "^9.17.0",
     "tsup": "^8.3.5",

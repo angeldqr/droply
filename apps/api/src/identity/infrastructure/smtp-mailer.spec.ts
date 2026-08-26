@@ -9,15 +9,19 @@ vi.mock('nodemailer', () => ({
 }));
 
 function mailer(): SmtpMailer {
-  return new SmtpMailer({ host: 'localhost', port: 1025, from: 'no-responder@droply.app' });
+  return new SmtpMailer({ host: 'localhost', port: 1025, from: 'no-responder@reconectate.cloud' });
 }
 
-const destinatario = Email.create('ana@droply.app');
+const destinatario = Email.create('ana@reconectate.cloud');
 
 function correo(): { to: Email; displayName: string; verificationUrl: string } {
   if (!destinatario.ok) throw new Error('el correo de la prueba no es válido');
 
-  return { to: destinatario.value, displayName: 'Ana', verificationUrl: 'https://droply.app/x' };
+  return {
+    to: destinatario.value,
+    displayName: 'Ana',
+    verificationUrl: 'https://reconectate.cloud/x',
+  };
 }
 
 describe('SmtpMailer', () => {
@@ -41,7 +45,7 @@ describe('SmtpMailer', () => {
       mailer().sendPasswordReset({
         to: destinatario.value,
         displayName: 'Ana',
-        resetUrl: 'https://droply.app/y',
+        resetUrl: 'https://reconectate.cloud/y',
       }),
     ).resolves.toBeUndefined();
   });
@@ -52,7 +56,10 @@ describe('SmtpMailer', () => {
     await mailer().sendVerification(correo());
 
     expect(sendMail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'ana@droply.app', from: 'no-responder@droply.app' }),
+      expect.objectContaining({
+        to: 'ana@reconectate.cloud',
+        from: 'no-responder@reconectate.cloud',
+      }),
     );
   });
 });

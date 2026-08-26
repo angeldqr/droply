@@ -1,4 +1,4 @@
-title = "droply"
+title = "reconectate"
 
 [extend]
 useDefault = true
@@ -10,7 +10,7 @@ regex = '''\b\d{8,10}:[A-Za-z0-9_-]{35}\b'''
 tags = ["telegram", "token"]
 
 [[rules]]
-id = "droply-env-secret"
+id = "reconectate-env-secret"
 description = "Secreto asignado directo en un archivo versionado"
 regex = '''(?i)\b(JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|ENCRYPTION_KEY|STORAGE_SECRET_KEY|POSTGRES_PASSWORD|TELEGRAM_WEBHOOK_SECRET)\s*=\s*['"]?[^\s'"#]{8,}'''
 tags = ["env", "secret"]

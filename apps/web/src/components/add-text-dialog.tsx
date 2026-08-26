@@ -1,6 +1,6 @@
 'use client';
 
-import { TEXT_ITEM_MAX_LENGTH } from '@droply/contracts';
+import { TEXT_ITEM_MAX_LENGTH } from '@reconectate/contracts';
 import { FileText } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';

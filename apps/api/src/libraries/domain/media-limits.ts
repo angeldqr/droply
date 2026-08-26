@@ -10,7 +10,7 @@ export interface MediaLimit {
 
 /**
  * Los techos del Bot API de Telegram, escritos otra vez porque el núcleo no
- * puede importar `@droply/contracts`. `media-limits.spec.ts` es lo único que
+ * puede importar `@reconectate/contracts`. `media-limits.spec.ts` es lo único que
  * impide que las dos copias se separen.
  */
 export const MEDIA_LIMITS: Readonly<Record<MediaKind, MediaLimit>> = {

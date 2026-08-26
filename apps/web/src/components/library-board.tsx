@@ -8,7 +8,7 @@ import {
   type LibraryItemView,
   type MediaView,
   type UploadableKind,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { Archive, ArrowDown, ArrowUp, Plus, Repeat, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

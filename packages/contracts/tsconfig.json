@@ -1,5 +1,5 @@
 {
-  "extends": "@droply/tooling/tsconfig/base.json",
+  "extends": "@reconectate/tooling/tsconfig/base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

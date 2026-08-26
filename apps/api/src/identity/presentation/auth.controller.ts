@@ -29,7 +29,7 @@ import {
   type SetAccountActiveInput,
   type TemporaryPasswordView,
   type VerifyEmailInput,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { Public } from '../../platform/http/public.decorator';
@@ -58,7 +58,7 @@ import { VerifyEmailUseCase } from '../application/verify-email.use-case';
 import type { User } from '../domain/user';
 import { IS_PRODUCTION } from './tokens';
 
-const REFRESH_COOKIE = 'droply_refresh';
+const REFRESH_COOKIE = 'reconectate_refresh';
 
 /** Acotado a las rutas de sesión: no viaja en cada llamada del API. */
 const REFRESH_COOKIE_PATH = '/api/auth';

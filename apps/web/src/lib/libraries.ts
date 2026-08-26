@@ -13,7 +13,7 @@ import type {
   RenameLibraryInput,
   StartUploadResult,
   UploadableKind,
-} from '@droply/contracts';
+} from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { uploadToStorage } from './upload';

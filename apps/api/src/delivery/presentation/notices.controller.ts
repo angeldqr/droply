@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
-import type { NoticeView } from '@droply/contracts';
+import type { NoticeView } from '@reconectate/contracts';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import type { UserId } from '../../shared/identifiers';
 import { NOTICE_READER, type NoticeReader } from '../domain/ports';
