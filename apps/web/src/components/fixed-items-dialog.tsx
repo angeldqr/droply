@@ -56,6 +56,29 @@ function labelOf(item: LibraryItemView): string {
 }
 
 /**
+ * Qué le pasa a las veces al día del archivo que se está clavando.
+ *
+ * El número vive en la biblioteca, en otra pantalla, y sin él "es una de sus
+ * veces al día" no dice nada: hay que acordarse de qué se puso. Con el número
+ * delante se lee solo.
+ */
+function timesHint(timesPerDay: number, pinned: number): string {
+  /*
+   * El día sube las veces al número de horas clavadas si son más, así que
+   * clavar de más no agrega envíos: los fija.
+   */
+  if (pinned >= timesPerDay) {
+    return pinned === 1
+      ? 'Única vez del día.'
+      : `Sus ${pinned} salidas del día son las que fijaste.`;
+  }
+
+  const resto = timesPerDay - pinned;
+
+  return `${pinned} de ${timesPerDay} al día; ${resto === 1 ? 'la otra la' : `las otras ${resto} las`} reparte el horario.`;
+}
+
+/**
  * Qué sale a qué hora, clavado.
  *
  * Hay cosas que no se dejan al reparto: "el buenos días de las 6" es siempre el
@@ -141,14 +164,13 @@ export function FixedItemsDialog({ schedule }: { schedule: ScheduleView }) {
         </Button>
       </DialogTrigger>
 
-      <MorphDialogContent toProps={dialog.toProps}>
+      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-lg">
         <div>
           <DialogHeader>
             <DialogTitle>Envíos fijos</DialogTitle>
             <DialogDescription>
-              A la hora que elijas sale ese archivo y no otro. El resto de la franja lo sigue
-              repartiendo el horario, y lo que claves aquí sale solo a su hora: deja de contar para
-              sus veces al día.
+              A la hora que elijas sale ese archivo y no otro. Es una de sus veces al día, no un
+              cambio.
             </DialogDescription>
           </DialogHeader>
 
@@ -171,58 +193,74 @@ export function FixedItemsDialog({ schedule }: { schedule: ScheduleView }) {
                 </EmptyHeader>
               </Empty>
             ) : (
-              <div className="flex flex-col gap-2">
-                {rows.map((row, index) => (
-                  <div key={`${row.minute}-${index}`} className="flex items-center gap-2">
-                    <Select
-                      value={String(row.minute)}
-                      onValueChange={(value) => update(index, { minute: Number(value) })}
-                    >
-                      <SelectTrigger className="w-28 shrink-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {slots.map((slot) => (
-                          <SelectItem
-                            key={slot}
-                            value={String(slot)}
-                            // La hora que ya tiene dueño no se puede elegir dos
-                            // veces: es la regla, y así se ve antes de guardar.
-                            disabled={slot !== row.minute && taken.has(slot)}
-                          >
-                            {formatDayMinute(slot)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <div className="flex flex-col gap-3">
+                {rows.map((row, index) => {
+                  const elegido = items.find((candidate) => candidate.id === row.itemId);
+                  /* El mismo archivo puede estar clavado a más de una hora. */
+                  const clavadas = rows.filter((otra) => otra.itemId === row.itemId).length;
 
-                    <Select
-                      value={row.itemId}
-                      onValueChange={(value) => update(index, { itemId: value })}
-                    >
-                      <SelectTrigger className="min-w-0 flex-1">
-                        <SelectValue placeholder="Elige un archivo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {items.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            <span className="truncate">{labelOf(item)}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  return (
+                    <div key={`${row.minute}-${index}`} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={String(row.minute)}
+                          onValueChange={(value) => update(index, { minute: Number(value) })}
+                        >
+                          <SelectTrigger className="w-28 shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {slots.map((slot) => (
+                              <SelectItem
+                                key={slot}
+                                value={String(slot)}
+                                // La hora que ya tiene dueño no se puede elegir
+                                // dos veces: es la regla, y así se ve antes de
+                                // guardar.
+                                disabled={slot !== row.minute && taken.has(slot)}
+                              >
+                                {formatDayMinute(slot)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Quitar el envío de las ${formatDayMinute(row.minute)}`}
-                      onClick={() => remove(index)}
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ))}
+                        <Select
+                          value={row.itemId}
+                          onValueChange={(value) => update(index, { itemId: value })}
+                        >
+                          <SelectTrigger className="min-w-0 flex-1">
+                            <SelectValue placeholder="Elige un archivo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {items.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                <span className="truncate">{labelOf(item)}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Quitar el envío de las ${formatDayMinute(row.minute)}`}
+                          onClick={() => remove(index)}
+                        >
+                          <X />
+                        </Button>
+                      </div>
+
+                      {/* Alineada con el archivo: los 112 px de la hora más la separación. */}
+                      {elegido ? (
+                        <p className="text-muted-foreground pl-30 text-xs">
+                          {timesHint(elegido.timesPerDay, clavadas)}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
 
                 <Button
                   type="button"

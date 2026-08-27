@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { DayPlanDialog } from '@/components/day-plan-dialog';
 import { FixedItemsDialog } from '@/components/fixed-items-dialog';
 import { Notices } from '@/components/notices';
 import {
@@ -245,6 +246,8 @@ function ScheduleRow({ schedule }: { schedule: ScheduleView }) {
             disabled={update.isPending}
             aria-label={schedule.active ? 'Pausar este horario' : 'Reanudar este horario'}
           />
+
+          <DayPlanDialog schedule={schedule} />
 
           <FixedItemsDialog schedule={schedule} />
 

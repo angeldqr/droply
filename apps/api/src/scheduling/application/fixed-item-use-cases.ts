@@ -2,6 +2,7 @@ import type { Clock } from '../../shared/clock';
 import type { InvalidInputError } from '../../shared/domain-error';
 import type { ScheduleId, UserId } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
+import { dayOf } from '../../shared/day-plan';
 import { windowOf } from '../domain/daily-slots';
 import {
   FixedItemKindFiltered,
@@ -153,5 +154,85 @@ export class SetFixedItems {
     await this.schedules.save(schedule);
 
     return ok();
+  }
+}
+
+/** Un envío del día, con el archivo resuelto y si tiene hora propia. */
+export interface DayPlanEntry {
+  readonly minute: number;
+  readonly itemId: string;
+  readonly kind: ItemKind;
+  readonly label: string;
+  readonly pinned: boolean;
+}
+
+/**
+ * El día completo de un horario: qué sale y a qué hora.
+ *
+ * Existe porque la pantalla no lo enseñaba en ningún lado. La tarjeta decía
+ * solo cuándo era el próximo envío, así que para saber si un archivo volvía a
+ * salir —y cuándo— había que rehacer a mano el reparto. Con los archivos de la
+ * biblioteca todos clavados, además, el resto de la franja queda vacío y eso no
+ * se veía por ninguna parte.
+ *
+ * Es el plan de **cualquier día en que el horario corra**, no el de hoy: dentro
+ * de un día activo el reparto siempre es el mismo, y qué días corre ya lo dicen
+ * los días de la semana.
+ */
+export class PreviewDayPlan {
+  constructor(
+    private readonly schedules: ScheduleRepository,
+    private readonly fixed: FixedItemRepository,
+    private readonly libraries: LibraryDirectory,
+  ) {}
+
+  async execute(
+    ownerId: UserId,
+    scheduleId: ScheduleId,
+  ): Promise<Result<DayPlanEntry[], ScheduleNotFound>> {
+    const schedule = await this.schedules.findOwned(scheduleId, ownerId);
+    if (!schedule) return err(new ScheduleNotFound());
+
+    const [plannable, fixed] = await Promise.all([
+      this.libraries.planItemsOf(schedule.libraryId, schedule.kindFilter),
+      this.fixed.listOf(scheduleId),
+    ]);
+
+    // La misma función que arma la rejilla y que consulta el despacho: si la
+    // vista previa calculara por su cuenta, enseñaría un día que no es el que
+    // sale.
+    const day = dayOf(plannable, schedule.startMinute, schedule.endMinute, fixed);
+    if (day.length === 0) return ok([]);
+
+    const items = await this.libraries.itemsOf(schedule.libraryId, [
+      ...new Set(day.map((send) => send.itemId)),
+    ]);
+    const byId = new Map(items.map((item) => [item.id, item]));
+
+    /*
+     * Clavado es el **minuto**, no el archivo. Desde que una hora fija es una de
+     * las veces del archivo y no un sustituto, el mismo archivo tiene envíos
+     * clavados y repartidos el mismo día: marcarlos todos por identificador
+     * pondría la chincheta también en los que el reparto decidió.
+     */
+    const clavadas = new Set(fixed.map((slot) => slot.minute));
+
+    return ok(
+      day
+        // Un archivo borrado se lleva sus envíos por cascada; llegar acá sin él
+        // sería un dato roto, y se salta en vez de inventarle un nombre.
+        .filter((send) => byId.has(send.itemId))
+        .map((send) => {
+          const item = byId.get(send.itemId);
+
+          return {
+            minute: send.minute,
+            itemId: send.itemId,
+            kind: item?.kind ?? 'TEXT',
+            label: item?.label ?? '',
+            pinned: clavadas.has(send.minute),
+          };
+        }),
+    );
   }
 }

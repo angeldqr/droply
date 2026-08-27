@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { minutesOf, planOf, type PlannedItem } from './day-plan';
+import { dayOf, minutesOf, planOf, type PlannedItem } from './day-plan';
 
 /** La franja del cliente: de 6:00 a 21:00. */
 const INICIO = 6 * 60;
@@ -108,5 +108,147 @@ describe('el plan del día', () => {
         { minute: 800, itemId: 'c' },
       ]),
     ).toEqual([600, 800]);
+  });
+});
+
+/**
+ * El día completo: lo clavado más el reparto.
+ *
+ * Es la función que decide qué sale y cuándo para los tres que lo preguntan
+ * —la rejilla, el despacho y la vista previa—, así que lo que se pruebe acá es
+ * lo que valdrá en los tres.
+ */
+describe('el día completo', () => {
+  it('sin nada clavado es el reparto tal cual', () => {
+    expect(dayOf(BIBLIOTECA, INICIO, FIN)).toEqual(planOf(BIBLIOTECA, INICIO, FIN));
+  });
+
+  /*
+   * El caso que trajo el cliente: cuatro archivos, cada uno con su hora fija y
+   * con sus propias veces al día. La hora clavada es **una** de esas veces, no
+   * un sustituto, así que el día tiene los nueve envíos de siempre y cuatro de
+   * ellos caen a la hora que él eligió.
+   */
+  it('una hora clavada es una de las veces del archivo, no las cancela', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [
+      { minute: 360, itemId: 'video' },
+      { minute: 660, itemId: 'imagen' },
+      { minute: 780, itemId: 'texto' },
+      { minute: 1260, itemId: 'audio' },
+    ]);
+
+    // 3 + 1 + 3 + 2 = nueve envíos, los mismos que sin clavar nada.
+    expect(day).toHaveLength(9);
+
+    const veces = (itemId: string) => day.filter((send) => send.itemId === itemId).length;
+
+    expect([veces('audio'), veces('video'), veces('imagen'), veces('texto')]).toEqual([3, 1, 3, 2]);
+
+    // Y las cuatro horas elegidas salen con su archivo.
+    expect(day).toContainEqual({ minute: 360, itemId: 'video' });
+    expect(day).toContainEqual({ minute: 660, itemId: 'imagen' });
+    expect(day).toContainEqual({ minute: 780, itemId: 'texto' });
+    expect(day).toContainEqual({ minute: 1260, itemId: 'audio' });
+  });
+
+  it('lo clavado sigue contando para sus veces al día', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [{ minute: 500, itemId: 'audio' }]);
+
+    // `audio` pide tres: la clavada y dos más repartidas.
+    expect(day.filter((send) => send.itemId === 'audio')).toHaveLength(3);
+    expect(day).toContainEqual({ minute: 500, itemId: 'audio' });
+  });
+
+  it('el día entero sigue teniendo tantos envíos como veces se pidieron', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [{ minute: 500, itemId: 'audio' }]);
+
+    expect(day).toHaveLength(9);
+  });
+
+  /*
+   * El punto del que depende todo lo demás. La hora clavada consume la parte
+   * del día a la que se parece, así que clavar al principio deja las otras dos
+   * salidas por el medio y el final. Si consumiera una del medio, el archivo
+   * saldría dos veces casi seguidas al arrancar el día.
+   */
+  it('clavar al principio no amontona ahí las otras veces', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [{ minute: INICIO, itemId: 'audio' }]);
+    const suyas = day.filter((send) => send.itemId === 'audio').map((send) => send.minute);
+
+    expect(suyas[0]).toBe(INICIO);
+    // Las otras dos quedan en la segunda mitad larga del día, no pegadas.
+    expect(suyas[1]).toBeGreaterThan(INICIO + (FIN - INICIO) / 4);
+    expect(suyas[2]).toBeGreaterThan(INICIO + (FIN - INICIO) / 2);
+  });
+
+  it('ningún archivo sale dos veces en el mismo minuto', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [
+      { minute: 360, itemId: 'video' },
+      { minute: 660, itemId: 'imagen' },
+      { minute: 780, itemId: 'texto' },
+      { minute: 1260, itemId: 'audio' },
+    ]);
+
+    expect(new Set(day.map((send) => send.minute)).size).toBe(day.length);
+  });
+
+  it('clavar más horas de las que pide un archivo hace que manden las horas', () => {
+    const day = dayOf([{ id: 'a', timesPerDay: 1, position: 1 }], INICIO, FIN, [
+      { minute: 400, itemId: 'a' },
+      { minute: 800, itemId: 'a' },
+    ]);
+
+    expect(day).toEqual([
+      { minute: 400, itemId: 'a' },
+      { minute: 800, itemId: 'a' },
+    ]);
+  });
+
+  it('una hora clavada de un archivo que el horario filtró sale igual, y sola', () => {
+    // El horario solo manda imágenes, así que `cancion` no está en el reparto.
+    const day = dayOf([{ id: 'foto', timesPerDay: 1, position: 1 }], INICIO, FIN, [
+      { minute: 700, itemId: 'cancion' },
+    ]);
+
+    expect(day.filter((send) => send.itemId === 'cancion')).toEqual([
+      { minute: 700, itemId: 'cancion' },
+    ]);
+  });
+
+  /*
+   * El envío automático quería el inicio de la franja, que ya tiene dueño. No
+   * se le pone un minuto después —eso serían dos envíos casi pegados y luego el
+   * día entero vacío—: los huecos se reparten contando también el clavado, así
+   * que se va al otro extremo.
+   */
+  it('el reparto no se pega a una hora clavada, se va al hueco que queda', () => {
+    const day = dayOf([{ id: 'a', timesPerDay: 1, position: 1 }], INICIO, FIN, [
+      { minute: INICIO, itemId: 'otro' },
+    ]);
+
+    expect(day).toEqual([
+      { minute: INICIO, itemId: 'otro' },
+      { minute: FIN, itemId: 'a' },
+    ]);
+  });
+
+  it('ningún envío queda a menos de un cuarto de hora de una hora clavada', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [
+      { minute: INICIO, itemId: 'video' },
+      { minute: FIN, itemId: 'audio' },
+    ]);
+
+    for (const send of day) {
+      if (send.minute === INICIO || send.minute === FIN) continue;
+
+      expect(Math.min(send.minute - INICIO, FIN - send.minute)).toBeGreaterThan(15);
+    }
+  });
+
+  it('sale ordenado por hora, con lo clavado en su sitio', () => {
+    const day = dayOf(BIBLIOTECA, INICIO, FIN, [{ minute: 900, itemId: 'video' }]);
+    const minutos = day.map((send) => send.minute);
+
+    expect(minutos).toEqual([...minutos].sort((left, right) => left - right));
   });
 });

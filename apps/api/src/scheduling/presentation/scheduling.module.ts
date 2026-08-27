@@ -3,7 +3,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { OCCURRENCE_SINK, type OccurrenceSink } from '../../shared/occurrence-sink';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
-import { ListFixedItems, SetFixedItems } from '../application/fixed-item-use-cases';
+import { ListFixedItems, PreviewDayPlan, SetFixedItems } from '../application/fixed-item-use-cases';
 import { RunDueSchedules } from '../application/run-due-schedules';
 import {
   CreateSchedule,
@@ -111,6 +111,15 @@ import { SchedulesController } from './schedules.controller';
         fixed: FixedItemRepository,
         libraries: LibraryDirectory,
       ) => new ListFixedItems(schedules, fixed, libraries),
+    },
+    {
+      provide: PreviewDayPlan,
+      inject: [SCHEDULE_REPOSITORY, FIXED_ITEM_REPOSITORY, LIBRARY_DIRECTORY],
+      useFactory: (
+        schedules: ScheduleRepository,
+        fixed: FixedItemRepository,
+        libraries: LibraryDirectory,
+      ) => new PreviewDayPlan(schedules, fixed, libraries),
     },
     {
       provide: SetFixedItems,

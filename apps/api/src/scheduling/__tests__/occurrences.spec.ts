@@ -39,10 +39,10 @@ describe('la rejilla del horario', () => {
   });
 
   it('una hora clavada entra aunque el plan no la pise', () => {
-    // 7:15 no sale del reparto: está solo porque alguien clavó algo ahí, y sin
-    // ella el horario no se despertaría a esa hora.
-    expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 435, itemId: 'b' }])).toEqual([
-      435, 480,
+    // Las 10:00 no salen del reparto: están solo porque alguien clavó algo ahí,
+    // y sin ellas el horario no se despertaría a esa hora.
+    expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 600, itemId: 'b' }])).toEqual([
+      600, 1200,
     ]);
   });
 
@@ -53,13 +53,14 @@ describe('la rejilla del horario', () => {
   });
 
   /*
-   * El caso que se perdía en silencio: el reparto de 'a' cae justo en la hora
-   * que 'b' tiene clavada. A esa hora manda lo clavado, así que sin correr a
-   * 'a' su envío de ese día no salía y nadie se enteraba.
+   * El caso que se perdía en silencio: el reparto de 'a' quiere justo la hora
+   * que 'b' tiene clavada. A esa hora manda lo clavado, así que sin moverlo el
+   * envío de 'a' no salía y nadie se enteraba. Se va al hueco que queda, no al
+   * minuto siguiente.
    */
-  it('corre el reparto que caería sobre una hora clavada', () => {
+  it('mueve el reparto que caería sobre una hora clavada', () => {
     expect(gridOf([item('a', 1, 1)], 480, 1200, [{ minute: 480, itemId: 'b' }])).toEqual([
-      480, 481,
+      480, 1200,
     ]);
   });
 

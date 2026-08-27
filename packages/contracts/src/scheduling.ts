@@ -169,6 +169,18 @@ export interface FixedItemView {
   readonly label: string;
 }
 
+/**
+ * Un envío del día: a esta hora sale este archivo.
+ *
+ * Es el plan de **cualquier día en que el horario corra**, no el de hoy: dentro
+ * de un día activo el reparto siempre es el mismo, y qué días corre lo dicen los
+ * días de la semana.
+ */
+export interface DayPlanEntryView extends FixedItemView {
+  /** Si tiene hora propia. Lo clavado sale solo a su hora y no se reparte. */
+  readonly pinned: boolean;
+}
+
 /** "Lunes a viernes" en vez de listar cinco días uno por uno. */
 export function describeWeekdays(weekdays: readonly number[]): string {
   const days = [...new Set(weekdays)].sort((left, right) => left - right);

@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { PrismaService } from '../../platform/prisma/prisma.service';
-import { planOf } from '../../shared/day-plan';
+import { dayOf } from '../../shared/day-plan';
 import type {
   DeliveryLog,
   DeliveryRecord,
@@ -91,6 +91,8 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
      */
     const pinned = target.fixedItems.find((fixed) => fixed.minute === minute);
 
+    // Es la misma respuesta que daría `dayOf`, que devuelve lo clavado tal
+    // cual: el atajo se queda por la consulta que ahorra, no por la regla.
     if (pinned) return pinned.itemId;
 
     const rows = await this.prisma.libraryItem.findMany({
@@ -98,15 +100,11 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
         libraryId: target.libraryId,
         ...(target.kindFilter === null ? {} : { kind: target.kindFilter }),
         /*
-         * Lo que tiene hora propia no entra en el plan.
-         *
-         * Si el audio de las 6 ocupara además un momento del reparto, el mismo
-         * archivo llegaría más veces de las que su dueño pidió. Clavado
-         * significa clavado: sale a su hora y solo a su hora.
+         * Lo clavado no se descuenta en la consulta: de sacarlo del reparto se
+         * encarga `dayOf`, que es donde vive esa regla para los tres sitios que
+         * la necesitan. Acá estaba escrita por segunda vez.
          */
-        ...(target.fixedItems.length === 0
-          ? {}
-          : { id: { notIn: target.fixedItems.map((fixed) => fixed.itemId) } }),
+
         // Un archivo a medio subir no se puede enviar. Los textos no tienen
         // subida, y por eso entran siempre.
         OR: [{ storageKey: null }, { mediaReadyAt: { not: null } }],
@@ -129,14 +127,9 @@ export class PrismaLibraryCatalog implements LibraryCatalog {
      * recalcularlo en todos esos sitios, y el día que se olvidara uno el
      * horario mandaría lo que ya no corresponde sin decir nada.
      */
-    const plan = planOf(
-      rows,
-      target.startMinute,
-      target.endMinute,
-      target.fixedItems.map((fixed) => fixed.minute),
-    );
+    const day = dayOf(rows, target.startMinute, target.endMinute, target.fixedItems);
 
-    return plan.find((send) => send.minute === minute)?.itemId ?? null;
+    return day.find((send) => send.minute === minute)?.itemId ?? null;
   }
 
   async payloadOf(itemId: string): Promise<Payload | null> {

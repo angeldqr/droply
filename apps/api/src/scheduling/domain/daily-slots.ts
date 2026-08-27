@@ -1,5 +1,7 @@
-import { minutesOf, planOf, type PlannedItem } from '../../shared/day-plan';
+import { dayOf, minutesOf, type FixedSlot, type PlannedItem } from '../../shared/day-plan';
 import type { DailyWindow } from './ports';
+
+export type { FixedSlot };
 
 /**
  * La ventana lista para el planificador, a partir de los campos del horario.
@@ -29,31 +31,22 @@ export function windowOf(
   };
 }
 
-/** Una hora clavada: lo mínimo que la rejilla necesita saber de ella. */
-export interface FixedSlot {
-  readonly minute: number;
-  readonly itemId: string;
-}
-
-/** Todos los minutos del día en los que el horario tiene algo que enviar. */
+/**
+ * Todos los minutos del día en los que el horario tiene algo que enviar.
+ *
+ * Son exactamente los del día que arma `dayOf`, y por eso esta función es una
+ * línea: cualquier regla que se escribiera acá sería una segunda opinión sobre
+ * lo que ya decidió aquella, y las segundas opiniones se desincronizan.
+ */
 export function gridOf(
   items: readonly PlannedItem[],
   startMinute: number,
   endMinute: number,
   fixed: readonly FixedSlot[] = [],
 ): number[] {
-  const reserved = fixed.map((slot) => slot.minute);
-  const clavados = new Set(fixed.map((slot) => slot.itemId));
-  const pool = items.filter((item) => !clavados.has(item.id));
-
-  const minutes = new Set<number>([
-    ...minutesOf(planOf(pool, startMinute, endMinute, reserved)),
-    ...reserved,
-  ]);
+  const minutes = minutesOf(dayOf(items, startMinute, endMinute, fixed));
 
   // Sin nada que enviar el horario sigue vivo: mira a la hora de inicio para
   // volver a comprobar cuando alguien llene la biblioteca.
-  if (minutes.size === 0) return [startMinute];
-
-  return [...minutes].sort((left, right) => left - right);
+  return minutes.length === 0 ? [startMinute] : minutes;
 }

@@ -2,6 +2,7 @@
 
 import type {
   CreateScheduleInput,
+  DayPlanEntryView,
   DeliveryRecordView,
   FixedItemView,
   NoticeView,
@@ -95,6 +96,25 @@ export function useFixedItems(scheduleId: string) {
   });
 }
 
+const dayKey = (scheduleId: string) => ['schedules', scheduleId, 'day'] as const;
+
+/**
+ * El día entero del horario: lo clavado y lo repartido, en orden de hora.
+ *
+ * Es otra pregunta que la de `useFixedItems`. Aquella dice qué clavó el dueño;
+ * esta, qué va a salir de verdad — que con la biblioteca entera clavada puede
+ * ser bastante menos de lo que uno espera.
+ */
+export function useDayPlan(scheduleId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: dayKey(scheduleId),
+    queryFn: () => api<DayPlanEntryView[]>(`/schedules/${encodeURIComponent(scheduleId)}/day`),
+    // Solo se pide cuando el diálogo está abierto: es una consulta por horario y
+    // la lista puede tener unos cuantos.
+    enabled,
+  });
+}
+
 export function useSetFixedItems(scheduleId: string) {
   const queryClient = useQueryClient();
 
@@ -106,8 +126,10 @@ export function useSetFixedItems(scheduleId: string) {
       }),
     onSuccess: async () => {
       // Clavar algo mueve la próxima fecha del horario, así que la lista de
-      // horarios también queda vieja.
+      // horarios también queda vieja. Y el día entero se reparte de otra forma
+      // en cuanto cambia un solo clavado.
       await queryClient.invalidateQueries({ queryKey: fixedKey(scheduleId) });
+      await queryClient.invalidateQueries({ queryKey: dayKey(scheduleId) });
       await queryClient.invalidateQueries({ queryKey: listKey });
     },
   });

@@ -22,6 +22,13 @@ import { DialogClose, DialogContent } from '@/components/ui/dialog';
  * para cancelar el `p-4` de un padre directo— estiraba el envoltorio más ancho
  * que la tarjeta, y como es el contexto de posicionamiento de la X, la X se
  * pintaba fuera. Junto con ella se salía todo lo demás.
+ *
+ * Y va también sobre los hijos, que son ítems de rejilla de este envoltorio y
+ * traen el mismo `min-width: auto` un nivel más adentro. El diálogo de envíos
+ * fijos lo destapó: su select de archivo no parte el texto y los nombres llegan
+ * a sesenta caracteres, así que el ancho mínimo de una fila eran unos 480 px y
+ * el contenido entero se pintaba fuera de una tarjeta de 384. Con nombres
+ * cortos no se notaba.
  */
 export function MorphDialogContent({
   toProps,
@@ -34,7 +41,7 @@ export function MorphDialogContent({
 }) {
   return (
     <DialogContent {...toProps} showCloseButton={false} {...(className ? { className } : {})}>
-      <div className="relative grid min-w-0 gap-4">
+      <div className="relative grid min-w-0 gap-4 [&>*]:min-w-0">
         {children}
 
         <DialogClose asChild>

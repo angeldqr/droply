@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Clock } from '../../shared/clock';
 import type { PlannedItem } from '../../shared/day-plan';
 import type { LibraryId, RecipientId, ScheduleId, UserId } from '../../shared/identifiers';
-import { SetFixedItems } from '../application/fixed-item-use-cases';
+import { PreviewDayPlan, SetFixedItems } from '../application/fixed-item-use-cases';
 import type { ItemKind } from '../domain/item-kind';
 import type {
   DailyWindow,
@@ -45,7 +45,10 @@ class FakeLibraries implements LibraryDirectory {
   }
 
   planItemsOf(): Promise<PlannedItem[]> {
-    return Promise.resolve([{ id: FOTO, timesPerDay: 1, position: 1 }]);
+    return Promise.resolve([
+      { id: FOTO, timesPerDay: 3, position: 1 },
+      { id: CANCION, timesPerDay: 1, position: 2 },
+    ]);
   }
 
   /** Solo devuelve lo que de verdad está en esta biblioteca. */
@@ -141,11 +144,13 @@ function build({ nunca = false, ajeno = false }: { nunca?: boolean; ajeno?: bool
   };
 
   const clock = { now: () => NOW } satisfies Clock;
+  const libraries = new FakeLibraries();
 
   return {
     fixed,
     schedules,
-    set: new SetFixedItems(schedules, fixed, new FakeLibraries(), planner, clock),
+    set: new SetFixedItems(schedules, fixed, libraries, planner, clock),
+    preview: new PreviewDayPlan(schedules, fixed, libraries),
   };
 }
 
@@ -246,5 +251,105 @@ describe('clavar envíos a una hora', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('schedule.not_found');
     expect(fixed.writes).toBe(0);
+  });
+});
+
+/**
+ * Lo que la pantalla enseña, y que antes no existía: el día entero.
+ *
+ * La biblioteca de estas pruebas tiene dos archivos, `foto` y `cancion`, cada
+ * uno una vez al día, en una franja de 8:00 a 20:00.
+ */
+describe('el día completo de un horario', () => {
+  it('sin nada clavado son los cuatro envíos repartidos', async () => {
+    const { preview } = build();
+
+    const result = await preview.execute(ANA, HORARIO);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // `foto` tres veces y `cancion` una: cuatro envíos, ninguno clavado.
+    expect(result.value).toHaveLength(4);
+    expect(result.value.every((row) => !row.pinned)).toBe(true);
+  });
+
+  /*
+   * El caso que trajo el cliente: los dos archivos clavados y además con sus
+   * veces al día. La hora fija es **una** de esas veces, así que `foto` sigue
+   * saliendo tres veces — antes se quedaba en una y no había forma de pedir más.
+   */
+  it('clavar los dos archivos no les quita sus veces al día', async () => {
+    const { set, preview } = build();
+
+    await set.execute(ANA, HORARIO, [
+      { minute: 600, itemId: FOTO },
+      { minute: 700, itemId: CANCION },
+    ]);
+
+    const result = await preview.execute(ANA, HORARIO);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value).toHaveLength(4);
+    expect(result.value.filter((row) => row.itemId === FOTO)).toHaveLength(3);
+    expect(result.value.filter((row) => row.itemId === CANCION)).toHaveLength(1);
+  });
+
+  /**
+   * La chincheta es del minuto, no del archivo: `foto` tiene una hora fija y dos
+   * repartidas, y solo la primera lleva marca.
+   */
+  it('marca como clavado solo el envío de la hora fija', async () => {
+    const { set, preview } = build();
+
+    await set.execute(ANA, HORARIO, [{ minute: 600, itemId: FOTO }]);
+
+    const result = await preview.execute(ANA, HORARIO);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const suyos = result.value.filter((row) => row.itemId === FOTO);
+
+    expect(suyos.filter((row) => row.pinned).map((row) => row.minute)).toEqual([600]);
+    expect(suyos.filter((row) => !row.pinned)).toHaveLength(2);
+  });
+
+  it('sale ordenado por hora', async () => {
+    const { set, preview } = build();
+
+    await set.execute(ANA, HORARIO, [{ minute: 900, itemId: FOTO }]);
+
+    const result = await preview.execute(ANA, HORARIO);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const minutos = result.value.map((row) => row.minute);
+
+    expect(minutos).toEqual([...minutos].sort((left, right) => left - right));
+  });
+
+  it('trae la etiqueta y el tipo de cada archivo', async () => {
+    const { preview } = build();
+
+    const result = await preview.execute(ANA, HORARIO);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value[0]).toMatchObject({ label: FOTO, kind: 'IMAGE' });
+  });
+
+  it('no enseña el horario de otra cuenta', async () => {
+    const { preview } = build({ ajeno: true });
+    const beto = '66666666-6666-4666-8666-666666666666' as UserId;
+
+    const result = await preview.execute(beto, HORARIO);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('schedule.not_found');
   });
 });

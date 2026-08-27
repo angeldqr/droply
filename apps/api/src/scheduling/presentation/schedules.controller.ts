@@ -15,6 +15,7 @@ import {
   setFixedItemsSchema,
   updateScheduleSchema,
   type CreateScheduleInput,
+  type DayPlanEntryView,
   type FixedItemView,
   type ScheduleView,
   type SetFixedItemsInput,
@@ -25,7 +26,7 @@ import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { InvalidInputError } from '../../shared/domain-error';
 import { LibraryId, RecipientId, ScheduleId, type UserId } from '../../shared/identifiers';
 import { orThrow } from '../../shared/result';
-import { ListFixedItems, SetFixedItems } from '../application/fixed-item-use-cases';
+import { ListFixedItems, PreviewDayPlan, SetFixedItems } from '../application/fixed-item-use-cases';
 import {
   CreateSchedule,
   DeleteSchedule,
@@ -43,6 +44,7 @@ export class SchedulesController {
     @Inject(DeleteSchedule) private readonly deleteSchedule: DeleteSchedule,
     @Inject(ListFixedItems) private readonly listFixed: ListFixedItems,
     @Inject(SetFixedItems) private readonly setFixed: SetFixedItems,
+    @Inject(PreviewDayPlan) private readonly previewDay: PreviewDayPlan,
   ) {}
 
   @Get()
@@ -115,6 +117,21 @@ export class SchedulesController {
     @Param('scheduleId') scheduleId: string,
   ): Promise<FixedItemView[]> {
     return orThrow(await this.listFixed.execute(userId, toScheduleId(scheduleId)));
+  }
+
+  /**
+   * El día entero: lo clavado y lo repartido, en orden de hora.
+   *
+   * Va aparte de `fixed-items` porque responde otra pregunta. Aquella dice qué
+   * clavó el dueño; esta dice qué va a salir de verdad, que con la biblioteca
+   * entera clavada puede ser bastante menos de lo que uno espera.
+   */
+  @Get(':scheduleId/day')
+  async day(
+    @CurrentUserId() userId: UserId,
+    @Param('scheduleId') scheduleId: string,
+  ): Promise<DayPlanEntryView[]> {
+    return orThrow(await this.previewDay.execute(userId, toScheduleId(scheduleId)));
   }
 
   @Put(':scheduleId/fixed-items')
