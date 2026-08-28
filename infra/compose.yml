@@ -31,8 +31,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-reconectate}
     ports:
       - '127.0.0.1:5432:5432'
+    # El montaje va en /var/lib/postgresql y no en .../data, y no es un detalle:
+    # desde la 18 la imagen guarda los datos en un subdirectorio por version
+    # mayor —/var/lib/postgresql/18/docker— para que un pg_upgrade no tenga que
+    # cruzar el limite del montaje. Con el montaje en .../data la imagen no
+    # arranca: se planta avisando de que ahi hay datos que nadie usa.
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test:
         ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-reconectate} -d ${POSTGRES_DB:-reconectate}']
