@@ -19,7 +19,7 @@ const validEnv = {
   JWT_ACCESS_SECRET: 'x'.repeat(48),
   TELEGRAM_WEBHOOK_SECRET: 'z'.repeat(48),
   SMTP_HOST: 'localhost',
-  MAIL_FROM: 'no-responder@reconectate.cloud',
+  MAIL_FROM: 'no-responder@reconecta.cloud',
 };
 
 describe('loadEnv', () => {

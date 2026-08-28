@@ -9,10 +9,10 @@ vi.mock('nodemailer', () => ({
 }));
 
 function mailer(): SmtpMailer {
-  return new SmtpMailer({ host: 'localhost', port: 1025, from: 'no-responder@reconectate.cloud' });
+  return new SmtpMailer({ host: 'localhost', port: 1025, from: 'no-responder@reconecta.cloud' });
 }
 
-const destinatario = Email.create('ana@reconectate.cloud');
+const destinatario = Email.create('ana@reconecta.cloud');
 
 function correo(): { to: Email; displayName: string; verificationUrl: string } {
   if (!destinatario.ok) throw new Error('el correo de la prueba no es válido');
@@ -20,7 +20,7 @@ function correo(): { to: Email; displayName: string; verificationUrl: string } {
   return {
     to: destinatario.value,
     displayName: 'Ana',
-    verificationUrl: 'https://reconectate.cloud/x',
+    verificationUrl: 'https://reconecta.cloud/x',
   };
 }
 
@@ -45,7 +45,7 @@ describe('SmtpMailer', () => {
       mailer().sendPasswordReset({
         to: destinatario.value,
         displayName: 'Ana',
-        resetUrl: 'https://reconectate.cloud/y',
+        resetUrl: 'https://reconecta.cloud/y',
       }),
     ).resolves.toBeUndefined();
   });
@@ -57,8 +57,8 @@ describe('SmtpMailer', () => {
 
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: 'ana@reconectate.cloud',
-        from: 'no-responder@reconectate.cloud',
+        to: 'ana@reconecta.cloud',
+        from: 'no-responder@reconecta.cloud',
       }),
     );
   });

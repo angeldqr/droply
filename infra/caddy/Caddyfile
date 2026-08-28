@@ -6,7 +6,7 @@
 #
 # Tres nombres y no uno, y los tres tienen que colgar del mismo dominio
 # registrable: la cookie de refresco sale con `sameSite=strict`, asi que
-# `reconectate.cloud` y `api.reconectate.cloud` valen, pero dos dominios distintos no.
+# `reconecta.cloud` y `api.reconecta.cloud` valen, pero dos dominios distintos no.
 
 {
 	email {$ACME_EMAIL}
@@ -15,6 +15,15 @@
 # La aplicacion.
 {$WEB_DOMAIN} {
 	reverse_proxy web:3000
+}
+
+# El www, que existe en el DNS y sin esto daria error de certificado.
+#
+# Redireccion y no un segundo sitio sirviendo lo mismo: la cookie de refresco
+# sale con `sameSite=strict` y atada a un nombre, asi que entrar por www y por
+# el dominio pelado darian dos sesiones distintas.
+www.{$WEB_DOMAIN} {
+	redir https://{$WEB_DOMAIN}{uri} permanent
 }
 
 # El API.

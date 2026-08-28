@@ -103,9 +103,9 @@ A la red pública sale **solo Caddy**, por el 80 y el 443. Postgres, MinIO y las
 
 | Nombre | Qué atiende |
 | --- | --- |
-| `reconectate.cloud` | la aplicación |
-| `api.reconectate.cloud` | el API |
-| `archivos.reconectate.cloud` | el almacenamiento |
+| `reconecta.cloud` | la aplicación |
+| `api.reconecta.cloud` | el API |
+| `archivos.reconecta.cloud` | el almacenamiento |
 
 El tercero no es un lujo: el navegador sube los archivos directo ahí, y una petición en claro desde una página HTTPS la bloquea el propio navegador.
 
@@ -129,15 +129,15 @@ openssl rand -base64 32   # ENCRYPTION_KEY (32 bytes exactos)
 Y las URLs, que en producción no son las de desarrollo:
 
 ```
-WEB_URL=https://reconectate.cloud
-API_URL=https://api.reconectate.cloud
-NEXT_PUBLIC_API_URL=https://api.reconectate.cloud
-STORAGE_ENDPOINT=https://archivos.reconectate.cloud
-TELEGRAM_WEBHOOK_URL=https://api.reconectate.cloud/api/telegram/webhook
+WEB_URL=https://reconecta.cloud
+API_URL=https://api.reconecta.cloud
+NEXT_PUBLIC_API_URL=https://api.reconecta.cloud
+STORAGE_ENDPOINT=https://archivos.reconecta.cloud
+TELEGRAM_WEBHOOK_URL=https://api.reconecta.cloud/api/telegram/webhook
 MAIL_TRANSPORT=resend
-WEB_DOMAIN=reconectate.cloud
-API_DOMAIN=api.reconectate.cloud
-STORAGE_DOMAIN=archivos.reconectate.cloud
+WEB_DOMAIN=reconecta.cloud
+API_DOMAIN=api.reconecta.cloud
+STORAGE_DOMAIN=archivos.reconecta.cloud
 ```
 
 `NEXT_PUBLIC_API_URL` la incrusta Next **al construir**, no al arrancar: cambiar de dominio obliga a reconstruir el front.
