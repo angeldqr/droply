@@ -1,6 +1,7 @@
 import { Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import type { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import type { HandleTelegramMessage } from '../application/handle-telegram-message';
-import { parseIncoming, type TelegramApi } from './telegram-api';
+import { parseCallback, parseIncoming, type TelegramApi } from './telegram-api';
 
 /** Cuánto espera cada `getUpdates` antes de volver vacío. */
 const LONG_POLL_SECONDS = 30;
@@ -30,6 +31,7 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
   constructor(
     private readonly api: TelegramApi,
     private readonly handler: HandleTelegramMessage,
+    private readonly callbacks: HandleTelegramCallback,
     private readonly webhook: {
       url: string | undefined;
       secret: string;
@@ -141,8 +143,13 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
           // se procesó, así que un fallo a mitad lo vuelve a traer.
           this.offset = update.id + 1;
 
+          // Se vuelve a envolver para reusar los mismos parsers que el webhook,
+          // y que no haya dos lecturas distintas de la carga de Telegram.
           const message = parseIncoming({ message: update.message });
+          const callback = parseCallback({ callback_query: update.callback });
+
           if (message) await this.handler.execute(message);
+          if (callback) await this.callbacks.execute(callback);
         }
       } catch (caught) {
         if (!this.running) return;

@@ -170,13 +170,13 @@ export function useSetTimesPerDay(libraryId: string) {
   });
 }
 
-/** Trae a esta biblioteca una copia de algo que ya está guardado en el baúl. */
+/** Trae a esta biblioteca copias de lo que ya está guardado en el baúl. */
 export function useCopyFromVault(libraryId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: CopyFromVaultInput) =>
-      api<LibraryItemView>(`/libraries/${encodeURIComponent(libraryId)}/items/copy`, {
+      api<LibraryItemView[]>(`/libraries/${encodeURIComponent(libraryId)}/items/copy`, {
         method: 'POST',
         body: input,
       }),

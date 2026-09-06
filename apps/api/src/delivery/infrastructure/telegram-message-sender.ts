@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import type { ChatAction } from '../../shared/habit-vote';
 import type { MessageSender, Payload, SendResult } from '../domain/ports';
 
 /**
@@ -41,13 +42,32 @@ export class TelegramMessageSender implements MessageSender {
     payload: Payload,
     caption: string,
     bytes: Uint8Array | null,
+    actions: readonly ChatAction[] = [],
   ): Promise<SendResult> {
+    /*
+     * Los botones van en una columna y no en una fila.
+     *
+     * Tres botones en fila se parten solos en cuanto una etiqueta pasa de dos
+     * palabras, y quedan de anchos distintos según el teléfono. Uno debajo de
+     * otro se leen igual en cualquier pantalla, y es la forma que traía el
+     * ejemplo del cliente.
+     */
+    const markup =
+      actions.length === 0
+        ? null
+        : {
+            inline_keyboard: actions.map((action) => [
+              { text: action.label, callback_data: action.data },
+            ]),
+          };
+
     if (payload.kind === 'TEXT') {
       // El texto va tal cual, con el remitente en una línea aparte para que se
       // distinga de lo que escribió el dueño.
       return this.call('sendMessage', {
         chat_id: chatId,
         text: `${caption}:\n\n${payload.text ?? ''}`,
+        ...(markup ? { reply_markup: markup } : {}),
       });
     }
 
@@ -58,6 +78,16 @@ export class TelegramMessageSender implements MessageSender {
 
     form.append('chat_id', chatId);
     form.append('caption', caption);
+
+    /*
+     * Por el camino del archivo el teclado viaja como un campo más, con su JSON
+     * dentro. Telegram lo pide así en `multipart`: un objeto anidado no tiene
+     * forma de expresarse en un formulario, y dejar que se convierta solo manda
+     * la cadena «[object Object]», que Telegram acepta con un 200 y entrega el
+     * mensaje **sin botones**. Es de los fallos que no dejan rastro.
+     */
+    if (markup) form.append('reply_markup', JSON.stringify(markup));
+
     /*
      * Se suben los bytes en vez de pasarle la URL a Telegram.
      *

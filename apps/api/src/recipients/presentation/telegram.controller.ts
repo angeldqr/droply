@@ -12,8 +12,9 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { Public } from '../../platform/http/public.decorator';
+import { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import { HandleTelegramMessage } from '../application/handle-telegram-message';
-import { parseIncoming } from '../infrastructure/telegram-api';
+import { parseCallback, parseIncoming } from '../infrastructure/telegram-api';
 
 /** La cabecera que Telegram repite en cada entrega, tal como se registró. */
 const SECRET_HEADER = 'x-telegram-bot-api-secret-token';
@@ -25,6 +26,7 @@ export class TelegramController {
   constructor(
     @Inject(ENV) private readonly env: ApiEnv,
     @Inject(HandleTelegramMessage) private readonly handler: HandleTelegramMessage,
+    @Inject(HandleTelegramCallback) private readonly callbacks: HandleTelegramCallback,
   ) {}
 
   /**
@@ -49,15 +51,20 @@ export class TelegramController {
   ): Promise<void> {
     if (!matches(secret, this.env.TELEGRAM_WEBHOOK_SECRET)) return;
 
+    // Dos puertas y un solo webhook: un update es un mensaje o es el toque de
+    // un botón, nunca las dos cosas.
     const message = parseIncoming(update);
-    if (!message) return;
+    const callback = message ? null : parseCallback(update);
+
+    if (!message && !callback) return;
 
     try {
-      await this.handler.execute(message);
+      if (message) await this.handler.execute(message);
+      if (callback) await this.callbacks.execute(callback);
     } catch (caught) {
       // El fallo queda en el log para poder mirarlo, pero la respuesta sigue
       // siendo 200: reintentar esto mismo no lo va a arreglar.
-      this.logger.error('Falló el manejo de un mensaje del bot.', caught);
+      this.logger.error('Falló el manejo de una novedad del bot.', caught);
     }
   }
 }

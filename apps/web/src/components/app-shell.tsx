@@ -7,6 +7,7 @@ import {
   LogOut,
   Send,
   ShieldCheck,
+  Sparkles,
   UserCog,
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -93,9 +94,9 @@ export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: Reac
 }
 
 /*
- * Las pantallas, en dos grupos porque son dos cosas distintas: lo que se envía
- * y a quién se le envía. Mezclarlas en una lista sola haría parecer que
- * "Destinatarios" es otra caja de contenido.
+ * Las pantallas, en grupos porque son cosas distintas: lo que se envía, a quién
+ * se le envía y qué se consiguió con ello. Mezclarlas en una lista sola haría
+ * parecer que "Destinatarios" es otra caja de contenido.
  */
 const SECTIONS = [
   {
@@ -111,6 +112,17 @@ const SECTIONS = [
       { href: '/destinatarios', label: 'Destinatarios', icon: Send },
       { href: '/horarios', label: 'Horarios', icon: CalendarClock },
     ],
+  },
+  /*
+   * Los planes de hábitos van en su propio grupo y no dentro de "Envíos".
+   *
+   * No son otra forma de mandar cosas: son lo que se hace con lo que ya se
+   * manda. Meterlos ahí abajo los haría parecer una variante de "Horarios", y
+   * lo que miden —si la persona del otro lado cumplió— no tiene nada que ver.
+   */
+  {
+    label: 'Mi yo del futuro',
+    items: [{ href: '/yo-en-30-dias', label: 'Yo en 30 días', icon: Sparkles }],
   },
 ] as const;
 

@@ -12,25 +12,57 @@ import {
   type VerificationMail,
 } from '../src/identity/domain/ports';
 import { TelegramConnection } from '../src/recipients/infrastructure/telegram-connection';
+import type { ChatAction } from '../src/shared/habit-vote';
 import { TEST_SCHEMA, testDatabaseUrl } from './database';
 
 /** Lo que se le habría mandado a Telegram, sin salir de la máquina. */
 export class SentMessages {
-  readonly sent: { chatId: string; caption: string; payload: Payload }[] = [];
+  readonly sent: {
+    chatId: string;
+    caption: string;
+    payload: Payload;
+    actions: readonly ChatAction[];
+  }[] = [];
 
-  send(chatId: string, payload: Payload, caption: string): Promise<SendResult> {
-    this.sent.push({ chatId, caption, payload });
+  send(
+    chatId: string,
+    payload: Payload,
+    caption: string,
+    _bytes: Uint8Array | null,
+    actions: readonly ChatAction[] = [],
+  ): Promise<SendResult> {
+    this.sent.push({ chatId, caption, payload, actions });
 
     return Promise.resolve({ messageId: `mensaje-${this.sent.length}`, failure: null });
   }
 }
 
-/** Lo que el bot le contesta a quien abre el enlace. */
+/**
+ * Lo que el bot le contesta a quien abre el enlace o aprieta un botón.
+ *
+ * Cubre los dos puertos porque el adaptador real también los cubre: el
+ * contenedor resuelve `CALLBACK_RESPONDER` a partir de `CHANNEL_GATEWAY`, así
+ * que doblar solo uno dejaría el otro apuntando a la mitad de un objeto.
+ */
 export class BotReplies {
   readonly sent: { externalId: string; text: string }[] = [];
+  readonly answered: { callbackId: string; text: string }[] = [];
+  readonly locked: { chatId: string; messageId: number; label: string }[] = [];
 
   send(externalId: string, text: string): Promise<void> {
     this.sent.push({ externalId, text });
+
+    return Promise.resolve();
+  }
+
+  answer(callbackId: string, text: string): Promise<void> {
+    this.answered.push({ callbackId, text });
+
+    return Promise.resolve();
+  }
+
+  lock(chatId: string, messageId: number, label: string): Promise<void> {
+    this.locked.push({ chatId, messageId, label });
 
     return Promise.resolve();
   }

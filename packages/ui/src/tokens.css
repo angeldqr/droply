@@ -34,6 +34,24 @@
   --color-alerta-500: #b8324a;
 
   /*
+   * Los tres colores de la rejilla de hábitos: cumplido, a medias y no
+   * cumplido.
+   *
+   * Van desaturados y oscuros a propósito. Un verde y un ámbar de semáforo
+   * junto a esta familia morada gritan y se llevan la mirada de la aplicación
+   * entera; estos dos comparten la profundidad de la ciruela y solo se separan
+   * por el matiz, así que la rejilla se lee de un vistazo sin volverse el
+   * centro de la pantalla. El rojo es el mismo de las alertas: no hacía falta
+   * un segundo rojo que casi coincidiera.
+   *
+   * Y el color nunca va solo: cada casilla lleva su número dentro. Es lo que
+   * hace que la rejilla siga sirviendo para quien no distingue el verde del
+   * rojo, que es una de cada doce personas.
+   */
+  --color-logro-600: #2f7d5b;
+  --color-medias-500: #c98a2b;
+
+  /*
    * Una columna por color, repartidas en la escala de claridad de la familia.
    * Con una paleta de un solo morado, la luz distingue mejor que el matiz.
    */

@@ -54,7 +54,28 @@ export interface ChannelGateway {
   send(externalId: string, text: string): Promise<void>;
 }
 
+/**
+ * Lo que hay que contestarle a quien aprieta un botón.
+ *
+ * Es otro puerto que `ChannelGateway` porque son dos conversaciones distintas:
+ * aquello manda un mensaje nuevo al chat, esto responde a un toque sobre un
+ * mensaje que ya está ahí. Y `answer` **no es opcional**: hasta que llega, el
+ * teléfono deja el botón con el reloj girando.
+ */
+export interface CallbackResponder {
+  answer(callbackId: string, text: string): Promise<void>;
+  /**
+   * Deja el mensaje con un solo botón, el de la respuesta elegida.
+   *
+   * Telegram no sabe deshabilitar un botón, así que una votación cerrada se
+   * enseña cambiando el teclado. El botón que queda lleva un dato inerte: quien
+   * lo toque no cambia nada.
+   */
+  lock(chatId: string, messageId: number, label: string): Promise<void>;
+}
+
 export const RECIPIENT_REPOSITORY = Symbol('RecipientRepository');
 export const LINK_CODE_FACTORY = Symbol('LinkCodeFactory');
 export const ACCOUNT_STATUS = Symbol('AccountStatus');
 export const CHANNEL_GATEWAY = Symbol('ChannelGateway');
+export const CALLBACK_RESPONDER = Symbol('CallbackResponder');

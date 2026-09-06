@@ -59,8 +59,18 @@ export class OpenVault {
 }
 
 /**
- * Lleva un elemento del baúl a una biblioteca. El original se queda donde
- * estaba: el baúl es de donde se saca, no de donde se mueve.
+ * Lleva uno o varios elementos del baúl a una biblioteca. Los originales se
+ * quedan donde estaban: el baúl es de donde se saca, no de donde se mueve.
+ *
+ * Acepta una lista y no un elemento suelto porque de a uno era el problema:
+ * había que abrir el diálogo, elegir, verlo cerrarse y volver a abrirlo por
+ * cada archivo.
+ *
+ * **Primero se comprueba todo, después se copia nada.** Los cuatro motivos por
+ * los que esto puede fallar —la biblioteca no es tuya, no hay baúl, el elemento
+ * no está, el archivo se quedó a medias— se saben antes de escribir. Copiando
+ * mientras se recorre, un elemento malo en la posición siete dejaría seis
+ * copias hechas y un error en la pantalla, y nadie sabría qué entró.
  */
 export class CopyFromVault {
   constructor(
@@ -74,9 +84,9 @@ export class CopyFromVault {
   async execute(
     ownerId: UserId,
     libraryId: LibraryId,
-    sourceItemId: LibraryItemId,
+    sourceItemIds: readonly LibraryItemId[],
   ): Promise<
-    Result<LibraryItem, LibraryNotFound | ItemNotFound | MediaNotUploaded | InvalidInputError>
+    Result<LibraryItem[], LibraryNotFound | ItemNotFound | MediaNotUploaded | InvalidInputError>
   > {
     const library = await this.libraries.findOwned(libraryId, ownerId);
 
@@ -87,30 +97,59 @@ export class CopyFromVault {
     const vault = await this.libraries.findVaultOf(ownerId);
     if (!vault) return err(new ItemNotFound());
 
-    // El origen se busca dentro del baúl de quien pide, así que no hay forma de
-    // nombrar el elemento de otra cuenta.
-    const source = await this.items.findInLibrary(sourceItemId, vault.id);
-    if (!source) return err(new ItemNotFound());
+    const sources: LibraryItem[] = [];
+
+    for (const sourceItemId of sourceItemIds) {
+      // El origen se busca dentro del baúl de quien pide, así que no hay forma
+      // de nombrar el elemento de otra cuenta.
+      const source = await this.items.findInLibrary(sourceItemId, vault.id);
+      if (!source) return err(new ItemNotFound());
+
+      // Lo que se quedó a medias en el baúl no tiene archivo que copiar. Se
+      // dice ahora, antes de tocar el almacenamiento.
+      if (source.kind !== 'TEXT' && (!source.storageKey || !source.isReady)) {
+        return err(new MediaNotUploaded());
+      }
+
+      sources.push(source);
+    }
 
     const now = this.clock.now();
-    const id = LibraryItemId.from(this.ids.generate());
+    const copies: LibraryItem[] = [];
 
-    const copy = await this.copyOf(source, {
-      id,
-      ownerId,
-      libraryId,
-      position: positionAtEnd(await this.items.lastPositionOf(libraryId, source.kind)),
-      now,
-    });
+    /*
+     * La última posición de cada columna se lleva acá y no se vuelve a
+     * consultar: las copias todavía no están en la base cuando se calcula la
+     * siguiente, así que preguntar otra vez devolvería el mismo número y las
+     * cinco caerían en el mismo sitio.
+     */
+    const lastPositions = new Map<string, number>();
 
-    if (!copy.ok) return copy;
+    for (const source of sources) {
+      const previous =
+        lastPositions.get(source.kind) ?? (await this.items.lastPositionOf(libraryId, source.kind));
+      const position = positionAtEnd(previous);
 
-    await this.items.add(copy.value);
+      const copy = await this.copyOf(source, {
+        id: LibraryItemId.from(this.ids.generate()),
+        ownerId,
+        libraryId,
+        position,
+        now,
+      });
+
+      if (!copy.ok) return copy;
+
+      await this.items.add(copy.value);
+
+      lastPositions.set(source.kind, position);
+      copies.push(copy.value);
+    }
 
     library.touch(now);
     await this.libraries.save(library);
 
-    return ok(copy.value);
+    return ok(copies);
   }
 
   private async copyOf(
@@ -133,7 +172,8 @@ export class CopyFromVault {
       });
     }
 
-    // Un elemento del baúl que se quedó a medias no tiene archivo que copiar.
+    // Ya se comprobó antes de empezar a copiar; acá vuelve a mirarse solo para
+    // estrechar los tipos, que son nulables en el elemento.
     if (!source.storageKey || !source.isReady || source.sizeBytes === null) {
       return err(new MediaNotUploaded());
     }

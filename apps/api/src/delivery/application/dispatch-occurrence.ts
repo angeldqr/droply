@@ -1,4 +1,5 @@
 import type { Clock } from '../../shared/clock';
+import { habitActions } from '../../shared/habit-vote';
 import type {
   DeliveryLog,
   DispatchTarget,
@@ -118,7 +119,7 @@ export class DispatchOccurrence {
      * mensaje. Al revés —anotarla al final— un corte la dejaría sin anotar y el
      * siguiente intento mandaría lo mismo dos veces.
      */
-    const reserved = await this.log.reserve({
+    const deliveryId = await this.log.reserve({
       scheduleId,
       itemId: payload.itemId,
       occurrenceKey,
@@ -128,9 +129,9 @@ export class DispatchOccurrence {
     });
 
     // Otra réplica se nos adelantó y ya es dueña de esta ocurrencia.
-    if (!reserved) return 'DUPLICATE';
+    if (!deliveryId) return 'DUPLICATE';
 
-    return this.deliver(target, payload, occurrenceKey, 0);
+    return this.deliver(target, payload, occurrenceKey, deliveryId, 0);
   }
 
   /**
@@ -177,13 +178,20 @@ export class DispatchOccurrence {
       return 'NOTHING_TO_SEND';
     }
 
-    return this.deliver(target, payload, pending.occurrenceKey, pending.retryCount);
+    return this.deliver(
+      target,
+      payload,
+      pending.occurrenceKey,
+      pending.deliveryId,
+      pending.retryCount,
+    );
   }
 
   private async deliver(
     target: DispatchTarget,
     payload: Payload,
     occurrenceKey: string,
+    deliveryId: string,
     retryCount: number,
   ): Promise<DispatchOutcome> {
     const bytes = await this.bytesOf(payload);
@@ -201,6 +209,16 @@ export class DispatchOccurrence {
       // bot, no con una persona, así que sin esto no sabría de quién le llegó.
       `De ${target.senderName}`,
       bytes,
+      /*
+       * Los botones solo si esta biblioteca está dentro de un plan de hábitos.
+       * Sin plan el archivo va solo, que es lo que pidió el cliente: preguntar
+       * «¿lo cumpliste?» sobre una foto de la abuela no significa nada.
+       *
+       * Llevan el identificador del envío, no el del horario: la respuesta se
+       * anota contra el archivo que llegó a esa hora, y una persona puede
+       * recibir varios del mismo hábito en el mismo día.
+       */
+      target.habit ? habitActions(deliveryId) : [],
     );
 
     if (!result.failure) {

@@ -31,6 +31,12 @@ export type UserRole = (typeof userRole.values)[number];
 export const recipientStatus = vocabulary(['PENDING', 'VERIFIED', 'BLOCKED'] as const);
 export type RecipientStatus = (typeof recipientStatus.values)[number];
 
+export const habitPlanStatus = vocabulary(['ACTIVE', 'CANCELLED', 'CLOSED'] as const);
+export type HabitPlanStatus = (typeof habitPlanStatus.values)[number];
+
+export const habitAnswer = vocabulary(['DONE', 'HALF', 'MISSED'] as const);
+export type HabitAnswer = (typeof habitAnswer.values)[number];
+
 /**
  * Techos del Bot API de Telegram. Se validan en la subida para que el usuario
  * se entere en el momento y no cuando falla el envío de las 8 de la mañana.

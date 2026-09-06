@@ -90,11 +90,33 @@ export const setLibraryRecipientsSchema = z.object({
 });
 
 /**
- * Llevar algo del baúl a una biblioteca. Solo hace falta decir qué elemento del
- * baúl: la columna y el nombre salen del original.
+ * Cuántos elementos se pueden traer del baúl de una sola vez.
+ *
+ * Hay un techo porque cada uno es una copia del archivo en el almacenamiento, y
+ * las cincuenta van dentro de la misma petición: sin tope, elegir un baúl de
+ * mil videos dejaría la pantalla esperando hasta que algo se cortara por
+ * tiempo. Cincuenta es más de lo que una columna suele necesitar de una sentada
+ * y sigue respondiendo rápido.
+ */
+export const VAULT_COPY_MAX = 50;
+
+/**
+ * Llevar del baúl a una biblioteca. Solo hace falta decir qué elementos: la
+ * columna y el nombre salen de cada original.
+ *
+ * Es una lista y no un elemento suelto porque traer de a uno era el reclamo:
+ * había que abrir el diálogo, elegir, verlo cerrarse y volver a abrirlo por
+ * cada archivo. Un elemento solo es una lista de uno, así que no hacen falta
+ * dos rutas.
  */
 export const copyFromVaultSchema = z.object({
-  sourceItemId: z.uuid(),
+  sourceItemIds: z
+    .array(z.uuid())
+    .min(1, 'Elige al menos uno.')
+    .max(VAULT_COPY_MAX, `No puedes traer más de ${VAULT_COPY_MAX} de una vez.`)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Hay un elemento repetido.',
+    }),
 });
 
 /**

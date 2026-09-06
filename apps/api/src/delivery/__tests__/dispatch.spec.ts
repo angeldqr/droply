@@ -12,6 +12,7 @@ import type {
   ScheduleReader,
   SendResult,
 } from '../domain/ports';
+import type { ChatAction } from '../../shared/habit-vote';
 import type { DeliveryStatus } from '../domain/vocabulary';
 
 const TARGET: DispatchTarget = {
@@ -25,6 +26,7 @@ const TARGET: DispatchTarget = {
   endMinute: 20 * 60,
   timezone: 'America/Bogota',
   fixedItems: [],
+  habit: null,
 };
 
 class FakeSchedules implements ScheduleReader {
@@ -75,10 +77,16 @@ class FakeCatalog implements LibraryCatalog {
 
 class FakeSender implements MessageSender {
   result: SendResult = { messageId: '1', failure: null };
-  sent: { chatId: string; caption: string }[] = [];
+  sent: { chatId: string; caption: string; actions: readonly ChatAction[] }[] = [];
 
-  send(chatId: string, _payload: Payload, caption: string): Promise<SendResult> {
-    this.sent.push({ chatId, caption });
+  send(
+    chatId: string,
+    _payload: Payload,
+    caption: string,
+    _bytes: Uint8Array | null,
+    actions: readonly ChatAction[] = [],
+  ): Promise<SendResult> {
+    this.sent.push({ chatId, caption, actions });
 
     return Promise.resolve(this.result);
   }
@@ -111,9 +119,9 @@ class FakeLog implements DeliveryLog {
     itemId: string | null;
     status: DeliveryStatus;
     error: string | null;
-  }): Promise<boolean> {
+  }): Promise<string | null> {
     // El índice único de la base, en miniatura: si ya estaba, no se toca.
-    if (this.rows.has(attempt.occurrenceKey)) return Promise.resolve(false);
+    if (this.rows.has(attempt.occurrenceKey)) return Promise.resolve(null);
 
     this.rows.set(attempt.occurrenceKey, {
       status: attempt.status,
@@ -123,7 +131,9 @@ class FakeLog implements DeliveryLog {
       nextAttemptAt: null,
     });
 
-    return Promise.resolve(true);
+    // Un identificador estable por ocurrencia, que es lo que hace el índice de
+    // la base: dos reservas de la misma clave no pueden dar dos filas.
+    return Promise.resolve(`envio-${this.rows.size}`);
   }
 
   settle(
@@ -218,6 +228,45 @@ function build() {
     dispatch: new DispatchOccurrence(schedules, catalog, media, sender, log, notices, clock),
   };
 }
+
+/**
+ * Los botones de un plan de hábitos.
+ *
+ * La regla del cliente es exacta: «si la biblioteca no tiene plan de hábitos,
+ * no enviará la imagen con el botón, la enviará sola». Las dos mitades se
+ * prueban, porque la que falla en silencio es la segunda.
+ */
+describe('botones de un plan de hábitos', () => {
+  it('sin plan, el archivo va solo', async () => {
+    const world = build();
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    expect(world.sender.sent[0]?.actions).toEqual([]);
+  });
+
+  it('con plan, van los tres botones y llevan el identificador del envío', async () => {
+    const world = build();
+    world.schedules.target = {
+      ...TARGET,
+      habit: { planId: 'plan-1', libraryId: 'biblioteca-1' },
+    };
+
+    await world.dispatch.execute('horario-1', AHORA, 'clave-1');
+
+    const enviados = world.sender.sent[0]?.actions ?? [];
+
+    expect(enviados).toHaveLength(3);
+    expect(enviados.map((accion) => accion.label)).toEqual([
+      '✅ Realizado',
+      '🟡 50%',
+      '❌ No cumplido',
+    ]);
+    // El identificador que devolvió la reserva, que es contra el que se anota
+    // la respuesta cuando la persona aprieta.
+    expect(enviados.every((accion) => accion.data.includes('envio-1'))).toBe(true);
+  });
+});
 
 /**
  * Hay cosas que no se dejan al reparto. "El buenos días de las 6" es siempre el
@@ -346,6 +395,7 @@ describe('reintentos con espera creciente', () => {
     for (const intento of [1, 2]) {
       await world.dispatch.retry({
         scheduleId: 'horario-1',
+        deliveryId: 'envio-1',
         occurrenceKey: 'clave-1',
         occurredAt: AHORA,
         retryCount: intento,
@@ -368,6 +418,7 @@ describe('reintentos con espera creciente', () => {
 
     const outcome = await world.dispatch.retry({
       scheduleId: 'horario-1',
+      deliveryId: 'envio-1',
       occurrenceKey: 'clave-1',
       occurredAt: AHORA,
       retryCount: 3,
@@ -391,6 +442,7 @@ describe('reintentos con espera creciente', () => {
 
     const outcome = await world.dispatch.retry({
       scheduleId: 'horario-1',
+      deliveryId: 'envio-1',
       occurrenceKey: 'clave-1',
       occurredAt: AHORA,
       retryCount: 1,
@@ -408,6 +460,7 @@ describe('reintentos con espera creciente', () => {
     await world.dispatch.execute('horario-1', AHORA, 'clave-1');
     await world.dispatch.retry({
       scheduleId: 'horario-1',
+      deliveryId: 'envio-1',
       occurrenceKey: 'clave-1',
       occurredAt: AHORA,
       retryCount: 1,
@@ -450,6 +503,7 @@ describe('reintentos con espera creciente', () => {
 
     await world.dispatch.retry({
       scheduleId: 'horario-1',
+      deliveryId: 'envio-1',
       occurrenceKey: 'clave-1',
       occurredAt: AHORA,
       retryCount: 1,
@@ -495,6 +549,7 @@ describe('reintentos con espera creciente', () => {
 
     const outcome = await world.dispatch.retry({
       scheduleId: 'horario-1',
+      deliveryId: 'envio-1',
       occurrenceKey: 'clave-1',
       occurredAt: AHORA,
       retryCount: 1,

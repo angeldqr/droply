@@ -1,3 +1,4 @@
+import type { ChatAction } from '../../shared/habit-vote';
 import type { DeliveryStatus, ItemKind } from './vocabulary';
 
 /** Lo que hace falta saber del horario para poder despachar su envío. */
@@ -21,6 +22,16 @@ export interface DispatchTarget {
    * dejar fuera del reparto lo que ya tiene su hora.
    */
   readonly fixedItems: readonly { minute: number; itemId: string }[];
+  /**
+   * El plan de hábitos que retiene esta biblioteca hacia este destinatario, si
+   * lo hay.
+   *
+   * Viaja con el objetivo y no se consulta aparte porque es lo que decide si el
+   * envío lleva botones. La regla —«si la biblioteca no tiene plan, la imagen
+   * va sola»— vive entera en la consulta que arma esto, y no repartida por
+   * quien despacha: así ningún camino nuevo puede saltársela.
+   */
+  readonly habit: { readonly planId: string; readonly libraryId: string } | null;
 }
 
 export interface ScheduleReader {
@@ -78,11 +89,16 @@ export interface SendResult {
 }
 
 export interface MessageSender {
+  /**
+   * `actions` son los botones que van pegados al mensaje. Vacío es lo normal:
+   * solo lleva botones lo que pertenece a un plan de hábitos.
+   */
   send(
     chatId: string,
     payload: Payload,
     caption: string,
     bytes: Uint8Array | null,
+    actions?: readonly ChatAction[],
   ): Promise<SendResult>;
 }
 
@@ -101,6 +117,12 @@ export interface NoticeWriter {
 /** Una ocurrencia que fallo por algo pasajero y espera su siguiente intento. */
 export interface PendingRetry {
   readonly scheduleId: string;
+  /**
+   * El identificador de la fila. Hace falta para volver a armar los botones:
+   * viaja dentro del `callback_data`, así que un reintento tiene que mandar los
+   * del mismo envío y no unos nuevos.
+   */
+  readonly deliveryId: string;
   readonly occurrenceKey: string;
   readonly occurredAt: Date;
   readonly retryCount: number;
@@ -116,7 +138,12 @@ export interface PendingRetry {
 
 export interface DeliveryLog {
   /**
-   * Reserva la ocurrencia. Devuelve `false` si ya estaba tomada.
+   * Reserva la ocurrencia. Devuelve el identificador de la fila, o `null` si ya
+   * estaba tomada.
+   *
+   * Devuelve el identificador y no un booleano porque los botones de un plan de
+   * hábitos lo llevan dentro: sin él habría que volver a leer la fila que
+   * acabamos de escribir solo para saber cómo se llama.
    *
    * **Solo inserta.** Si la clave ya existe no toca la fila: quien la tomó
    * primero es el dueño del envío, y pisarle el resultado borraría lo que ya
@@ -130,7 +157,7 @@ export interface DeliveryLog {
     occurredAt: Date;
     status: DeliveryStatus;
     error: string | null;
-  }): Promise<boolean>;
+  }): Promise<string | null>;
 
   /** Anota en qué quedó la ocurrencia que ya estaba reservada. */
   settle(

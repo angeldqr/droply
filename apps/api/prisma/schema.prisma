@@ -55,6 +55,7 @@ model User {
   recipients        Recipient[]
   schedules         Schedule[]
   notices           Notice[]
+  habitPlans        HabitPlan[]
 
   @@map("users")
 }
@@ -97,7 +98,7 @@ model Library {
   /// funcionan igual sin una segunda tabla. Lo unico distinto es que no sale en
   /// el listado y no se puede renombrar ni borrar. Un indice unico parcial
   /// (en la migracion) deja uno solo por cuenta.
-  isVault     Boolean @default(false) @map("is_vault")
+  isVault Boolean @default(false) @map("is_vault")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -155,8 +156,8 @@ model LibraryItem {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  library  Library             @relation(fields: [libraryId], references: [id], onDelete: Cascade)
-  fixedIn  ScheduleFixedItem[]
+  library Library             @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  fixedIn ScheduleFixedItem[]
 
   @@index([libraryId, kind, position])
   @@map("library_items")
@@ -230,6 +231,7 @@ model Recipient {
   owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   schedules  Schedule[]
   libraries  LibraryRecipient[]
+  habitPlans HabitPlan[]
 
   /// La misma persona no se vincula dos veces a la misma cuenta. Postgres trata
   /// los nulos como distintos entre si, asi que los pendientes no chocan.
@@ -365,7 +367,7 @@ model DeliveryAttempt {
   error             String?
 
   /// Cuantas veces se reintento ya. Al llegar al tope se rinde y queda FAILED.
-  retryCount Int @default(0) @map("retry_count")
+  retryCount    Int       @default(0) @map("retry_count")
   /// Cuando toca el siguiente reintento. Solo tiene valor mientras esta
   /// RETRYING; es lo unico que mira la consulta de reintentos vencidos.
   nextAttemptAt DateTime? @map("next_attempt_at")
@@ -400,4 +402,160 @@ model Notice {
 
   @@index([ownerId, readAt])
   @@map("notices")
+}
+
+// ---------------------------------------------------------------------------
+// habits
+// ---------------------------------------------------------------------------
+
+enum HabitPlanStatus {
+  ACTIVE
+  /// Lo anulo su dueño antes de tiempo. Las bibliotecas quedan libres.
+  CANCELLED
+  /// Llego a su ultimo dia. Ya no se toca; solo se puede reenviar el informe.
+  CLOSED
+
+  @@map("habit_plan_status")
+}
+
+enum HabitAnswer {
+  DONE
+  /// El boton del medio: se hizo a medias y vale la mitad.
+  HALF
+  MISSED
+
+  @@map("habit_answer")
+}
+
+/// Un plan de habitos: un destinatario, unas cuantas bibliotecas y un plazo.
+///
+/// Cada biblioteca del plan se comporta como un habito. Mientras el plan este
+/// vivo, todo lo que salga de esas bibliotecas hacia ese destinatario llega con
+/// tres botones —realizado, a medias, no cumplido— y la respuesta se cuenta.
+///
+/// `timezone` se copia de la cuenta al crearlo y no se vuelve a leer de ahi: el
+/// dia de un plan tiene que seguir cortandose donde se corto siempre, aunque su
+/// dueño se mude de pais a mitad de los treinta dias.
+///
+/// `scoredThrough` es el ultimo dia con la cuenta cerrada. Es lo unico que mira
+/// el latido, y avanza de a un dia: si el proceso estuvo caido dos dias, se
+/// pone al dia en dos vueltas en vez de saltarselos en silencio.
+model HabitPlan {
+  id          String @id @db.Uuid
+  ownerId     String @map("owner_id") @db.Uuid
+  recipientId String @map("recipient_id") @db.Uuid
+
+  name String
+
+  /// 7, 14, 21 o 30. El vocabulario cerrado vive en el contrato.
+  durationDays Int @map("duration_days")
+
+  /// Zona IANA en la que se corta el dia de este plan.
+  timezone String
+
+  /// Primer y ultimo dia, los dos inclusive, como fechas civiles de esa zona.
+  startOn DateTime @map("start_on") @db.Date
+  endOn   DateTime @map("end_on") @db.Date
+
+  status HabitPlanStatus @default(ACTIVE)
+
+  /// Hasta que dia esta cerrada la cuenta. Nulo mientras no cerro ninguno.
+  scoredThrough DateTime? @map("scored_through") @db.Date
+
+  closedAt     DateTime? @map("closed_at")
+  reportSentAt DateTime? @map("report_sent_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  habits HabitPlanLibrary[]
+  days   HabitDayScore[]
+
+  @@index([ownerId, status])
+  /// El indice del latido: solo vivos, ordenados por lo que falta por cerrar.
+  @@index([status, scoredThrough])
+  @@map("habit_plans")
+}
+
+/// Una biblioteca dentro de un plan, o sea un habito.
+///
+/// **No hay clave foranea hacia `libraries`, y es a proposito.** Es la misma
+/// decision que ya tomo `DeliveryAttempt.itemId`: un plan terminado es un
+/// registro historico, y si borrar una biblioteca arrastrara sus filas, los
+/// planes viejos perderian habitos sin decir nada. Por eso `label` guarda el
+/// nombre con el que la biblioteca entro: sobrevive a que la borren.
+///
+/// `recipientId` y `active` estan copiados del plan solo para sostener un
+/// indice unico parcial —escrito a mano en la migracion, porque Prisma no los
+/// declara— sobre (biblioteca, destinatario) de los planes vivos.
+///
+/// El indice va sobre los dos y no sobre la biblioteca sola, y es la diferencia
+/// que importa: la misma biblioteca **si** puede estar en dos planes a la vez
+/// mientras vayan a personas distintas —son horarios distintos y envios
+/// distintos, asi que ninguna respuesta queda ambigua—. Lo que no puede es
+/// estar dos veces hacia la misma persona: ese envio llegaria con dos juegos de
+/// botones y la respuesta no sabria a cual pertenece.
+model HabitPlanLibrary {
+  planId      String @map("plan_id") @db.Uuid
+  libraryId   String @map("library_id") @db.Uuid
+  recipientId String @map("recipient_id") @db.Uuid
+
+  label String
+
+  active Boolean @default(true)
+
+  plan HabitPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([planId, libraryId])
+  @@index([libraryId, recipientId, active])
+  @@map("habit_plan_libraries")
+}
+
+/// La respuesta a un envio, tal como la apreto quien lo recibio.
+///
+/// El identificador del envio **es** la clave primaria, y eso es lo que hace
+/// cumplir que una votacion no se pueda cambiar: el segundo toque choca contra
+/// el indice. La unicidad la decide la base y no una consulta previa, que dos
+/// toques a la vez podrian pasar los dos.
+///
+/// Tampoco hay clave foranea hacia `delivery_attempts`, por lo mismo que arriba:
+/// borrar un horario no puede llevarse por delante lo que alguien ya respondio.
+model HabitResponse {
+  deliveryId String      @id @map("delivery_id") @db.Uuid
+  planId     String      @map("plan_id") @db.Uuid
+  libraryId  String      @map("library_id") @db.Uuid
+  answer     HabitAnswer
+
+  answeredAt DateTime @map("answered_at")
+
+  @@index([planId, libraryId])
+  @@map("habit_responses")
+}
+
+/// El resultado de un dia ya cerrado, por habito.
+///
+/// Se guarda calculado en vez de sumarse cada vez que alguien abre la pantalla:
+/// un plan cerrado tiene que enseñar siempre lo mismo, y volver a sumarlo desde
+/// los envios daria otro numero en cuanto se borre una biblioteca o un horario.
+///
+model HabitDayScore {
+  planId    String   @map("plan_id") @db.Uuid
+  libraryId String   @map("library_id") @db.Uuid
+  day       DateTime @db.Date
+
+  sent     Int
+  /// Cuantos de esos envios tuvieron respuesta. No se deduce de `earned`:
+  /// tres realizados y dos no cumplidos suman tres, pero se respondieron cinco.
+  answered Int
+  /// Suma de los valores: uno por realizado, medio por a medias, cero por lo
+  /// demas —incluido no contestar—.
+  earned   Float
+
+  plan HabitPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([planId, libraryId, day])
+  @@map("habit_day_scores")
 }

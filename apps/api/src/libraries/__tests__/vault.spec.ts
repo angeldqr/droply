@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LibraryId } from '../../shared/identifiers';
+import { LibraryItemId, type LibraryId } from '../../shared/identifiers';
 import { ana, beto, buildLibraries } from './support';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
@@ -63,7 +63,7 @@ describe('el baúl', () => {
     if (!created.ok) throw new Error('no se creó la biblioteca');
 
     const original = await imagenEnElBaul(world, vault.library.id);
-    const copied = await world.copyFromVault.execute(ana, created.value.id, original.itemId);
+    const copied = await world.copyFromVault.execute(ana, created.value.id, [original.itemId]);
 
     expect(copied.ok).toBe(true);
     if (!copied.ok) return;
@@ -73,10 +73,12 @@ describe('el baúl', () => {
     expect(world.storage.objects.has(original.storageKey)).toBe(true);
 
     // Y la copia nace lista, con archivo propio y sin volver a confirmarse.
-    expect(copied.value.storageKey).not.toBe(original.storageKey);
-    expect(copied.value.isReady).toBe(true);
-    expect(copied.value.fileName).toBe('gato.png');
-    expect(world.storage.objects.get(copied.value.storageKey ?? '')).toEqual(PNG);
+    const copia = copied.value[0];
+
+    expect(copia?.storageKey).not.toBe(original.storageKey);
+    expect(copia?.isReady).toBe(true);
+    expect(copia?.fileName).toBe('gato.png');
+    expect(world.storage.objects.get(copia?.storageKey ?? '')).toEqual(PNG);
   });
 
   it('quitar la copia no toca el archivo del original', async () => {
@@ -87,11 +89,15 @@ describe('el baúl', () => {
     if (!created.ok) throw new Error('no se creó la biblioteca');
 
     const original = await imagenEnElBaul(world, vault.library.id);
-    const copied = await world.copyFromVault.execute(ana, created.value.id, original.itemId);
+    const copied = await world.copyFromVault.execute(ana, created.value.id, [original.itemId]);
 
     if (!copied.ok) throw new Error('no se copió');
 
-    await world.removeItem.execute(ana, created.value.id, copied.value.id);
+    const copia = copied.value[0];
+
+    if (!copia) throw new Error('no se copió');
+
+    await world.removeItem.execute(ana, created.value.id, copia.id);
 
     expect(world.storage.objects.has(original.storageKey)).toBe(true);
   });
@@ -106,7 +112,7 @@ describe('el baúl', () => {
 
     if (!deBeto.ok) throw new Error('no se creó la biblioteca');
 
-    const copied = await world.copyFromVault.execute(beto, deBeto.value.id, original.itemId);
+    const copied = await world.copyFromVault.execute(beto, deBeto.value.id, [original.itemId]);
 
     expect(copied.ok).toBe(false);
     expect(await world.items.listOf(deBeto.value.id)).toHaveLength(0);
@@ -123,14 +129,82 @@ describe('el baúl', () => {
 
     if (!text.ok) throw new Error('no se agregó el texto');
 
-    const copied = await world.copyFromVault.execute(ana, created.value.id, text.value.id);
+    const copied = await world.copyFromVault.execute(ana, created.value.id, [text.value.id]);
 
     expect(copied.ok).toBe(true);
     if (!copied.ok) return;
 
-    expect(copied.value.textContent).toBe('Buenos días');
-    expect(copied.value.storageKey).toBeNull();
+    expect(copied.value[0]?.textContent).toBe('Buenos días');
+    expect(copied.value[0]?.storageKey).toBeNull();
     expect(world.storage.objects.size).toBe(0);
+  });
+
+  /*
+   * El reclamo del cliente, literal: «debe existir una opción en la que pueda
+   * seleccionar varios … y puedan subirse todos de un solo y no uno por uno».
+   */
+  it('trae varios de una vez y cada uno cae en su propio sitio', async () => {
+    const world = buildLibraries();
+    const vault = await world.openVault.execute(ana);
+    const created = await world.create.execute(ana, { name: 'Cosas' });
+
+    if (!created.ok) throw new Error('no se creó la biblioteca');
+
+    const una = await imagenEnElBaul(world, vault.library.id);
+    const otra = await imagenEnElBaul(world, vault.library.id);
+    const texto = await world.addText.execute(ana, vault.library.id, 'Buenos días');
+
+    if (!texto.ok) throw new Error('no se agregó el texto');
+
+    const copied = await world.copyFromVault.execute(ana, created.value.id, [
+      una.itemId,
+      otra.itemId,
+      texto.value.id,
+    ]);
+
+    expect(copied.ok).toBe(true);
+    if (!copied.ok) return;
+
+    expect(copied.value).toHaveLength(3);
+    expect(await world.items.listOf(created.value.id)).toHaveLength(3);
+
+    // Las dos imágenes van una detrás de la otra, no encima: sin llevar la
+    // cuenta de la última posición, las dos caerían en el mismo número.
+    const imagenes = copied.value.filter((item) => item.kind === 'IMAGE');
+
+    expect(imagenes).toHaveLength(2);
+    expect(imagenes[0]?.position).not.toBe(imagenes[1]?.position);
+
+    // Cada copia con su propio archivo, y los originales intactos.
+    expect(world.storage.objects.has(una.storageKey)).toBe(true);
+    expect(world.storage.objects.has(otra.storageKey)).toBe(true);
+    expect(world.storage.objects.size).toBe(4);
+  });
+
+  /*
+   * Comprobar todo antes de copiar nada. Copiando mientras se recorre, el
+   * elemento malo de la posición tres dejaría dos copias hechas y un error en
+   * la pantalla, y nadie sabría qué entró.
+   */
+  it('si uno de la lista no existe, no entra ninguno', async () => {
+    const world = buildLibraries();
+    const vault = await world.openVault.execute(ana);
+    const created = await world.create.execute(ana, { name: 'Cosas' });
+
+    if (!created.ok) throw new Error('no se creó la biblioteca');
+
+    const original = await imagenEnElBaul(world, vault.library.id);
+    const inventado = LibraryItemId.from('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+
+    const copied = await world.copyFromVault.execute(ana, created.value.id, [
+      original.itemId,
+      inventado,
+    ]);
+
+    expect(copied.ok).toBe(false);
+    expect(await world.items.listOf(created.value.id)).toHaveLength(0);
+    // Y sin archivos sueltos en el almacenamiento: solo queda el del baúl.
+    expect(world.storage.objects.size).toBe(1);
   });
 
   it('no deja copiar dentro del propio baúl', async () => {
@@ -138,7 +212,7 @@ describe('el baúl', () => {
     const vault = await world.openVault.execute(ana);
     const original = await imagenEnElBaul(world, vault.library.id);
 
-    const copied = await world.copyFromVault.execute(ana, vault.library.id, original.itemId);
+    const copied = await world.copyFromVault.execute(ana, vault.library.id, [original.itemId]);
 
     expect(copied.ok).toBe(false);
   });

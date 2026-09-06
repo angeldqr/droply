@@ -36,6 +36,7 @@ export class PrismaScheduleReader implements ScheduleReader {
         id: true,
         libraryId: true,
         ownerId: true,
+        recipientId: true,
         senderName: true,
         kindFilter: true,
         startMinute: true,
@@ -48,6 +49,27 @@ export class PrismaScheduleReader implements ScheduleReader {
     });
 
     if (!row) return null;
+
+    /*
+     * El plan de hábitos que retiene esta biblioteca, si lo hay.
+     *
+     * Va en una consulta aparte porque la condición mira dos campos del propio
+     * horario a la vez —su biblioteca y su destinatario— y un `where` anidado
+     * de Prisma no puede referirse al campo hermano de la fila que está
+     * trayendo.
+     *
+     * Y las dos condiciones tienen que estar: sin el destinatario, un plan que
+     * le manda a otra persona haría que a esta le llegaran botones cuyas
+     * respuestas se anotarían en la cuenta de un tercero.
+     */
+    const habit = await this.prisma.habitPlanLibrary.findFirst({
+      where: {
+        libraryId: row.libraryId,
+        active: true,
+        plan: { status: 'ACTIVE', recipientId: row.recipientId },
+      },
+      select: { planId: true, libraryId: true },
+    });
 
     return {
       scheduleId: row.id,
@@ -62,6 +84,7 @@ export class PrismaScheduleReader implements ScheduleReader {
       endMinute: row.endMinute,
       timezone: row.timezone,
       fixedItems: row.fixedItems,
+      habit,
     };
   }
 
@@ -160,11 +183,16 @@ export class PrismaDeliveryLog implements DeliveryLog {
     occurredAt: Date;
     status: DeliveryStatus;
     error: string | null;
-  }): Promise<boolean> {
-    try {
-      await this.prisma.deliveryAttempt.create({ data: { id: randomUUID(), ...attempt } });
+  }): Promise<string | null> {
+    // El identificador se genera acá y se devuelve: los botones de un plan de
+    // hábitos lo llevan dentro, y volver a leer la fila recién escrita solo
+    // para saber cómo se llama sería una consulta de más en cada envío.
+    const id = randomUUID();
 
-      return true;
+    try {
+      await this.prisma.deliveryAttempt.create({ data: { id, ...attempt } });
+
+      return id;
     } catch (caught) {
       /*
        * Ya había una anotación para esa ocurrencia, así que es de otro.
@@ -177,7 +205,7 @@ export class PrismaDeliveryLog implements DeliveryLog {
         caught instanceof Prisma.PrismaClientKnownRequestError &&
         caught.code === UNIQUE_VIOLATION
       ) {
-        return false;
+        return null;
       }
 
       throw caught;
@@ -239,6 +267,7 @@ export class PrismaDeliveryLog implements DeliveryLog {
       const rows = await tx.deliveryAttempt.findMany({
         where: { id: { in: ids } },
         select: {
+          id: true,
           scheduleId: true,
           occurrenceKey: true,
           occurredAt: true,
@@ -273,6 +302,7 @@ export class PrismaDeliveryLog implements DeliveryLog {
           : [
               {
                 scheduleId: row.scheduleId,
+                deliveryId: row.id,
                 occurrenceKey: row.occurrenceKey,
                 occurredAt: row.occurredAt,
                 retryCount: row.retryCount,

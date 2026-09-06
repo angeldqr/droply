@@ -224,19 +224,29 @@ export class LibrariesController {
     );
   }
 
-  /** Trae a esta biblioteca una copia de algo que ya está en el baúl. */
+  /**
+   * Trae a esta biblioteca copias de lo que ya está en el baúl.
+   *
+   * Acepta varios de una vez: de a uno obligaba a abrir el diálogo y verlo
+   * cerrarse por cada archivo. Uno solo es una lista de uno, así que no hace
+   * falta una segunda ruta.
+   */
   @Post(':libraryId/items/copy')
   @HttpCode(HttpStatus.CREATED)
   async copyFromTheVault(
     @CurrentUserId() userId: UserId,
     @Param('libraryId') libraryId: string,
     @ZodBody(copyFromVaultSchema) body: CopyFromVaultInput,
-  ): Promise<LibraryItemView> {
-    const item = orThrow(
-      await this.copyFromVault.execute(userId, toLibraryId(libraryId), toItemId(body.sourceItemId)),
+  ): Promise<LibraryItemView[]> {
+    const items = orThrow(
+      await this.copyFromVault.execute(
+        userId,
+        toLibraryId(libraryId),
+        body.sourceItemIds.map(toItemId),
+      ),
     );
 
-    return toItemView(item, null);
+    return items.map((item) => toItemView(item, null));
   }
 
   /** Cuántas veces al día se manda este elemento dentro de la franja. */

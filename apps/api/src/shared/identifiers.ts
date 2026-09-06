@@ -17,6 +17,7 @@ export type MediaAssetId = Brand<string, 'MediaAssetId'>;
 export type RecipientId = Brand<string, 'RecipientId'>;
 export type ScheduleId = Brand<string, 'ScheduleId'>;
 export type DeliveryAttemptId = Brand<string, 'DeliveryAttemptId'>;
+export type HabitPlanId = Brand<string, 'HabitPlanId'>;
 
 /** Cualquier UUID con versión y variante válidas, de la v1 a la v8. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -51,6 +52,7 @@ export const ScheduleId = identifier<'ScheduleId', ScheduleId>('ScheduleId');
 export const DeliveryAttemptId = identifier<'DeliveryAttemptId', DeliveryAttemptId>(
   'DeliveryAttemptId',
 );
+export const HabitPlanId = identifier<'HabitPlanId', HabitPlanId>('HabitPlanId');
 
 /**
  * El dominio no llama a `crypto` directamente: pide un id por acá, y así los

@@ -14,6 +14,7 @@ const TARGET: DispatchTarget = {
   endMinute: 1200,
   timezone: 'America/Bogota',
   fixedItems: [],
+  habit: null,
 };
 
 /** Con qué se le preguntó a la base, que es justo lo que hay que fijar. */
