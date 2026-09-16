@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MEDIA_LIMITS } from './media-limits';
+import { MEDIA_LIMITS } from '../libraries/domain/media-limits';
 import { detectMimeType } from './media-signature';
 
 /** Una cabecera de 64 bytes que empieza con estos y sigue en cero. */

@@ -1,3 +1,4 @@
+import type { InboundMessage, JournalInbox } from '../../shared/journal-inbox';
 import { ChatAlreadyLinked } from '../domain/errors';
 import type { ChannelGateway } from '../domain/ports';
 import type { LinkTelegramChat } from './link-telegram-chat';
@@ -36,9 +37,21 @@ export class HandleTelegramMessage {
   constructor(
     private readonly link: LinkTelegramChat,
     private readonly channel: ChannelGateway,
+    private readonly journal: JournalInbox,
   ) {}
 
-  async execute(message: { chatId: string; text: string | null }): Promise<void> {
+  async execute(message: InboundMessage): Promise<void> {
+    /*
+     * La bitácora tiene **primera opción** sobre todo lo que entra.
+     *
+     * Se queda con su `/start`, con `/habits` y con lo que llegue mientras haya
+     * una anotación abierta; para cualquier otra cosa devuelve `false` y el
+     * camino de los destinatarios corre exactamente como antes. Preguntar
+     * primero acá y no al revés es lo que permite que el orden no cambie la
+     * respuesta a un mensaje cualquiera.
+     */
+    if (await this.journal.handle(message)) return;
+
     const code = startPayloadOf(message.text);
 
     if (code === null) {

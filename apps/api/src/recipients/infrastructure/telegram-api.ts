@@ -1,11 +1,15 @@
 import { Logger } from '@nestjs/common';
 import type { ChatAction } from '../../shared/habit-vote';
+import type { InboundMessage, InboundPhoto } from '../../shared/journal-inbox';
 
-/** Lo que interesa de un mensaje entrante, ya sin la envoltura de Telegram. */
-export interface IncomingMessage {
-  readonly chatId: string;
-  readonly text: string | null;
-}
+/*
+ * Lo que entra, con la forma que ya declara `shared/journal-inbox`.
+ *
+ * Se reexporta en vez de copiarse: eran dos parejas de tipos idénticas —una acá
+ * y otra allá— y la copia solo servía para que un día se separaran.
+ */
+export type IncomingMessage = InboundMessage;
+export type IncomingPhoto = InboundPhoto;
 
 /** El toque de un botón, ya sin la envoltura de Telegram. */
 export interface IncomingCallback {
@@ -109,6 +113,16 @@ export class TelegramApi {
     }).then(() => undefined);
   }
 
+  /**
+   * Deja los comandos en el menú del bot.
+   *
+   * Sin esto `/habits` existe pero nadie lo descubre: Telegram solo ofrece lo
+   * que el bot declara, y quien no sepa el comando de memoria no lo va a usar.
+   */
+  setCommands(commands: readonly { command: string; description: string }[]): Promise<unknown> {
+    return this.call('setMyCommands', { commands });
+  }
+
   setWebhook(url: string, secretToken: string): Promise<unknown> {
     /*
      * Sin `drop_pending_updates`: los mensajes que se encolaron mientras el API
@@ -170,7 +184,56 @@ export function parseIncoming(raw: unknown): IncomingMessage | null {
 
   const text = (message as { text?: unknown }).text;
 
-  return { chatId: String(chatId), text: typeof text === 'string' ? text : null };
+  return {
+    chatId: String(chatId),
+    // El pie de foto cuenta como texto: quien manda una imagen con «45 min de
+    // bici» debajo está contando lo mismo que si lo escribiera aparte.
+    text: firstString([text, (message as { caption?: unknown }).caption]),
+    photo: photoSizesOf((message as { photo?: unknown }).photo),
+  };
+}
+
+/** Lado mayor mínimo de la miniatura: una celda de la rejilla en pantalla densa. */
+const THUMB_MIN_SIDE = 600;
+
+/**
+ * La foto en su resolución más grande, y una mediana para las rejillas.
+ *
+ * Una foto llega como un arreglo de versiones. Se guarda la de lado mayor más
+ * grande; la miniatura es la más chica que llegue a `THUMB_MIN_SIDE`, o la
+ * grande si ninguna llega. Se ordena en vez de confiar en el orden en que
+ * Telegram las manda, que no está documentado.
+ */
+function photoSizesOf(raw: unknown): IncomingPhoto | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+
+  const sizes = raw.flatMap((size: unknown) => {
+    const { file_id, width, height } = (size ?? {}) as {
+      file_id?: unknown;
+      width?: unknown;
+      height?: unknown;
+    };
+
+    if (typeof file_id !== 'string') return [];
+
+    return [{ fileId: file_id, side: Math.max(Number(width) || 0, Number(height) || 0) }];
+  });
+
+  sizes.sort((left, right) => left.side - right.side);
+
+  const largest = sizes.at(-1);
+
+  if (!largest) return null;
+
+  const thumb = sizes.find((size) => size.side >= THUMB_MIN_SIDE) ?? largest;
+
+  return { fileId: largest.fileId, thumbFileId: thumb.fileId };
+}
+
+function firstString(values: readonly unknown[]): string | null {
+  for (const value of values) if (typeof value === 'string' && value.length > 0) return value;
+
+  return null;
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   CalendarClock,
   LibraryBig,
   LogOut,
+  NotebookPen,
   Send,
   ShieldCheck,
   Sparkles,
@@ -123,6 +124,16 @@ const SECTIONS = [
   {
     label: 'Mi yo del futuro',
     items: [{ href: '/yo-en-30-dias', label: 'Yo en 30 días', icon: Sparkles }],
+  },
+  /*
+   * La bitácora va aparte de «Mi yo del futuro», aunque las dos hablen de
+   * hábitos. Aquello mide lo que la aplicación mandó; esto guarda lo que el
+   * usuario cuenta desde el chat, y no recuerda nada. Bajo el mismo rótulo
+   * parecerían dos vistas de lo mismo.
+   */
+  {
+    label: 'Hábitos',
+    items: [{ href: '/habitos', label: 'Mi bitácora', icon: NotebookPen }],
   },
 ] as const;
 

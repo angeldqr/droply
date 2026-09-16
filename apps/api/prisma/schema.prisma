@@ -56,6 +56,8 @@ model User {
   schedules         Schedule[]
   notices           Notice[]
   habitPlans        HabitPlan[]
+  accountChat       AccountChat?
+  habits            Habit[]
 
   @@map("users")
 }
@@ -558,4 +560,128 @@ model HabitDayScore {
 
   @@id([planId, libraryId, day])
   @@map("habit_day_scores")
+}
+
+// ---------------------------------------------------------------------------
+// journal — la bitácora de hábitos
+//
+// Aparte de `habits`, que mide bibliotecas y envíos programados. Aquello cuenta
+// lo que la aplicación mandó; esto guarda lo que el usuario escribe. Son dos
+// agregados con vidas distintas y juntos serían un contexto que cambia por dos
+// razones.
+// ---------------------------------------------------------------------------
+
+/// El chat de Telegram del **dueño** de la cuenta.
+///
+/// Tabla aparte y no columnas en `users` porque tiene su propia vida —vincular,
+/// volver a vincular, desvincular— y porque quien la escribe es la bitácora, no
+/// identity.
+///
+/// `chatId` es unico **globalmente**, y ahi esta la diferencia con `Recipient`:
+/// aquel admite el mismo chat en varias cuentas porque su índice lleva el dueño
+/// dentro. Acá no puede: si un chat resolviera a dos cuentas, `/habits` no
+/// sabría de quién son los hábitos que está mostrando.
+model AccountChat {
+  userId String @id @map("user_id") @db.Uuid
+
+  /// El chat_id de Telegram. Nulo mientras la cuenta no se vinculó.
+  chatId String? @unique @map("chat_id")
+
+  /// El código se guarda hasheado, igual que el de los destinatarios: quien lea
+  /// la tabla no puede vincular su chat a la cuenta de otro.
+  linkCodeHash      String?   @unique @map("link_code_hash")
+  linkCodeExpiresAt DateTime? @map("link_code_expires_at")
+
+  linkedAt DateTime? @map("linked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account_chats")
+}
+
+/// Un hábito del usuario: ejercicio, alimentación, lectura, lo que quiera.
+///
+/// No manda nada ni recuerda nada: es una carpeta a la que se le van pegando
+/// anotaciones desde el chat. Esa es la diferencia con un horario.
+model Habit {
+  id      String @id @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+
+  name String
+
+  /// Decimal como en las bibliotecas: reordenar promedia vecinos en vez de
+  /// renumerar la lista entera.
+  position Float
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  entries HabitEntry[]
+
+  @@index([ownerId, position])
+  @@map("habits")
+}
+
+/// Una anotación: lo que el usuario contó que hizo, con sus fotos.
+///
+/// Nace abierta al elegir el hábito en el chat y se cierra al apretar «Listo»,
+/// al elegir otro hábito, o sola a la media hora.
+///
+/// `chatId` va en la fila y no en una tabla de sesiones aparte: **la anotación
+/// abierta es el estado de la conversación**. Una tabla más sería el mismo
+/// hecho escrito dos veces, esperando a separarse. Un índice único parcial
+/// —escrito a mano en la migración— garantiza una sola abierta por chat.
+model HabitEntry {
+  id      String @id @db.Uuid
+  habitId String @map("habit_id") @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+
+  /// Desde qué chat se escribió. Es lo que permite encontrar la abierta.
+  chatId String @map("chat_id")
+
+  /// Lo que contó. Los mensajes seguidos se acumulan separados por saltos.
+  note String?
+
+  openedAt  DateTime  @map("opened_at")
+  /// Cuándo llegó lo último. Es lo que decide si la anotación caducó; no se
+  /// deduce de `openedAt` porque una conversación larga sigue viva.
+  touchedAt DateTime  @map("touched_at")
+  closedAt  DateTime? @map("closed_at")
+
+  habit  Habit             @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  photos HabitEntryPhoto[]
+
+  @@index([habitId, openedAt])
+  @@index([ownerId, openedAt])
+  @@map("habit_entries")
+}
+
+/// Una foto de una anotación, ya bajada de Telegram y guardada en el bucket.
+///
+/// Se guardan los bytes y no el `file_id` de Telegram: la bitácora es del
+/// usuario y tiene que seguir viéndose aunque cambie el token del bot.
+model HabitEntryPhoto {
+  id      String @id @db.Uuid
+  entryId String @map("entry_id") @db.Uuid
+
+  /// `<ownerId>/journal/<entryId>/<photoId>`: bajo el prefijo del dueño, que es
+  /// lo que vacía el borrado de una cuenta. Sin el nombre del archivo, que
+  /// traería caracteres raros.
+  storageKey String  @map("storage_key")
+  /// La versión mediana para las rejillas, en `<storageKey>.min`. Nula si no se
+  /// pudo guardar: la pantalla usa entonces la grande.
+  thumbKey   String? @map("thumb_key")
+  mimeType   String @map("mime_type")
+  sizeBytes  Int    @map("size_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  entry HabitEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+  @@map("habit_entry_photos")
 }

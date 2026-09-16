@@ -10,6 +10,7 @@ import { AdminModule } from './admin/presentation/admin.module';
 import { DeliveryModule } from './delivery/presentation/delivery.module';
 import { HabitsModule } from './habits/presentation/habits.module';
 import { IdentityModule } from './identity/presentation/identity.module';
+import { JournalModule } from './journal/presentation/journal.module';
 import { LibrariesModule } from './libraries/presentation/libraries.module';
 import { RecipientsModule } from './recipients/presentation/recipients.module';
 import { SchedulingModule } from './scheduling/presentation/scheduling.module';
@@ -30,6 +31,8 @@ import { SchedulingModule } from './scheduling/presentation/scheduling.module';
     DeliveryModule,
     // Global tambien: expone el sumidero de votos que consume el bot.
     HabitsModule,
+    // Y global: la bitacora, que tiene primera opcion sobre lo que entra por el chat.
+    JournalModule,
     IdentityModule,
     LibrariesModule,
     RecipientsModule,

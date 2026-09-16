@@ -1,5 +1,6 @@
 import { HABIT_ACTION_LABELS, parseHabitAction } from '../../shared/habit-vote';
 import type { HabitVoteOutcome, HabitVoteSink } from '../../shared/habit-vote-sink';
+import type { InboundTap, JournalInbox } from '../../shared/journal-inbox';
 import type { CallbackResponder } from '../domain/ports';
 
 /**
@@ -32,22 +33,21 @@ export class HandleTelegramCallback {
   constructor(
     private readonly votes: HabitVoteSink,
     private readonly chat: CallbackResponder,
+    private readonly journal: JournalInbox,
   ) {}
 
-  async execute(callback: {
-    chatId: string;
-    callbackId: string;
-    messageId: number | null;
-    data: string;
-  }): Promise<void> {
+  async execute(callback: InboundTap): Promise<void> {
     const action = parseHabitAction(callback.data);
 
-    /*
-     * Un dato que no reconocemos igual se acusa, y con una cadena vacía para no
-     * enseñar nada. Es el caso del botón inerte que queda tras votar: sin este
-     * acuse, tocarlo dejaría el reloj girando en el teléfono de la persona.
-     */
     if (!action) {
+      // Los toques de la bitácora llevan otro prefijo y entran por acá.
+      if (await this.journal.tap(callback)) return;
+
+      /*
+       * Un dato que no reconoce nadie igual se acusa, y con una cadena vacía
+       * para no enseñar nada. Es el caso del botón inerte que queda tras votar:
+       * sin este acuse, tocarlo dejaría el reloj girando en el teléfono.
+       */
       await this.chat.answer(callback.callbackId, '');
 
       return;

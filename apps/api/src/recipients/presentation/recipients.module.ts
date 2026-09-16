@@ -3,6 +3,7 @@ import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { HABIT_VOTE_SINK, type HabitVoteSink } from '../../shared/habit-vote-sink';
+import { JOURNAL_INBOX, type JournalInbox } from '../../shared/journal-inbox';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import { HandleTelegramMessage } from '../application/handle-telegram-message';
@@ -109,16 +110,16 @@ const TELEGRAM_API = Symbol('TelegramApi');
     },
     {
       provide: HandleTelegramMessage,
-      inject: [LinkTelegramChat, CHANNEL_GATEWAY],
-      useFactory: (link: LinkTelegramChat, channel: ChannelGateway) =>
-        new HandleTelegramMessage(link, channel),
+      inject: [LinkTelegramChat, CHANNEL_GATEWAY, JOURNAL_INBOX],
+      useFactory: (link: LinkTelegramChat, channel: ChannelGateway, journal: JournalInbox) =>
+        new HandleTelegramMessage(link, channel, journal),
     },
 
     {
       provide: HandleTelegramCallback,
-      inject: [HABIT_VOTE_SINK, CALLBACK_RESPONDER],
-      useFactory: (votes: HabitVoteSink, chat: CallbackResponder) =>
-        new HandleTelegramCallback(votes, chat),
+      inject: [HABIT_VOTE_SINK, CALLBACK_RESPONDER, JOURNAL_INBOX],
+      useFactory: (votes: HabitVoteSink, chat: CallbackResponder, journal: JournalInbox) =>
+        new HandleTelegramCallback(votes, chat, journal),
     },
 
     {

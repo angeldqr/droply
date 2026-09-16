@@ -62,6 +62,10 @@ minio-data/
 uploads/
 storage/
 apps/*/uploads/
+# Pero `storage/` es demasiado ancho: también atrapaba el código que habla con
+# el almacenamiento, y el repositorio se subía sin él y no compilaba en ninguna
+# otra máquina. Lo que se ignora es la carpeta de archivos, no la del cliente.
+!apps/api/src/platform/storage/
 
 # ---------------------------------------------------------------------------
 # Dependencias y artefactos de build

@@ -1,5 +1,6 @@
 import { FixedClock } from '../../shared/clock';
 import { UserId, type IdGenerator } from '../../shared/identifiers';
+import type { JournalInbox } from '../../shared/journal-inbox';
 import { HandleTelegramMessage } from '../application/handle-telegram-message';
 import { LinkTelegramChat } from '../application/link-telegram-chat';
 import {
@@ -103,6 +104,23 @@ class FakeAccounts implements AccountStatus {
   }
 }
 
+/**
+ * La bitácora que nunca se hace cargo de nada.
+ *
+ * Es el doble que prueba lo que importa de este contexto: darle primera opción
+ * a la bitácora no cambió el camino de los destinatarios. Con `false` en las dos
+ * puertas, todo lo de acá tiene que seguir comportándose igual que antes.
+ */
+class SilentJournal implements JournalInbox {
+  handle(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  tap(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+}
+
 class FakeChannel implements ChannelGateway {
   readonly sent: { externalId: string; text: string }[] = [];
 
@@ -139,6 +157,6 @@ export function buildRecipients(startingAt = new Date('2026-08-18T09:00:00.000Z'
     relink: new RelinkRecipient(recipients, accounts, codes, clock),
     remove: new DeleteRecipient(recipients),
     link,
-    handle: new HandleTelegramMessage(link, channel),
+    handle: new HandleTelegramMessage(link, channel, new SilentJournal()),
   };
 }

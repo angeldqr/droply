@@ -4,13 +4,14 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
-  S3Client,
+  type S3Client,
 } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Logger } from '@nestjs/common';
 import type { ApiEnv } from '../../platform/config/env.module';
-import { SIGNATURE_BYTES } from '../domain/media-signature';
+import { s3ClientFor } from '../../platform/storage/s3';
+import { SIGNATURE_BYTES } from '../../shared/media-signature';
 import type { MediaStorage, UploadTicket } from '../domain/ports';
 
 export class S3MediaStorage implements MediaStorage {
@@ -20,17 +21,7 @@ export class S3MediaStorage implements MediaStorage {
   private readonly ttlSeconds: number;
 
   constructor(env: ApiEnv) {
-    this.client = new S3Client({
-      endpoint: env.STORAGE_ENDPOINT,
-      region: env.STORAGE_REGION,
-      credentials: {
-        accessKeyId: env.STORAGE_ACCESS_KEY,
-        secretAccessKey: env.STORAGE_SECRET_KEY,
-      },
-      // MinIO sirve los buckets por ruta, no por subdominio.
-      forcePathStyle: true,
-    });
-
+    this.client = s3ClientFor(env);
     this.bucket = env.STORAGE_BUCKET;
     this.ttlSeconds = env.STORAGE_SIGNED_URL_TTL_SECONDS;
   }

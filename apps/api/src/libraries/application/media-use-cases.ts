@@ -17,7 +17,7 @@ import {
 import type { Library } from '../domain/library';
 import { LibraryItem } from '../domain/library-item';
 import { MEDIA_LIMITS, type MediaKind } from '../domain/media-limits';
-import { detectMimeType } from '../domain/media-signature';
+import { detectMimeType } from '../../shared/media-signature';
 import type { LibraryItemRepository, LibraryRepository, MediaStorage } from '../domain/ports';
 import type { UploadTicket } from '../domain/ports';
 import { positionAtEnd } from '../domain/position';

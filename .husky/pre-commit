@@ -12,4 +12,7 @@ gitleaks protect --staged --no-banner --redact || {
   exit 1
 }
 
-pnpm exec lint-staged
+# En serie: con muchos archivos lint-staged los reparte en tandas, y dos
+# `turbo run lint` a la vez compilan `contracts` sobre el mismo `dist`. En
+# Windows uno no puede borrar lo que el otro tiene abierto (EPERM).
+pnpm exec lint-staged --concurrent false

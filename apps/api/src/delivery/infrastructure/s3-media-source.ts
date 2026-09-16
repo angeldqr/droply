@@ -1,32 +1,21 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import type { ApiEnv } from '../../platform/config/env.module';
+import { s3ClientFor } from '../../platform/storage/s3';
 import type { MediaSource } from '../domain/ports';
 
 /**
  * Baja el archivo del almacenamiento para poder subírselo a Telegram.
  *
- * Es un segundo cliente de S3, aparte del que firma las subidas en
- * `libraries/infrastructure`. Compartirlo obligaría a que un contexto importara
- * la infraestructura del otro, que es justo lo que la separación evita; y son
- * quince líneas de configuración, no una pieza que valga la pena centralizar.
- * El día que un tercer contexto lo necesite, se muda a `platform/storage`.
+ * El puerto y el adaptador son de este contexto; lo único compartido es cómo se
+ * abre la conexión, que vive en `platform/storage` desde que la bitácora se
+ * convirtió en el tercero que la necesitaba.
  */
 export class S3MediaSource implements MediaSource {
   private readonly client: S3Client;
   private readonly bucket: string;
 
   constructor(env: ApiEnv) {
-    this.client = new S3Client({
-      endpoint: env.STORAGE_ENDPOINT,
-      region: env.STORAGE_REGION,
-      credentials: {
-        accessKeyId: env.STORAGE_ACCESS_KEY,
-        secretAccessKey: env.STORAGE_SECRET_KEY,
-      },
-      // MinIO sirve los buckets por ruta, no por subdominio.
-      forcePathStyle: true,
-    });
-
+    this.client = s3ClientFor(env);
     this.bucket = env.STORAGE_BUCKET;
   }
 

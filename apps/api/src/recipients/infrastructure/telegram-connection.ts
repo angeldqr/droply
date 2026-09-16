@@ -1,4 +1,5 @@
 import { Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { JOURNAL_COMMAND } from '@reconectate/contracts';
 import type { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import type { HandleTelegramMessage } from '../application/handle-telegram-message';
 import { parseCallback, parseIncoming, type TelegramApi } from './telegram-api';
@@ -46,6 +47,8 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
     // sondeo, y el enlace que se le manda a la gente apunta a un usuario que no
     // existe: el fallo aparecía en el teléfono de otra persona, no acá.
     if (!(await this.checkIdentity())) return;
+
+    await this.publishCommands();
 
     if (this.webhook.url) {
       await this.registerWebhook(this.webhook.url);
@@ -105,6 +108,27 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
     this.logger.log(`Bot conectado como @${me.username}`);
 
     return true;
+  }
+
+  /**
+   * Los comandos que el bot ofrece en su menú.
+   *
+   * Es "lo mejor que se pueda": si Telegram no contesta, el bot sigue
+   * atendiendo `/habits` igual, solo que sin salir en la lista.
+   */
+  private async publishCommands(): Promise<void> {
+    try {
+      await this.api.setCommands([
+        {
+          // Sin la barra: Telegram la pone él. Sale del contrato para que el
+          // menú no pueda ofrecer un comando que el bot no atiende.
+          command: JOURNAL_COMMAND.replace('/', ''),
+          description: 'Anotar algo en tu bitácora de hábitos',
+        },
+      ]);
+    } catch {
+      this.logger.warn('No se pudo publicar el menú de comandos del bot.');
+    }
   }
 
   private async registerWebhook(url: string): Promise<void> {
