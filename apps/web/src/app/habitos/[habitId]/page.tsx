@@ -7,13 +7,17 @@ import {
   type EntryPhotoView,
   type HabitEntryView,
   type HabitProgress,
+  type HabitView,
 } from '@reconectate/contracts';
-import { ChevronLeft, ChevronRight, NotebookPen, Play, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, NotebookPen, Pencil, Play, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { EditEntryDialog } from '@/components/edit-entry-dialog';
 import { HabitCalendar } from '@/components/habit-calendar';
+import { HabitTrend } from '@/components/habit-trend';
+import { HabitYear } from '@/components/habit-year';
 import { cuenta, dayKey, daysAgo, goalLabel, HabitMark } from '@/components/habit-mark';
 import { RequireSession } from '@/components/require-session';
 import {
@@ -38,6 +42,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
 import { useDeleteEntry, useHabitEntries, useHabits, useResumeHabit } from '@/lib/journal';
@@ -87,11 +92,13 @@ function Contents({ habitId }: { habitId: string }) {
         })
       : null;
   const openPause = habit?.pauses.find((pause) => pause.to === null);
+  // Con menos de tres semanas el año es media pantalla en blanco: solo el mes.
+  const showYear = habit !== undefined && daysAgo(habit.createdAt) >= 21;
 
   return (
     <AppShell crumbs={[{ label: 'Mi bitácora', href: '/habitos' }, { label: name }]}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 md:p-6">
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_17rem] md:items-start">
+        <div className="flex flex-col gap-6">
           <header className="flex items-center gap-4">
             {habit ? (
               <HabitMark id={habit.id} name={habit.name} className="size-14 text-2xl" />
@@ -114,13 +121,51 @@ function Contents({ habitId }: { habitId: string }) {
             </div>
           </header>
 
-          {oldest && goal ? (
-            <HabitCalendar
-              days={perDay}
-              firstDay={new Date(oldest.openedAt)}
-              goal={goal}
-              pauses={habit?.pauses ?? []}
-            />
+          {oldest && goal && habit ? (
+            showYear ? (
+              <Tabs defaultValue="mes" className="gap-3">
+                <TabsList className="self-start">
+                  <TabsTrigger value="mes">Este mes</TabsTrigger>
+                  <TabsTrigger value="ano">Todo</TabsTrigger>
+                </TabsList>
+
+                {/* El mes no necesita todo el ancho; el historial sí. */}
+                <TabsContent value="mes" className="max-w-sm">
+                  <HabitCalendar
+                    days={perDay}
+                    firstDay={new Date(oldest.openedAt)}
+                    goal={goal}
+                    pauses={habit.pauses}
+                  />
+                </TabsContent>
+
+                <TabsContent value="ano">
+                  <div className="bg-card border-border flex flex-col gap-5 rounded-2xl border p-4">
+                    <HabitYear
+                      days={perDay}
+                      goal={goal}
+                      pauses={habit.pauses}
+                      since={dayKey(new Date(habit.createdAt))}
+                    />
+                    <HabitTrend
+                      days={perDay}
+                      goal={goal}
+                      pauses={habit.pauses}
+                      since={dayKey(new Date(habit.createdAt))}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <div className="max-w-sm">
+                <HabitCalendar
+                  days={perDay}
+                  firstDay={new Date(oldest.openedAt)}
+                  goal={goal}
+                  pauses={habit.pauses}
+                />
+              </div>
+            )
           ) : null}
         </div>
 
@@ -176,7 +221,12 @@ function Contents({ habitId }: { habitId: string }) {
 
                 <ol className="border-lavanda-300 ml-2 flex flex-col gap-4 border-l-2 pl-5">
                   {day.entries.map((entry) => (
-                    <EntryCard key={entry.id} entry={entry} habitId={habitId} />
+                    <EntryCard
+                      key={entry.id}
+                      entry={entry}
+                      habitId={habitId}
+                      habits={habits.data ?? []}
+                    />
                   ))}
                 </ol>
               </section>
@@ -297,8 +347,17 @@ function ProgressStrip({
 }
 
 /** Una anotación. */
-function EntryCard({ entry, habitId }: { entry: HabitEntryView; habitId: string }) {
+function EntryCard({
+  entry,
+  habitId,
+  habits,
+}: {
+  entry: HabitEntryView;
+  habitId: string;
+  habits: readonly HabitView[];
+}) {
   const remove = useDeleteEntry(habitId);
+  const [editing, setEditing] = useState(false);
   const open = entry.closedAt === null;
 
   async function onDelete(): Promise<void> {
@@ -332,33 +391,59 @@ function EntryCard({ entry, habitId }: { entry: HabitEntryView; habitId: string 
             {open ? <span className="text-logro-600 text-xs font-semibold">· En curso</span> : null}
           </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          <div className="-mr-2 flex items-center opacity-100 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100">
+            {/* Corregir solo lo que ya cerró: lo abierto sigue creciendo en el chat. */}
+            {open ? null : (
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-destructive -mr-2 opacity-100 transition-opacity md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
-                aria-label="Borrar esta anotación"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setEditing(true)}
+                aria-label="Corregir esta anotación"
               >
-                <Trash2 />
+                <Pencil />
               </Button>
-            </AlertDialogTrigger>
+            )}
 
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Borrar esta anotación?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Se borra con sus fotos y no se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Borrar esta anotación"
+                >
+                  <Trash2 />
+                </Button>
+              </AlertDialogTrigger>
 
-              <AlertDialogFooter>
-                <AlertDialogCancel>Dejarla</AlertDialogCancel>
-                <AlertDialogAction onClick={() => void onDelete()}>Borrar</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Borrar esta anotación?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Se borra con sus fotos y no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Dejarla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void onDelete()}>Borrar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
+
+        {/* Montado solo al abrirlo: así vuelve a partir de lo que hay guardado. */}
+        {editing ? (
+          <EditEntryDialog
+            entry={entry}
+            habitId={habitId}
+            habits={habits}
+            open
+            onOpenChange={setEditing}
+          />
+        ) : null}
 
         {entry.note ? (
           <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed">{entry.note}</p>

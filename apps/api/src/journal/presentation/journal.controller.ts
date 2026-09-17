@@ -11,9 +11,11 @@ import {
 } from '@nestjs/common';
 import {
   createHabitSchema,
+  editEntrySchema,
   updateHabitSchema,
   type AccountChatView,
   type CreateHabitBody,
+  type EditEntryInput,
   type HabitEntryView,
   type HabitView,
   type UpdateHabitInput,
@@ -29,6 +31,7 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  EditEntry,
   PauseHabit,
   ReadJournal,
   ResumeHabit,
@@ -55,6 +58,7 @@ export class JournalController {
     @Inject(PauseHabit) private readonly pauseHabit: PauseHabit,
     @Inject(ResumeHabit) private readonly resumeHabit: ResumeHabit,
     @Inject(DeleteEntry) private readonly deleteEntry: DeleteEntry,
+    @Inject(EditEntry) private readonly editEntry: EditEntry,
     @Inject(IssueChatLink) private readonly issueLink: IssueChatLink,
     @Inject(ReadChatLink) private readonly readLink: ReadChatLink,
     @Inject(UnlinkChat) private readonly unlink: UnlinkChat,
@@ -132,6 +136,20 @@ export class JournalController {
     const rows = orThrow(await this.read.entriesOf(userId, HabitId.from(habitId)));
 
     return rows.map(toEntryView);
+  }
+
+  /*
+   * Sin cuerpo: devolver la anotación obligaría a volver a leer y a firmar las
+   * fotos de todo el hábito para una fila, y la pantalla recarga igual.
+   */
+  @Patch('entries/:entryId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async correct(
+    @CurrentUserId() userId: UserId,
+    @Param('entryId') entryId: string,
+    @ZodBody(editEntrySchema) body: EditEntryInput,
+  ): Promise<void> {
+    orThrow(await this.editEntry.execute(userId, HabitEntryId.from(entryId), body));
   }
 
   @Delete('entries/:entryId')

@@ -1,4 +1,5 @@
 import { addDays, dayIn, weekdayOf, type HabitPauseRange } from '@reconectate/contracts';
+import type { HabitEntry } from '../domain/entry';
 import type { Clock } from '../../shared/clock';
 import type { DomainError } from '../../shared/domain-error';
 import {
@@ -8,7 +9,14 @@ import {
   type UserId,
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
-import { EntryNotFound, HabitNotFound, TooManyHabits } from '../domain/errors';
+import {
+  DayInTheFuture,
+  EntryNotFound,
+  EntryStillOpen,
+  HabitNotFound,
+  HabitPaused,
+  TooManyHabits,
+} from '../domain/errors';
 import { Habit, MAX_PER_ACCOUNT, STREAK_WINDOW_DAYS, type HabitChanges } from '../domain/habit';
 import type { EntryRepository, HabitRepository, JournalPhotos, StoredPhoto } from '../domain/ports';
 
@@ -187,6 +195,69 @@ export class DeleteHabit {
     await this.habits.remove(habitId, ownerId);
 
     return ok();
+  }
+}
+
+/**
+ * Corrige una anotación desde la pantalla: su texto, su hábito o su día.
+ *
+ * Lo que sigue abierto en el chat no se toca: el bot le está pegando cosas y la
+ * nota se escribe allá con un UPDATE en la base, no con este agregado. Una
+ * caducada sí, que es la que la pantalla ya enseña como cerrada.
+ */
+export class EditEntry {
+  constructor(
+    private readonly entries: EntryRepository,
+    private readonly habits: HabitRepository,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(
+    ownerId: UserId,
+    entryId: HabitEntryId,
+    changes: { note?: string | undefined; habitId?: string | undefined; day?: string | undefined },
+  ): Promise<Result<HabitEntry, DomainError>> {
+    const entry = await this.entries.findOwned(entryId, ownerId);
+
+    if (!entry) return err(new EntryNotFound());
+    if (entry.isOpen && !entry.hasGoneStale(this.clock.now())) return err(new EntryStillOpen());
+
+    const now = this.clock.now();
+    const timezone = await this.habits.timezoneOf(ownerId);
+    const today = dayIn(timezone, now);
+
+    // Mover a otro hábito, no quedarse en el mismo: corregirle el texto a uno
+    // en pausa tiene que seguir siendo posible.
+    if (changes.habitId !== undefined && changes.habitId !== entry.habitId) {
+      const habit = await this.habits.findOwned(HabitId.from(changes.habitId), ownerId);
+
+      if (!habit) return err(new HabitNotFound());
+
+      // En pausa tampoco: es el mismo «no se anota ahí» que aplica el bot.
+      if (habit.isPausedOn(today)) return err(new HabitPaused());
+
+      entry.changeHabit(habit.id);
+    }
+
+    if (changes.note !== undefined) entry.editNote(changes.note);
+
+    if (changes.day !== undefined) {
+      if (changes.day > today) return err(new DayInTheFuture());
+
+      entry.moveToDay(changes.day, timezone);
+    }
+
+    /*
+     * Una caducada se corrige pero se cierra: sigue abierta en la base, y
+     * moverla de día le correría `touchedAt` hacia adelante —volvería a ser la
+     * anotación viva del chat— y el mensaje siguiente se pegaría al texto
+     * recién corregido.
+     */
+    entry.close(now);
+
+    await this.entries.saveCorrection(entry);
+
+    return ok(entry);
   }
 }
 

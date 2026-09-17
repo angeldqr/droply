@@ -1,4 +1,8 @@
-import { NotFoundError, PreconditionFailedError } from '../../shared/domain-error';
+import {
+  InvalidInputError,
+  NotFoundError,
+  PreconditionFailedError,
+} from '../../shared/domain-error';
 
 export class HabitNotFound extends NotFoundError {
   constructor() {
@@ -21,6 +25,30 @@ export class HabitAlreadyPaused extends PreconditionFailedError {
 export class HabitNotPaused extends PreconditionFailedError {
   constructor() {
     super('habit.not_paused', 'Ese hábito no está en pausa.');
+  }
+}
+
+/** Se quiso correr una anotación a un día que todavía no llegó. */
+export class DayInTheFuture extends InvalidInputError {
+  constructor() {
+    super('habit_entry.future_day', 'No puedes mover una anotación a un día que no ha llegado.');
+  }
+}
+
+/** Se quiso anotar o mover algo a un hábito que está en pausa. */
+export class HabitPaused extends PreconditionFailedError {
+  constructor() {
+    super('habit.paused', 'Ese hábito está en pausa. Reanúdalo para anotar ahí.');
+  }
+}
+
+/** Se quiso corregir desde la pantalla una anotación que sigue viva en el chat. */
+export class EntryStillOpen extends PreconditionFailedError {
+  constructor() {
+    super(
+      'habit_entry.open',
+      'Esa anotación sigue abierta en el chat: aprieta Listo y vuelve a intentarlo.',
+    );
   }
 }
 

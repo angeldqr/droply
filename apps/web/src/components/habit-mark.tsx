@@ -69,6 +69,15 @@ export function whenRelative(iso: string): string {
   return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(-days, 'day');
 }
 
+/** Baja el diario hasta ese día. Lo usan el calendario del mes y el del año. */
+export function jumpToDay(key: string): void {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document
+    .getElementById(`dia-${key}`)
+    ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+}
+
 /** «1 anotación», «3 anotaciones». */
 export function cuenta(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;

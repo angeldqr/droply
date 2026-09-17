@@ -1,3 +1,4 @@
+import { atDayIn } from '@reconectate/contracts';
 import type { HabitEntryId, HabitId, UserId } from '../../shared/identifiers';
 
 /** Lo que cabe en una anotación. Es un mensaje de chat, no un diario. */
@@ -153,15 +154,54 @@ export class HabitEntry {
   }
 
   /**
-   * La pasa a otro hábito.
+   * La pasa a otro hábito **desde el chat**.
    *
    * Solo mientras está abierta: una cerrada ya se leyó en la pantalla con su
    * hábito, y moverla desde el chat sería cambiar algo que el usuario no ve.
+   * Desde la pantalla sí se puede, y eso es `changeHabit`.
    */
   moveTo(habitId: HabitId, now: Date): void {
     if (!this.isOpen) return;
 
     this.state = { ...this.state, habitId, touchedAt: now };
+  }
+
+  /** La pasa a otro hábito desde la pantalla, donde el usuario ve lo que mueve. */
+  changeHabit(habitId: HabitId): void {
+    this.state = { ...this.state, habitId };
+  }
+
+  /**
+   * Cambia el texto desde la pantalla: **reemplaza**, no acumula como `addNote`.
+   * Vacío la deja sin texto, que es como corregir una anotación de puras fotos.
+   */
+  editNote(text: string): void {
+    const clean = text.trim().slice(0, NOTE_MAX_LENGTH);
+
+    this.state = { ...this.state, note: clean.length === 0 ? null : clean };
+  }
+
+  /**
+   * La corre a otro día, conservando la hora.
+   *
+   * Es lo que arregla la anotación que empezó a las 23:58 y quedó contada en el
+   * día anterior. Se conserva la hora local en vez de escribir una nueva: la
+   * hora a la que se contó es parte de lo que el usuario escribió.
+   */
+  moveToDay(day: string, timezone: string): void {
+    const openedAt = atDayIn(timezone, this.state.openedAt, day);
+    const shift = openedAt.getTime() - this.state.openedAt.getTime();
+
+    if (shift === 0) return;
+
+    // Lo demás va con ella: lo que duró la anotación no cambia porque se mueva.
+    this.state = {
+      ...this.state,
+      openedAt,
+      touchedAt: new Date(this.state.touchedAt.getTime() + shift),
+      closedAt:
+        this.state.closedAt === null ? null : new Date(this.state.closedAt.getTime() + shift),
+    };
   }
 
   close(now: Date): void {

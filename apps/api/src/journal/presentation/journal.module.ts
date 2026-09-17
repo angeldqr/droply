@@ -14,6 +14,7 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  EditEntry,
   PauseHabit,
   ReadJournal,
   ResumeHabit,
@@ -124,6 +125,12 @@ import { JournalController } from './journal.controller';
       inject: [ENTRY_REPOSITORY, JOURNAL_PHOTOS],
       useFactory: (entries: EntryRepository, photos: JournalPhotos) =>
         new DeleteEntry(entries, photos),
+    },
+    {
+      provide: EditEntry,
+      inject: [ENTRY_REPOSITORY, HABIT_REPOSITORY, CLOCK],
+      useFactory: (entries: EntryRepository, habits: HabitRepository, clock: Clock) =>
+        new EditEntry(entries, habits, clock),
     },
     {
       provide: ReadJournal,

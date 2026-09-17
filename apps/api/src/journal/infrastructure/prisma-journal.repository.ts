@@ -204,6 +204,21 @@ export class PrismaEntryRepository implements EntryRepository {
     return { today, counts };
   }
 
+  async saveCorrection(entry: HabitEntry): Promise<void> {
+    const snapshot = entry.toSnapshot();
+
+    await this.prisma.habitEntry.update({
+      where: { id: snapshot.id },
+      data: {
+        habitId: snapshot.habitId,
+        note: snapshot.note,
+        openedAt: snapshot.openedAt,
+        touchedAt: snapshot.touchedAt,
+        closedAt: snapshot.closedAt,
+      },
+    });
+  }
+
   async add(entry: HabitEntry): Promise<void> {
     const snapshot = entry.toSnapshot();
 

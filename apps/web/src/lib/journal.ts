@@ -3,6 +3,7 @@
 import type {
   AccountChatView,
   CreateHabitInput,
+  EditEntryInput,
   HabitEntryView,
   HabitView,
   UpdateHabitInput,
@@ -89,6 +90,19 @@ export function useDeleteHabit() {
     mutationFn: (habitId: string) =>
       api<void>(`/journal/habits/${encodeURIComponent(habitId)}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: habitsKey }),
+  });
+}
+
+/** Corrige una anotación: su texto, su hábito o su día. */
+export function useEditEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: EditEntryInput }) =>
+      api<void>(`/journal/entries/${encodeURIComponent(id)}`, { method: 'PATCH', body: changes }),
+    // Todo `journal`: la anotación pudo cambiar de hábito, y la lista lleva los
+    // conteos y la racha.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['journal'] }),
   });
 }
 

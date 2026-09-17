@@ -37,6 +37,14 @@ export interface DayCounts {
 
 export interface EntryRepository {
   add(entry: HabitEntry): Promise<void>;
+  /**
+   * Guarda una corregida desde la pantalla: el texto y el día también.
+   *
+   * Aparte de `save` porque aquella deja la nota fuera a propósito —la escribe
+   * el bot en la base— y acá el texto es justo lo que se está cambiando. Lo que
+   * se corrige queda cerrado, así que no hay nada llegando a la vez.
+   */
+  saveCorrection(entry: HabitEntry): Promise<void>;
   /** Las anotaciones de los últimos `days` días, hoy incluido. */
   dayCountsOf(ownerId: UserId, now: Date, days: number): Promise<DayCounts>;
   save(entry: HabitEntry): Promise<void>;

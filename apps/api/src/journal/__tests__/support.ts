@@ -18,6 +18,7 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  EditEntry,
   PauseHabit,
   ReadJournal,
   ResumeHabit,
@@ -185,6 +186,10 @@ export class InMemoryEntries implements EntryRepository {
     }
 
     return Promise.resolve({ today, counts });
+  }
+
+  saveCorrection(entry: HabitEntry): Promise<void> {
+    return this.save(entry);
   }
 
   save(entry: HabitEntry): Promise<void> {
@@ -406,6 +411,7 @@ export function build(startingAt = AHORA) {
     resumeHabit: new ResumeHabit(habits, clock),
     deleteHabit: new DeleteHabit(habits, entries, photos),
     deleteEntry: new DeleteEntry(entries, photos),
+    editEntry: new EditEntry(entries, habits, clock),
     read: new ReadJournal(habits, entries, photos, clock),
     issueLink: new IssueChatLink(chats, accounts, codes, clock),
     readLink: new ReadChatLink(chats),

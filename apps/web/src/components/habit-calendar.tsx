@@ -9,7 +9,7 @@ import {
 } from '@reconectate/contracts';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { dayKey, WEEKDAY_NAMES } from '@/components/habit-mark';
+import { dayKey, jumpToDay, WEEKDAY_NAMES } from '@/components/habit-mark';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -94,14 +94,6 @@ export function HabitCalendar({
   const met = cells.filter((cell) => cell.applies && cell.score === 1).length;
   const todayKey = dayKey(today);
 
-  function jumpTo(key: string): void {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    document
-      .getElementById(`dia-${key}`)
-      ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-  }
-
   return (
     <section
       aria-label="Calendario de anotaciones"
@@ -166,7 +158,7 @@ export function HabitCalendar({
             <button
               key={cell.key}
               type="button"
-              onClick={() => jumpTo(cell.key)}
+              onClick={() => jumpToDay(cell.key)}
               aria-label={label}
               className={cn(
                 base,

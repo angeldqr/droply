@@ -3,6 +3,7 @@ import {
   addDays,
   ALL_DAYS,
   appliesOn,
+  atDayIn,
   dayIn,
   isMilestone,
   isPausedOn,
@@ -32,6 +33,18 @@ describe('los días de la semana', () => {
 
     expect(dayIn('America/Bogota', moment)).toBe('2026-09-16');
     expect(dayIn('UTC', moment)).toBe('2026-09-17');
+  });
+
+  it('mueve un instante a otro día conservando la hora local', () => {
+    // 00:30 del 25 de octubre en Madrid, la madrugada en que se atrasa el reloj.
+    const moment = new Date('2026-10-24T22:30:00Z');
+
+    const movido = atDayIn('Europe/Madrid', moment, '2026-10-26');
+
+    expect(dayIn('Europe/Madrid', movido)).toBe('2026-10-26');
+    expect(atDayIn('America/Bogota', moment, '2026-10-20').toISOString()).toBe(
+      '2026-10-20T22:30:00.000Z',
+    );
   });
 
   it('cruza fin de mes sin perderse', () => {

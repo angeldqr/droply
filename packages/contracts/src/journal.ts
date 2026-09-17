@@ -71,6 +71,25 @@ export type CreateHabitInput = z.input<typeof createHabitSchema>;
 export type CreateHabitBody = z.output<typeof createHabitSchema>;
 export type UpdateHabitInput = z.infer<typeof updateHabitSchema>;
 
+/**
+ * Lo que se puede corregir de una anotación desde la pantalla.
+ *
+ * El texto **reemplaza** al que había (vacío la deja sin texto), `habitId` la
+ * pasa a otro hábito y `day` la corre a otro día conservando la hora.
+ */
+export const editEntrySchema = z
+  .object({
+    note: z.string().max(ENTRY_NOTE_MAX_LENGTH).optional(),
+    habitId: z.uuid().optional(),
+    day: z.iso.date().optional(),
+  })
+  .refine(
+    (body) => body.note !== undefined || body.habitId !== undefined || body.day !== undefined,
+    'No hay nada que cambiar.',
+  );
+
+export type EditEntryInput = z.infer<typeof editEntrySchema>;
+
 /** Una foto de una anotación, con su enlace firmado y de vida corta. */
 export interface EntryPhotoView {
   readonly id: string;

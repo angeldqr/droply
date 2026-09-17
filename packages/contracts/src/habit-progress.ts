@@ -49,6 +49,37 @@ export function dayIn(timezone: string, moment: Date): string {
   }).format(moment);
 }
 
+/** La hora local (`HH:MM:SS`) de un instante en una zona. */
+function timeIn(timezone: string, moment: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(moment);
+}
+
+/** Cuánto va de la hora local de esa zona a UTC, en ese instante. */
+function offsetOf(timezone: string, moment: Date): number {
+  return Date.parse(`${dayIn(timezone, moment)}T${timeIn(timezone, moment)}Z`) - moment.getTime();
+}
+
+/**
+ * El mismo instante, pero en otro día de esa zona, **conservando la hora local**.
+ *
+ * No se pueden sumar días de 24 horas: la noche en que cambia el horario de
+ * verano dura 23 o 25, y la anotación terminaría en el día de al lado. Se
+ * arma la hora local pedida y se resta el desfase de la zona; la segunda vuelta
+ * usa el desfase del resultado, que es el que vale si el cambio cae en medio.
+ */
+export function atDayIn(timezone: string, moment: Date, day: string): Date {
+  const wall = Date.parse(`${day}T${timeIn(timezone, moment)}Z`);
+  const first = new Date(wall - offsetOf(timezone, moment));
+
+  return new Date(wall - offsetOf(timezone, first));
+}
+
 /** La clave de `n` días después (o antes, con `n` negativo). */
 export function addDays(key: string, n: number): string {
   return toKey(toTime(key) + n * DAY_MS);

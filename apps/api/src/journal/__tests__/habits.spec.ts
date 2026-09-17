@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { HabitId } from '../../shared/identifiers';
+import { HabitEntryId, HabitId } from '../../shared/identifiers';
 import { MAX_PER_ACCOUNT } from '../domain/habit';
 import {
   AHORA,
@@ -274,5 +274,171 @@ describe('pausar', () => {
     await anotar();
 
     expect((await world.read.list(ANA))[0]?.streak).toBe(2);
+  });
+});
+
+describe('corregir una anotación', () => {
+  const DIA = 24 * 60 * 60 * 1000;
+
+  /** Anota algo y devuelve el identificador de lo anotado. */
+  async function anotado(indice = 0): Promise<string> {
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.tap({
+      chatId: CHAT,
+      callbackId: 't',
+      messageId: 1,
+      data: world.voice.said.at(-1)?.buttons[indice]?.data ?? '',
+    });
+    await world.bot.handle({ chatId: CHAT, text: 'Lo que sea' });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+
+    return [...world.entries.rows.keys()].at(-1) ?? '';
+  }
+
+  beforeEach(() => {
+    chatVinculado(world);
+  });
+
+  it('cambia el texto, el hábito y el día', async () => {
+    const ejercicio = await unHabito(world, 'Ejercicio');
+    const lectura = await unHabito(world, 'Lectura');
+    const id = await anotado();
+
+    const corregida = await world.editEntry.execute(ANA, HabitEntryId.from(id), {
+      note: '  Corrido, 5 km  ',
+      habitId: lectura,
+      day: '2026-09-15',
+    });
+
+    expect(corregida.ok).toBe(true);
+
+    const enLectura = await world.read.entriesOf(ANA, lectura);
+
+    expect(enLectura.ok && enLectura.value[0]?.note).toBe('Corrido, 5 km');
+    // La hora se conserva: solo se corre el día.
+    expect(enLectura.ok && enLectura.value[0]?.openedAt.toISOString()).toBe(
+      '2026-09-15T15:00:00.000Z',
+    );
+
+    const enEjercicio = await world.read.entriesOf(ANA, ejercicio);
+
+    expect(enEjercicio.ok && enEjercicio.value).toHaveLength(0);
+  });
+
+  it('mover una anotación de día mueve el conteo y la racha', async () => {
+    world.clock.set(new Date(AHORA.getTime() - DIA));
+    await unHabito(world, 'Ejercicio');
+    await anotado();
+    world.clock.set(AHORA);
+    const hoy = await anotado();
+
+    expect((await world.read.list(ANA))[0]?.streak).toBe(2);
+
+    // Las dos al mismo día: hoy vuelve a estar pendiente y la racha baja a uno.
+    await world.editEntry.execute(ANA, HabitEntryId.from(hoy), { day: '2026-09-15' });
+
+    const [habito] = await world.read.list(ANA);
+
+    expect(habito?.streak).toBe(1);
+    expect(habito?.week.find((day) => day.day === '2026-09-15')?.count).toBe(2);
+  });
+
+  it('una anotación abierta en el chat no se corrige', async () => {
+    await unHabito(world, 'Ejercicio');
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.tap({
+      chatId: CHAT,
+      callbackId: 't',
+      messageId: 1,
+      data: world.voice.said.at(-1)?.buttons[0]?.data ?? '',
+    });
+    await world.bot.handle({ chatId: CHAT, text: 'Sigo contando' });
+
+    const id = [...world.entries.rows.keys()].at(-1) ?? '';
+    const abierta = await world.editEntry.execute(ANA, HabitEntryId.from(id), { note: 'Otra' });
+
+    expect(abierta.ok ? '' : abierta.error.code).toBe('habit_entry.open');
+  });
+
+  it('no se mueve a un hábito ajeno ni a uno en pausa', async () => {
+    await unHabito(world, 'Ejercicio');
+    const lectura = await unHabito(world, 'Lectura');
+    const ajeno = await unHabito(world, 'De Beto', BETO);
+    const id = await anotado();
+
+    const aAjeno = await world.editEntry.execute(ANA, HabitEntryId.from(id), { habitId: ajeno });
+
+    expect(aAjeno.ok ? '' : aAjeno.error.code).toBe('habit.not_found');
+
+    await world.pauseHabit.execute(ANA, lectura);
+    const aPausado = await world.editEntry.execute(ANA, HabitEntryId.from(id), {
+      habitId: lectura,
+    });
+
+    expect(aPausado.ok ? '' : aPausado.error.code).toBe('habit.paused');
+  });
+
+  it('corregirle el texto a un hábito en pausa sí se puede', async () => {
+    const ejercicio = await unHabito(world, 'Ejercicio');
+    const id = await anotado();
+
+    await world.pauseHabit.execute(ANA, ejercicio);
+
+    // Se manda el mismo hábito, como hace la pantalla: no es mover nada.
+    const corregida = await world.editEntry.execute(ANA, HabitEntryId.from(id), {
+      note: 'Con una falta menos',
+      habitId: ejercicio,
+    });
+
+    expect(corregida.ok).toBe(true);
+  });
+
+  it('no se mueve a un día que no ha llegado', async () => {
+    await unHabito(world, 'Ejercicio');
+    const id = await anotado();
+
+    const futuro = await world.editEntry.execute(ANA, HabitEntryId.from(id), {
+      day: '2026-09-20',
+    });
+
+    expect(futuro.ok ? '' : futuro.error.code).toBe('habit_entry.future_day');
+  });
+
+  /*
+   * Una caducada sigue abierta en la base. Si al corregirla se quedara así, el
+   * mensaje siguiente del chat se pegaría al texto recién corregido.
+   */
+  it('corregir una caducada la deja cerrada', async () => {
+    await unHabito(world, 'Ejercicio');
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.tap({
+      chatId: CHAT,
+      callbackId: 't',
+      messageId: 1,
+      data: world.voice.said.at(-1)?.buttons[0]?.data ?? '',
+    });
+    await world.bot.handle({ chatId: CHAT, text: 'A medio contar' });
+
+    const id = [...world.entries.rows.keys()].at(-1) ?? '';
+
+    world.clock.advanceBy(40 * 60 * 1000);
+    await world.editEntry.execute(ANA, HabitEntryId.from(id), { note: 'Ya está' });
+    await world.bot.handle({ chatId: CHAT, text: 'Algo más' });
+
+    const bitacora = await world.read.entriesOf(
+      ANA,
+      HabitId.from((await world.read.list(ANA))[0]?.id ?? ''),
+    );
+
+    expect(bitacora.ok && bitacora.value[0]?.note).toBe('Ya está');
+  });
+
+  it('la anotación ajena no existe', async () => {
+    await unHabito(world, 'Ejercicio');
+    const id = await anotado();
+
+    const ajena = await world.editEntry.execute(BETO, HabitEntryId.from(id), { note: 'Mía' });
+
+    expect(ajena.ok ? '' : ajena.error.code).toBe('habit_entry.not_found');
   });
 });
