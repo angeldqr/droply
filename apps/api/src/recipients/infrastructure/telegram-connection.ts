@@ -1,5 +1,5 @@
 import { Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import { JOURNAL_COMMAND } from '@reconectate/contracts';
+import { JOURNAL_COMMAND, JOURNAL_TODAY_COMMAND } from '@reconectate/contracts';
 import type { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import type { HandleTelegramMessage } from '../application/handle-telegram-message';
 import { parseCallback, parseIncoming, type TelegramApi } from './telegram-api';
@@ -124,6 +124,10 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
           // menú no pueda ofrecer un comando que el bot no atiende.
           command: JOURNAL_COMMAND.replace('/', ''),
           description: 'Anotar algo en tu bitácora de hábitos',
+        },
+        {
+          command: JOURNAL_TODAY_COMMAND.replace('/', ''),
+          description: 'Cómo vas hoy con tus hábitos',
         },
       ]);
     } catch {

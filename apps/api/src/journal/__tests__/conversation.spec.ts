@@ -491,3 +491,116 @@ describe('la meta del día', () => {
     expect(world.voice.last()).toBe('Anotado en Paseo: lo que escribiste.');
   });
 });
+
+describe('rachas, /hoy y pausa', () => {
+  const DIA = 24 * 60 * 60 * 1000;
+
+  beforeEach(() => {
+    chatVinculado(world);
+  });
+
+  async function anotar(indice = 0): Promise<void> {
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await elegir(world, indice);
+    await world.bot.handle({ chatId: CHAT, text: 'Hecho' });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+  }
+
+  it('la felicitación cuenta la racha y festeja el hito', async () => {
+    world.clock.set(new Date(AHORA.getTime() - 6 * DIA));
+    await unHabito(world, 'Lectura');
+
+    await anotar();
+    expect(world.voice.last()).toMatch(/cumplida! 🎯$/);
+
+    world.clock.advanceBy(DIA);
+    await anotar();
+    expect(world.voice.last()).toContain('Llevas 2 días seguidos.');
+
+    for (let dia = 3; dia <= 7; dia += 1) {
+      world.clock.advanceBy(DIA);
+      await anotar();
+    }
+
+    expect(world.voice.last()).toContain('🔥 ¡7 días seguidos!');
+    expect((await world.read.list(ANA))[0]).toMatchObject({ streak: 7 });
+  });
+
+  it('/hoy dice cómo va cada uno y ofrece solo los pendientes', async () => {
+    await unHabito(world, 'Gimnasio');
+    await unHabito(world, 'Comidas', ANA, { dailyTarget: 3 });
+    await unHabito(world, 'Paseo', ANA, { activeDays: 0b110_0000 });
+    await anotar(0);
+
+    await world.bot.handle({ chatId: CHAT, text: '/hoy' });
+
+    const dicho = world.voice.said.at(-1);
+
+    expect(dicho?.text).toBe(
+      [
+        'Hoy llevas 1 de 2 cumplidos.',
+        '',
+        '1. Gimnasio · ✓',
+        '2. Comidas · 0/3',
+        '3. Paseo · descanso',
+      ].join('\n'),
+    );
+    expect(dicho?.buttons.map((boton) => boton.label)).toEqual(['2 · Comidas · 0/3']);
+  });
+
+  it('/hoy con todo cumplido festeja y no ofrece nada', async () => {
+    await unHabito(world, 'Gimnasio');
+    await anotar();
+
+    await world.bot.handle({ chatId: CHAT, text: '/hoy' });
+
+    expect(world.voice.last()).toContain('¡Todo cumplido hoy!');
+    expect(world.voice.said.at(-1)?.buttons).toEqual([]);
+  });
+
+  it('un hábito en pausa no se ofrece ni se deja anotar con un teclado viejo', async () => {
+    const gimnasio = await unHabito(world, 'Gimnasio');
+    await unHabito(world, 'Lectura');
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    const viejo = botonDe(world, 0);
+
+    await world.pauseHabit.execute(ANA, gimnasio);
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    expect(world.voice.said.at(-1)?.buttons.map((boton) => boton.label)).toEqual([
+      '1 · Lectura · 0/1',
+    ]);
+
+    await world.bot.handle({ chatId: CHAT, text: '/hoy' });
+    expect(world.voice.last()).not.toContain('Gimnasio');
+
+    await world.bot.tap({ chatId: CHAT, callbackId: 't', messageId: 1, data: viejo });
+    expect(world.voice.last()).toContain('Gimnasio está en pausa');
+  });
+
+  it('no deja pasar una anotación a un hábito en pausa', async () => {
+    await unHabito(world, 'Gimnasio');
+    const lectura = await unHabito(world, 'Lectura');
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await elegir(world, 0);
+    await world.bot.handle({ chatId: CHAT, text: 'Pesas' });
+    await world.pauseHabit.execute(ANA, lectura);
+
+    await world.bot.tap({ chatId: CHAT, callbackId: 't', messageId: 1, data: 'j:o' });
+    expect(world.voice.last()).toContain('No tienes otro hábito');
+
+    await world.bot.tap({ chatId: CHAT, callbackId: 't', messageId: 1, data: `j:m:${lectura}` });
+    expect(world.voice.last()).toContain('Lectura está en pausa');
+  });
+
+  it('con todo en pausa lo explica', async () => {
+    const gimnasio = await unHabito(world, 'Gimnasio');
+
+    await world.pauseHabit.execute(ANA, gimnasio);
+    await world.bot.handle({ chatId: CHAT, text: '/hoy' });
+
+    expect(world.voice.last()).toContain('Todos tus hábitos están en pausa');
+  });
+});

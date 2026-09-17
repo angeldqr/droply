@@ -1,6 +1,12 @@
 'use client';
 
-import { appliesOn, dayScore, type HabitGoal } from '@reconectate/contracts';
+import {
+  appliesOn,
+  dayScore,
+  isPausedOn,
+  type HabitGoal,
+  type HabitPauseRange,
+} from '@reconectate/contracts';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { dayKey, WEEKDAY_NAMES } from '@/components/habit-mark';
@@ -22,10 +28,18 @@ function toneOf(score: number): string {
     : 'bg-lavanda-300 text-ciruela-900 font-semibold';
 }
 
-function labelOf(date: Date, count: number, goal: HabitGoal, applies: boolean): string {
+function labelOf(
+  date: Date,
+  count: number,
+  goal: HabitGoal,
+  applies: boolean,
+  paused: boolean,
+): string {
   const day = date.toLocaleDateString('es', { day: 'numeric', month: 'long' });
+  const extra = count > 0 ? `, ${count} anotadas` : '';
 
-  if (!applies) return `${day}: día libre${count > 0 ? `, ${count} anotadas` : ''}`;
+  if (paused) return `${day}: en pausa${extra}`;
+  if (!applies) return `${day}: día libre${extra}`;
 
   return `${day}: ${count} de ${goal.dailyTarget}`;
 }
@@ -33,7 +47,8 @@ function labelOf(date: Date, count: number, goal: HabitGoal, applies: boolean): 
 /**
  * Un mes con cómo fue cada día frente a la meta.
  *
- * Lleno si se cumplió, claro si quedó a medias, apagado si ese día no tocaba.
+ * Lleno si se cumplió, claro si quedó a medias, apagado si ese día no tocaba
+ * o el hábito estaba en pausa.
  * Tocar un día anotado baja el diario hasta él. Empieza en el mes actual y se
  * puede ir hacia atrás hasta el de la primera anotación.
  *
@@ -43,10 +58,12 @@ export function HabitCalendar({
   days,
   firstDay,
   goal,
+  pauses,
 }: {
   days: ReadonlyMap<string, number>;
   firstDay: Date;
   goal: HabitGoal;
+  pauses: readonly HabitPauseRange[];
 }) {
   const today = new Date();
   const [month, setMonth] = useState(() => monthStart(today));
@@ -62,12 +79,14 @@ export function HabitCalendar({
     const key = dayKey(date);
 
     const count = days.get(key) ?? 0;
+    const paused = isPausedOn(pauses, key);
 
     return {
       date,
       key,
       count,
-      applies: appliesOn(goal.activeDays, key),
+      paused,
+      applies: appliesOn(goal.activeDays, key) && !paused,
       score: dayScore(count, goal.dailyTarget),
     };
   });
@@ -141,7 +160,7 @@ export function HabitCalendar({
             'grid aspect-square place-items-center rounded-lg text-xs tabular-nums',
             cell.key === todayKey && 'ring-primary ring-offset-card ring-2 ring-offset-1',
           );
-          const label = labelOf(cell.date, cell.count, goal, cell.applies);
+          const label = labelOf(cell.date, cell.count, goal, cell.applies, cell.paused);
 
           return cell.count > 0 ? (
             <button

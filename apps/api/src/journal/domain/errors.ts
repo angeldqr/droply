@@ -12,6 +12,18 @@ export class EntryNotFound extends NotFoundError {
   }
 }
 
+export class HabitAlreadyPaused extends PreconditionFailedError {
+  constructor() {
+    super('habit.already_paused', 'Ese hábito ya está en pausa.');
+  }
+}
+
+export class HabitNotPaused extends PreconditionFailedError {
+  constructor() {
+    super('habit.not_paused', 'Ese hábito no está en pausa.');
+  }
+}
+
 /** La cuenta llegó al tope de hábitos. */
 export class TooManyHabits extends PreconditionFailedError {
   constructor(max: number) {

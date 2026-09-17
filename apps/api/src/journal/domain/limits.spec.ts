@@ -1,6 +1,7 @@
 import {
   ENTRY_IDLE_MINUTES,
   JOURNAL_COMMAND,
+  JOURNAL_TODAY_COMMAND,
   MEDIA_LIMITS,
   ENTRY_NOTE_MAX_LENGTH,
   ENTRY_PHOTOS_MAX,
@@ -11,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CALLBACK_DATA_MAX_BYTES,
   COMMAND,
+  TODAY_COMMAND,
   doneButton,
   moveButton,
   offerMoveButton,
@@ -56,6 +58,7 @@ describe('topes de la bitácora frente al contrato', () => {
    */
   it('coincide el comando que abre la bitácora', () => {
     expect(COMMAND).toBe(JOURNAL_COMMAND);
+    expect(TODAY_COMMAND).toBe(JOURNAL_TODAY_COMMAND);
   });
 
   /*

@@ -14,7 +14,9 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  PauseHabit,
   ReadJournal,
+  ResumeHabit,
   UpdateHabit,
 } from '../application/habit-use-cases';
 import { JournalConversation } from '../application/journal-conversation';
@@ -100,6 +102,16 @@ import { JournalController } from './journal.controller';
       provide: UpdateHabit,
       inject: [HABIT_REPOSITORY],
       useFactory: (habits: HabitRepository) => new UpdateHabit(habits),
+    },
+    {
+      provide: PauseHabit,
+      inject: [HABIT_REPOSITORY, CLOCK],
+      useFactory: (habits: HabitRepository, clock: Clock) => new PauseHabit(habits, clock),
+    },
+    {
+      provide: ResumeHabit,
+      inject: [HABIT_REPOSITORY, CLOCK],
+      useFactory: (habits: HabitRepository, clock: Clock) => new ResumeHabit(habits, clock),
     },
     {
       provide: DeleteHabit,

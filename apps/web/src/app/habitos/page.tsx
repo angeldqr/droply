@@ -4,11 +4,22 @@ import {
   appliesOn,
   dayScore,
   HABIT_NAME_MAX_LENGTH,
+  isMilestone,
   JOURNAL_COMMAND,
   weekdayOf,
   type HabitView,
 } from '@reconectate/contracts';
-import { ArrowRight, Check, MoreHorizontal, NotebookPen, Pencil, Trash2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  Flame,
+  MoreHorizontal,
+  NotebookPen,
+  Pause,
+  Pencil,
+  Play,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -19,6 +30,7 @@ import { cuenta, goalLabel, HabitMark, WEEKDAY_NAMES, whenRelative } from '@/com
 import { NewHabitDialog } from '@/components/new-habit-dialog';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Empty,
@@ -56,9 +68,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
-import { useDeleteHabit, useHabits, useUpdateHabit } from '@/lib/journal';
+import {
+  useDeleteHabit,
+  useHabits,
+  usePauseHabit,
+  useResumeHabit,
+  useUpdateHabit,
+} from '@/lib/journal';
 import { cn } from '@/lib/utils';
 
 export default function JournalPage() {
@@ -68,6 +87,35 @@ export default function JournalPage() {
         <Contents />
       </AppShell>
     </RequireSession>
+  );
+}
+
+/** Cómo está un hábito hoy. El orden de la lista sigue este mismo orden. */
+const STATES = ['pending', 'done', 'free', 'paused'] as const;
+
+type TodayState = (typeof STATES)[number];
+
+function stateOf(habit: HabitView): TodayState {
+  if (habit.paused) return 'paused';
+  if (!appliesOn(habit.activeDays, habit.today)) return 'free';
+
+  return dayScore(countToday(habit), habit.dailyTarget) === 1 ? 'done' : 'pending';
+}
+
+function countToday(habit: HabitView): number {
+  // Hoy lo pone la API, en la zona de la cuenta, igual que la semana.
+  return habit.week.find((day) => day.day === habit.today)?.count ?? 0;
+}
+
+/**
+ * Lo que falta primero: lo pendiente arriba, lo cumplido después, y lo que hoy
+ * no cuenta al final. Dentro de cada grupo, el orden que eligió el usuario.
+ */
+function byToday(habits: readonly HabitView[]): HabitView[] {
+  return [...habits].sort(
+    (left, right) =>
+      STATES.indexOf(stateOf(left)) - STATES.indexOf(stateOf(right)) ||
+      left.position - right.position,
   );
 }
 
@@ -90,7 +138,10 @@ function Contents() {
       <ConnectTelegramCard habitNames={(data ?? []).map((habit) => habit.name)} />
 
       {data && data.length > 0 ? (
-        <h2 className="font-display -mb-2 text-lg font-semibold">Tus hábitos</h2>
+        <>
+          <DaySummary habits={data} />
+          <h2 className="font-display -mb-2 text-lg font-semibold">Tus hábitos</h2>
+        </>
       ) : null}
 
       {isPending ? (
@@ -121,7 +172,7 @@ function Contents() {
         </Empty>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.map((habit) => (
+          {byToday(data).map((habit) => (
             <HabitCard key={habit.id} habit={habit} />
           ))}
         </div>
@@ -130,18 +181,84 @@ function Contents() {
   );
 }
 
-function HabitCard({ habit }: { habit: HabitView }) {
-  // Hoy lo pone la API, en la zona de la cuenta, igual que la semana.
-  const today = habit.week.find((day) => day.day === habit.today);
+/** «Hoy llevas 2 de 4»: la pregunta que se hace quien abre esta pantalla. */
+function DaySummary({ habits }: { habits: readonly HabitView[] }) {
+  const states = habits.map(stateOf);
+  const done = states.filter((state) => state === 'done').length;
+  const due = done + states.filter((state) => state === 'pending').length;
+  const allDone = due > 0 && done === due;
+  const allPaused = states.every((state) => state === 'paused');
 
   return (
-    <Card className="group relative gap-4 py-5 transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    <section
+      aria-label="Resumen de hoy"
+      className={cn(
+        'flex flex-col gap-3 rounded-2xl border p-4 md:p-5',
+        allDone ? 'border-logro-600/30 bg-logro-600/10' : 'bg-card border-border',
+      )}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-display text-lg font-bold">
+          {allPaused
+            ? 'Todos tus hábitos están en pausa'
+            : due === 0
+              ? 'Hoy es día libre para todos tus hábitos'
+              : allDone
+                ? '¡Todo cumplido hoy!'
+                : `Hoy llevas ${done} de ${cuenta(due, 'hábito', 'hábitos')}`}
+        </p>
+        {due > 0 && !allDone ? (
+          <p className="text-muted-foreground text-sm">
+            {due - done === 1 ? 'Te falta 1' : `Te faltan ${due - done}`}
+          </p>
+        ) : null}
+      </div>
+
+      {due > 0 ? (
+        <Progress
+          value={(done / due) * 100}
+          aria-label={`${done} de ${due} hábitos cumplidos hoy`}
+          className={cn('h-2', allDone && '[&>[data-slot=progress-indicator]]:bg-logro-600')}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function HabitCard({ habit }: { habit: HabitView }) {
+  const paused = habit.paused;
+  const done = stateOf(habit) === 'done';
+
+  return (
+    <Card
+      className={cn(
+        'group relative gap-4 py-5 transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+        paused && 'bg-muted/40 shadow-none',
+      )}
+    >
       <CardHeader className="px-5">
         <div className="flex items-center gap-3">
-          <HabitMark id={habit.id} name={habit.name} />
+          <HabitMark
+            id={habit.id}
+            name={habit.name}
+            className={cn(paused && 'opacity-50 grayscale')}
+          />
 
           <div className="min-w-0 flex-1">
-            <CardTitle className="font-display truncate text-lg">{habit.name}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle
+                className={cn('font-display truncate text-lg', paused && 'text-muted-foreground')}
+              >
+                {habit.name}
+              </CardTitle>
+              {paused ? (
+                <Badge variant="secondary" className="shrink-0">
+                  En pausa
+                </Badge>
+              ) : (
+                <StreakChip streak={habit.streak} celebrate={done && isMilestone(habit.streak)} />
+              )}
+            </div>
             <p className="text-muted-foreground truncate text-sm">
               {goalLabel(habit.dailyTarget, habit.activeDays)}
             </p>
@@ -155,14 +272,20 @@ function HabitCard({ habit }: { habit: HabitView }) {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4 px-5">
-        <div className="bg-muted/60 flex flex-wrap items-center justify-between gap-3 rounded-xl p-3">
-          <TodayRing
-            count={today?.count ?? 0}
-            target={habit.dailyTarget}
-            applies={appliesOn(habit.activeDays, habit.today)}
-          />
-          <WeekStrip habit={habit} />
-        </div>
+        {paused ? (
+          <p className="bg-muted/60 text-muted-foreground rounded-xl p-3 text-sm">
+            No cuenta como fallo y el bot no lo ofrece. Reanúdalo desde el menú cuando vuelvas.
+          </p>
+        ) : (
+          <div className="bg-muted/60 flex flex-wrap items-center justify-between gap-3 rounded-xl p-3">
+            <TodayRing
+              count={countToday(habit)}
+              target={habit.dailyTarget}
+              applies={appliesOn(habit.activeDays, habit.today)}
+            />
+            <WeekStrip habit={habit} />
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground text-xs">
@@ -189,6 +312,33 @@ function HabitCard({ habit }: { habit: HabitView }) {
         <span className="sr-only">Abrir {habit.name}</span>
       </Link>
     </Card>
+  );
+}
+
+/**
+ * La racha, en corto. Al llegar a un hito (7, 14, 30…) cambia de tono y entra
+ * con un pequeño salto: pasa pocas veces, así que puede permitírselo.
+ */
+function StreakChip({ streak, celebrate }: { streak: number; celebrate: boolean }) {
+  if (streak === 0) return null;
+
+  return (
+    <Badge
+      className={cn(
+        'shrink-0 gap-0.5 font-bold tabular-nums',
+        celebrate
+          ? 'bg-logro-600 text-papel motion-safe:animate-in motion-safe:zoom-in-90 motion-safe:fade-in motion-safe:duration-300'
+          : 'bg-lavanda-200 text-ciruela-900',
+      )}
+    >
+      <Flame aria-hidden />
+      <span aria-hidden>{celebrate ? `¡${streak} días!` : streak}</span>
+      <span className="sr-only">
+        {celebrate
+          ? `¡Hito! ${cuenta(streak, 'día', 'días')} seguidos`
+          : `Racha de ${cuenta(streak, 'día', 'días')}`}
+      </span>
+    </Badge>
   );
 }
 
@@ -240,7 +390,11 @@ function TodayRing({
         </svg>
 
         {done ? (
-          <Check className="text-logro-600 size-5" aria-hidden />
+          // Entra con un salto corto la vez que se pinta: confirma que se cumplió.
+          <Check
+            className="text-logro-600 motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:fade-in size-5 motion-safe:duration-300"
+            aria-hidden
+          />
         ) : (
           <span className="text-xs font-bold tabular-nums" aria-hidden>
             {count}/{target}
@@ -322,7 +476,7 @@ function WeekStrip({ habit }: { habit: HabitView }) {
 }
 
 /**
- * Editar y borrar.
+ * Editar, pausar y borrar.
  *
  * Borrar se lleva la bitácora entera y sus fotos, así que lo dice antes de
  * hacerlo: es de las cosas que no se pueden deshacer.
@@ -330,8 +484,29 @@ function WeekStrip({ habit }: { habit: HabitView }) {
 function HabitActions({ habit }: { habit: HabitView }) {
   const update = useUpdateHabit(habit.id);
   const remove = useDeleteHabit();
+  const pause = usePauseHabit(habit.id);
+  const resume = useResumeHabit(habit.id);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [pausing, setPausing] = useState(false);
+
+  async function onPause(): Promise<void> {
+    try {
+      await pause.mutateAsync();
+      toast.success(`«${habit.name}» quedó en pausa.`);
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo pausar.');
+    }
+  }
+
+  async function onResume(): Promise<void> {
+    try {
+      await resume.mutateAsync();
+      toast.success(`«${habit.name}» vuelve a contar desde hoy.`);
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo reanudar.');
+    }
+  }
 
   async function onSave(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -373,12 +548,38 @@ function HabitActions({ habit }: { habit: HabitView }) {
           <DropdownMenuItem onSelect={() => setEditing(true)}>
             <Pencil /> Editar hábito
           </DropdownMenuItem>
+          {habit.paused ? (
+            <DropdownMenuItem onSelect={() => void onResume()}>
+              <Play /> Reanudar
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => setPausing(true)}>
+              <Pause /> Pausar
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
             <Trash2 /> Borrar el hábito
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={pausing} onOpenChange={setPausing}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Pausar «{habit.name}»?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para vacaciones o días en que no se puede. Mientras esté en pausa no cuenta como
+              fallo, no corta tu racha y no aparece en el bot. Lo reanudas cuando quieras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void onPause()}>Pausar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>

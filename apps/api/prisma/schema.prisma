@@ -629,9 +629,29 @@ model Habit {
 
   owner   User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   entries HabitEntry[]
+  pauses  HabitPause[]
 
   @@index([ownerId, position])
   @@map("habits")
+}
+
+/// Un tramo en que el hábito estuvo en pausa: vacaciones, enfermedad.
+///
+/// Se guardan los tramos y no un simple interruptor porque, al reanudar, esos
+/// días tienen que seguir sin contar como fallo. Las dos fechas entran, en la
+/// zona de la cuenta. `endsOn` nulo es la pausa en curso, y un índice único
+/// parcial —escrito a mano en la migración— deja una sola por hábito.
+model HabitPause {
+  id      String @id @db.Uuid
+  habitId String @map("habit_id") @db.Uuid
+
+  startsOn DateTime  @map("starts_on") @db.Date
+  endsOn   DateTime? @map("ends_on") @db.Date
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([habitId])
+  @@map("habit_pauses")
 }
 
 /// Una anotación: lo que el usuario contó que hizo, con sus fotos.

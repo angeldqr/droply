@@ -36,6 +36,19 @@ function toKey(time: number): string {
   return new Date(time).toISOString().slice(0, 10);
 }
 
+/**
+ * El día (`AAAA-MM-DD`) de un instante en una zona IANA. `en-CA` escribe las
+ * fechas justo en ese formato.
+ */
+export function dayIn(timezone: string, moment: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(moment);
+}
+
 /** La clave de `n` días después (o antes, con `n` negativo). */
 export function addDays(key: string, n: number): string {
   return toKey(toTime(key) + n * DAY_MS);
@@ -55,6 +68,26 @@ export function dayScore(count: number, dailyTarget: number): number {
   return Math.min(count / dailyTarget, 1);
 }
 
+/**
+ * Un tramo en pausa: vacaciones, enfermedad. Los dos días entran; `to` nulo es
+ * una pausa que sigue abierta.
+ */
+export interface HabitPauseRange {
+  readonly from: string;
+  readonly to: string | null;
+}
+
+export function isPausedOn(pauses: readonly HabitPauseRange[], day: string): boolean {
+  return pauses.some((pause) => pause.from <= day && (pause.to === null || day <= pause.to));
+}
+
+/** Las rachas que se festejan. */
+export const STREAK_MILESTONES = [7, 14, 30, 60, 100, 365] as const;
+
+export function isMilestone(streak: number): boolean {
+  return (STREAK_MILESTONES as readonly number[]).includes(streak);
+}
+
 export interface HabitProgress {
   readonly todayCount: number;
   readonly todayApplies: boolean;
@@ -70,16 +103,22 @@ export interface HabitProgress {
 /**
  * El avance de un hábito hasta `today`, contando desde `since` (el día en que
  * se creó: lo anterior no puede contar como fallo).
+ *
+ * Los días en pausa se saltan igual que los que no aplican: ni suman, ni
+ * cortan la racha, ni bajan el porcentaje.
  */
 export function progressOf(input: {
   perDay: ReadonlyMap<string, number>;
   goal: HabitGoal;
   since: string;
   today: string;
+  pauses?: readonly HabitPauseRange[];
 }): HabitProgress {
   const { perDay, goal, today } = input;
+  const pauses = input.pauses ?? [];
   const since = input.since > today ? today : input.since;
   const windowStart = addDays(today, -(RATE_WINDOW_DAYS - 1));
+  const counts = (key: string) => appliesOn(goal.activeDays, key) && !isPausedOn(pauses, key);
 
   let streak = 0;
   let bestStreak = 0;
@@ -87,7 +126,7 @@ export function progressOf(input: {
   let total = 0;
 
   for (let key = since; key <= today; key = addDays(key, 1)) {
-    if (!appliesOn(goal.activeDays, key)) continue;
+    if (!counts(key)) continue;
 
     const score = dayScore(perDay.get(key) ?? 0, goal.dailyTarget);
     const done = score === 1;
@@ -106,7 +145,7 @@ export function progressOf(input: {
   }
 
   const todayCount = perDay.get(today) ?? 0;
-  const todayApplies = appliesOn(goal.activeDays, today);
+  const todayApplies = counts(today);
 
   return {
     todayCount,

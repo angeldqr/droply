@@ -20,6 +20,9 @@ const PREFIX = 'j';
  */
 export const COMMAND = '/habits';
 
+/** El que dice cómo va el día. Misma copia, mismo guardián. */
+export const TODAY_COMMAND = '/hoy';
+
 export interface ChatButton {
   readonly label: string;
   readonly data: string;

@@ -1,3 +1,4 @@
+import { dayIn, isMilestone } from '@reconectate/contracts';
 import type { Clock } from '../../shared/clock';
 import { HabitEntryId, HabitId, PhotoId, type IdGenerator } from '../../shared/identifiers';
 import type {
@@ -10,17 +11,20 @@ import { detectMimeType, SIGNATURE_BYTES } from '../../shared/media-signature';
 import type { AccountChat } from '../domain/account-chat';
 import {
   COMMAND,
+  TODAY_COMMAND,
   doneButton,
   moveButton,
   offerMoveButton,
   parseChatAction,
   pickButton,
+  type ChatButton,
 } from '../domain/chat-actions';
 import { HabitEntry, PHOTO_MAX_BYTES, PHOTO_TYPES, PHOTOS_MAX } from '../domain/entry';
-import type { Habit } from '../domain/habit';
+import { STREAK_WINDOW_DAYS, type Habit } from '../domain/habit';
 import type {
   AccountChatRepository,
   ChatVoice,
+  DayCounts,
   EntryRepository,
   HabitRepository,
   JournalPhotos,
@@ -56,7 +60,25 @@ const SAYS = {
     return `Anotado en ${name}: ${parts.join(' y ')}.`;
   },
   soFar: (count: number, target: number) => `Hoy llevas ${count} de ${target}.`,
-  goalMet: '¡Meta de hoy cumplida! 🎯',
+  goalMet: (streak: number) => {
+    if (isMilestone(streak)) return `¡Meta de hoy cumplida! 🔥 ¡${streak} días seguidos!`;
+
+    return streak > 1
+      ? `¡Meta de hoy cumplida! 🎯 Llevas ${streak} días seguidos.`
+      : '¡Meta de hoy cumplida! 🎯';
+  },
+  paused: (name: string) => `${name} está en pausa. Reanúdalo en la aplicación para anotarlo.`,
+  allPaused: 'Todos tus hábitos están en pausa. Reanuda alguno en la aplicación.',
+  today: (done: number, due: number, lines: readonly string[]) => {
+    const head =
+      due === 0
+        ? 'Hoy es día libre para todos tus hábitos.'
+        : done === due
+          ? `¡Todo cumplido hoy! 🎉 ${done} de ${due}.`
+          : `Hoy llevas ${done} de ${due} cumplidos.`;
+
+    return [head, '', ...lines].join('\n');
+  },
 } as const;
 
 function fotos(count: number): string {
@@ -98,6 +120,8 @@ export class JournalConversation implements JournalInbox {
     if (!chat || !chat.isLinked) return false;
 
     if (isCommand(message.text, COMMAND)) return this.offerHabits(chat, message.chatId);
+
+    if (isCommand(message.text, TODAY_COMMAND)) return this.showToday(chat, message.chatId);
 
     if (isCommand(message.text, '/fin')) return this.closeOpen(chat, message.chatId);
 
@@ -161,19 +185,15 @@ export class JournalConversation implements JournalInbox {
 
   /** La lista numerada, como pidió el cliente, pero apretable. */
   private async offerHabits(chat: AccountChat, chatId: string): Promise<boolean> {
-    const habits = await this.habits.listOwnedBy(chat.userId);
+    const today = await this.availableToday(chat, chatId);
 
-    if (habits.length === 0) {
-      await this.voice.say(chatId, SAYS.noHabits);
-
-      return true;
-    }
+    if (!today) return true;
 
     // Elegir otro hábito cierra lo que estuviera abierto: nadie escribe en dos
     // sitios a la vez, y dejarlo abierto pegaría lo nuevo a lo viejo.
     await this.closeOpen(chat, chatId, { quiet: true });
 
-    const days = await this.entries.dayCountsOf(chat.userId, this.clock.now(), 1);
+    const { habits, days } = today;
 
     // Un botón por fila, como la lámina: varios por fila serían ilegibles.
     await this.voice.say(
@@ -192,12 +212,77 @@ export class JournalConversation implements JournalInbox {
     return true;
   }
 
+  /**
+   * `/hoy`: cómo va cada hábito, y botones solo para los que faltan.
+   *
+   * No cierra lo que esté abierto: mirar cómo se va no es empezar otra cosa.
+   */
+  private async showToday(chat: AccountChat, chatId: string): Promise<boolean> {
+    const today = await this.availableToday(chat, chatId);
+
+    if (!today) return true;
+
+    const { habits, days } = today;
+    const lines: string[] = [];
+    const pending: ChatButton[] = [];
+    let due = 0;
+    let done = 0;
+
+    habits.forEach((habit, index) => {
+      const count = days.counts.get(habit.id)?.get(days.today) ?? 0;
+      const tag = progressTag(habit, count, days.today);
+
+      lines.push(`${index + 1}. ${habit.name} · ${tag}`);
+
+      if (!habit.appliesOn(days.today)) return;
+
+      due += 1;
+
+      if (count >= habit.dailyTarget) done += 1;
+      else pending.push(pickButton(index + 1, habit.name, habit.id, tag));
+    });
+
+    await this.voice.say(chatId, SAYS.today(done, due, lines), pending);
+
+    return true;
+  }
+
+  /**
+   * Los hábitos que se pueden anotar hoy (los que no están en pausa) y lo que
+   * ya se anotó. Si no queda ninguno, lo explica y devuelve `null`.
+   */
+  private async availableToday(
+    chat: AccountChat,
+    chatId: string,
+  ): Promise<{ habits: Habit[]; days: DayCounts } | null> {
+    const [all, days] = await Promise.all([
+      this.habits.listOwnedBy(chat.userId),
+      this.entries.dayCountsOf(chat.userId, this.clock.now(), 1),
+    ]);
+    const habits = all.filter((habit) => !habit.isPausedOn(days.today));
+
+    if (habits.length === 0) {
+      await this.voice.say(chatId, all.length === 0 ? SAYS.noHabits : SAYS.allPaused);
+
+      return null;
+    }
+
+    return { habits, days };
+  }
+
   private async startEntry(chat: AccountChat, chatId: string, habitId: HabitId): Promise<void> {
     const habit = await this.habits.findOwned(habitId, chat.userId);
 
     // El hábito se borró entre que se mandó el teclado y alguien lo apretó.
     if (!habit) {
       await this.voice.say(chatId, SAYS.needPick);
+
+      return;
+    }
+
+    // Un teclado viejo puede traer un hábito que se pausó después.
+    if (await this.isPausedToday(habit)) {
+      await this.voice.say(chatId, SAYS.paused(habit.name));
 
       return;
     }
@@ -320,9 +405,13 @@ export class JournalConversation implements JournalInbox {
       return;
     }
 
-    const others = (await this.habits.listOwnedBy(chat.userId)).filter(
-      (habit) => habit.id !== open.habitId,
-    );
+    const [all, timezone] = await Promise.all([
+      this.habits.listOwnedBy(chat.userId),
+      this.habits.timezoneOf(chat.userId),
+    ]);
+    const today = dayIn(timezone, this.clock.now());
+    // Uno en pausa tampoco se ofrece acá: el bot no lo ofrece en ningún lado.
+    const others = all.filter((habit) => habit.id !== open.habitId && !habit.isPausedOn(today));
 
     if (others.length === 0) {
       await this.voice.say(chatId, SAYS.noOtherHabit, [doneButton()]);
@@ -345,6 +434,12 @@ export class JournalConversation implements JournalInbox {
 
     if (!open || !habit) {
       await this.voice.say(chatId, SAYS.needPick);
+
+      return;
+    }
+
+    if (await this.isPausedToday(habit)) {
+      await this.voice.say(chatId, SAYS.paused(habit.name));
 
       return;
     }
@@ -511,13 +606,33 @@ export class JournalConversation implements JournalInbox {
    * alcanzarla, la felicitación. Pasada la meta o en día de descanso, nada.
    */
   private async goalLine(habit: Habit): Promise<string | null> {
-    const days = await this.entries.dayCountsOf(habit.ownerId, this.clock.now(), 1);
+    const now = this.clock.now();
+    const days = await this.entries.dayCountsOf(habit.ownerId, now, 1);
     const count = days.counts.get(habit.id)?.get(days.today) ?? 0;
 
     if (!habit.appliesOn(days.today)) return null;
     if (count < habit.dailyTarget) return SAYS.soFar(count, habit.dailyTarget);
+    if (count > habit.dailyTarget) return null;
 
-    return count === habit.dailyTarget ? SAYS.goalMet : null;
+    // La racha solo se cuenta al cumplir, que es cuando se dice.
+    const [history, timezone] = await Promise.all([
+      this.entries.dayCountsOf(habit.ownerId, now, STREAK_WINDOW_DAYS),
+      this.habits.timezoneOf(habit.ownerId),
+    ]);
+    const { streak } = habit.progressOn(
+      history.counts.get(habit.id) ?? new Map(),
+      history.today,
+      timezone,
+    );
+
+    return SAYS.goalMet(streak);
+  }
+
+  /** Si hoy, en la zona de la cuenta, el hábito está en pausa. */
+  private async isPausedToday(habit: Habit): Promise<boolean> {
+    const timezone = await this.habits.timezoneOf(habit.ownerId);
+
+    return habit.isPausedOn(dayIn(timezone, this.clock.now()));
   }
 }
 

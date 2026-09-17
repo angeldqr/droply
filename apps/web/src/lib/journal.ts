@@ -61,6 +61,27 @@ export function useUpdateHabit(habitId: string) {
   });
 }
 
+/** Pausar o reanudar: la lista vuelve a pedir la fila con su nuevo estado. */
+function usePauseChange(habitId: string, action: 'pause' | 'resume') {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      api<HabitView>(`/journal/habits/${encodeURIComponent(habitId)}/${action}`, {
+        method: 'POST',
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: habitsKey }),
+  });
+}
+
+export function usePauseHabit(habitId: string) {
+  return usePauseChange(habitId, 'pause');
+}
+
+export function useResumeHabit(habitId: string) {
+  return usePauseChange(habitId, 'resume');
+}
+
 export function useDeleteHabit() {
   const queryClient = useQueryClient();
 

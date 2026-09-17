@@ -3,6 +3,9 @@ import {
   addDays,
   ALL_DAYS,
   appliesOn,
+  dayIn,
+  isMilestone,
+  isPausedOn,
   progressOf,
   weekdayOf,
   WEEKDAYS_ONLY,
@@ -21,6 +24,14 @@ describe('los días de la semana', () => {
     expect(weekdayOf(addDays(MONDAY, 6))).toBe(6);
     expect(appliesOn(WEEKDAYS_ONLY, addDays(MONDAY, 4))).toBe(true);
     expect(appliesOn(WEEKDAYS_ONLY, addDays(MONDAY, 5))).toBe(false);
+  });
+
+  it('corta el día en la zona que le toca', () => {
+    // 21:00 en Bogotá ya es el día siguiente en UTC.
+    const moment = new Date('2026-09-17T02:00:00Z');
+
+    expect(dayIn('America/Bogota', moment)).toBe('2026-09-16');
+    expect(dayIn('UTC', moment)).toBe('2026-09-17');
   });
 
   it('cruza fin de mes sin perderse', () => {
@@ -101,6 +112,36 @@ describe('progressOf', () => {
     });
 
     expect(progress).toMatchObject({ todayApplies: false, todayDone: false, rate: null });
+  });
+
+  it('la pausa no corta la racha ni baja el porcentaje', () => {
+    const progress = progressOf({
+      perDay: days({ '2026-09-14': 1, '2026-09-18': 1 }),
+      goal: { dailyTarget: 1, activeDays: ALL_DAYS },
+      since: '2026-09-14',
+      today: '2026-09-18',
+      pauses: [{ from: '2026-09-15', to: '2026-09-17' }],
+    });
+
+    expect(progress).toMatchObject({ streak: 2, rate: 1 });
+  });
+
+  it('hoy en pausa no aplica', () => {
+    const progress = progressOf({
+      perDay: days({}),
+      goal: { dailyTarget: 1, activeDays: ALL_DAYS },
+      since: '2026-09-14',
+      today: '2026-09-16',
+      pauses: [{ from: '2026-09-16', to: null }],
+    });
+
+    expect(progress.todayApplies).toBe(false);
+    expect(isPausedOn([{ from: '2026-09-16', to: null }], '2027-01-01')).toBe(true);
+    expect(isPausedOn([{ from: '2026-09-16', to: '2026-09-17' }], '2026-09-18')).toBe(false);
+  });
+
+  it('reconoce los hitos', () => {
+    expect([6, 7, 30, 31].map(isMilestone)).toEqual([false, true, true, false]);
   });
 
   it('sin días aplicables todavía, no hay porcentaje', () => {

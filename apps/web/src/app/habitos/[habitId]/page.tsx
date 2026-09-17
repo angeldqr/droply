@@ -8,7 +8,7 @@ import {
   type HabitEntryView,
   type HabitProgress,
 } from '@reconectate/contracts';
-import { ChevronLeft, ChevronRight, NotebookPen, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, NotebookPen, Play, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -38,8 +38,9 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
-import { useDeleteEntry, useHabitEntries, useHabits } from '@/lib/journal';
+import { useDeleteEntry, useHabitEntries, useHabits, useResumeHabit } from '@/lib/journal';
 import { cn } from '@/lib/utils';
 
 export default function HabitPage() {
@@ -82,8 +83,10 @@ function Contents({ habitId }: { habitId: string }) {
           goal,
           since: dayKey(new Date(habit.createdAt)),
           today: dayKey(new Date()),
+          pauses: habit.pauses,
         })
       : null;
+  const openPause = habit?.pauses.find((pause) => pause.to === null);
 
   return (
     <AppShell crumbs={[{ label: 'Mi bitácora', href: '/habitos' }, { label: name }]}>
@@ -112,12 +115,23 @@ function Contents({ habitId }: { habitId: string }) {
           </header>
 
           {oldest && goal ? (
-            <HabitCalendar days={perDay} firstDay={new Date(oldest.openedAt)} goal={goal} />
+            <HabitCalendar
+              days={perDay}
+              firstDay={new Date(oldest.openedAt)}
+              goal={goal}
+              pauses={habit?.pauses ?? []}
+            />
           ) : null}
         </div>
 
+        {habit && openPause ? <PausedNotice habitId={habit.id} since={openPause.from} /> : null}
+
         {progress && habit ? (
-          <ProgressStrip progress={progress} target={habit.dailyTarget} />
+          <ProgressStrip
+            progress={progress}
+            target={habit.dailyTarget}
+            paused={openPause !== undefined}
+          />
         ) : null}
 
         {entries.isPending ? (
@@ -174,11 +188,52 @@ function Contents({ habitId }: { habitId: string }) {
   );
 }
 
+/** El hábito está en pausa: se dice arriba y se puede reanudar ahí mismo. */
+function PausedNotice({ habitId, since }: { habitId: string; since: string }) {
+  const resume = useResumeHabit(habitId);
+  const date = new Date(`${since}T12:00:00`).toLocaleDateString('es', {
+    day: 'numeric',
+    month: 'long',
+  });
+
+  async function onResume(): Promise<void> {
+    try {
+      await resume.mutateAsync();
+      toast.success('Vuelve a contar desde hoy.');
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo reanudar.');
+    }
+  }
+
+  return (
+    <Alert className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <AlertTitle>En pausa desde el {date}</AlertTitle>
+        <AlertDescription>
+          Estos días no cuentan como fallo ni cortan tu racha, y el bot no lo ofrece.
+        </AlertDescription>
+      </div>
+      <Button size="sm" onClick={() => void onResume()} disabled={resume.isPending}>
+        {resume.isPending ? <Spinner /> : <Play />}
+        Reanudar
+      </Button>
+    </Alert>
+  );
+}
+
 /**
  * Las tres cifras que responden «¿lo estoy haciendo bien?»: cómo va hoy, cuántos
  * días seguidos van y qué tan parejo fue el último mes.
  */
-function ProgressStrip({ progress, target }: { progress: HabitProgress; target: number }) {
+function ProgressStrip({
+  progress,
+  target,
+  paused,
+}: {
+  progress: HabitProgress;
+  target: number;
+  paused: boolean;
+}) {
   const tiles = [
     {
       label: 'Hoy',
@@ -186,7 +241,9 @@ function ProgressStrip({ progress, target }: { progress: HabitProgress; target: 
         ? '¡Cumplido!'
         : progress.todayApplies
           ? `${progress.todayCount} de ${target}`
-          : 'Día libre',
+          : paused
+            ? 'En pausa'
+            : 'Día libre',
       hint: progress.todayDone
         ? `${progress.todayCount} de ${target}`
         : progress.todayApplies

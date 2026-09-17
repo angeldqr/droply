@@ -1,9 +1,10 @@
-import { createHash, randomBytes } from 'node:crypto';
-import { addDays } from '@reconectate/contracts';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { addDays, type HabitPauseRange } from '@reconectate/contracts';
 import type {
   AccountChat as AccountChatRow,
   Habit as HabitRow,
   HabitEntry as HabitEntryRow,
+  HabitPause as HabitPauseRow,
 } from '@prisma/client';
 import type { PrismaService } from '../../platform/prisma/prisma.service';
 import {
@@ -29,6 +30,9 @@ import type {
   AccountStatus,
 } from '../domain/ports';
 
+/** Las pausas viajan con su hábito, en orden. */
+const WITH_PAUSES = { pauses: { orderBy: { startsOn: 'asc' } } } as const;
+
 export class PrismaHabitRepository implements HabitRepository {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -44,6 +48,7 @@ export class PrismaHabitRepository implements HabitRepository {
         dailyTarget: snapshot.dailyTarget,
         activeDays: snapshot.activeDays,
         createdAt: snapshot.createdAt,
+        pauses: { create: snapshot.pauses.map(toPauseRow) },
       },
     });
   }
@@ -62,9 +67,29 @@ export class PrismaHabitRepository implements HabitRepository {
     });
   }
 
+  /**
+   * Las pausas se reescriben enteras: son pocas, y así la tabla queda igual que
+   * el agregado sin tener que seguirles la pista una por una.
+   */
+  async savePauses(habit: Habit): Promise<void> {
+    const snapshot = habit.toSnapshot();
+
+    await this.prisma.$transaction([
+      this.prisma.habitPause.deleteMany({
+        where: { habitId: snapshot.id, habit: { ownerId: snapshot.ownerId } },
+      }),
+      this.prisma.habitPause.createMany({
+        data: snapshot.pauses.map((pause) => ({ habitId: snapshot.id, ...toPauseRow(pause) })),
+      }),
+    ]);
+  }
+
   async findOwned(id: HabitIdType, ownerId: UserId): Promise<Habit | null> {
     // El dueño va dentro del `where`: lo ajeno no existe, no está prohibido.
-    const row = await this.prisma.habit.findFirst({ where: { id, ownerId } });
+    const row = await this.prisma.habit.findFirst({
+      where: { id, ownerId },
+      include: WITH_PAUSES,
+    });
 
     return row ? toHabit(row) : null;
   }
@@ -73,9 +98,19 @@ export class PrismaHabitRepository implements HabitRepository {
     const rows = await this.prisma.habit.findMany({
       where: { ownerId },
       orderBy: { position: 'asc' },
+      include: WITH_PAUSES,
     });
 
     return rows.map(toHabit);
+  }
+
+  async timezoneOf(ownerId: UserId): Promise<string> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { timezone: true },
+    });
+
+    return row?.timezone ?? 'UTC';
   }
 
   countOwnedBy(ownerId: UserId): Promise<number> {
@@ -138,11 +173,7 @@ export class PrismaEntryRepository implements EntryRepository {
    * no cuentan: la que se acaba de abrir todavía no es una vez.
    */
   async dayCountsOf(ownerId: UserId, now: Date, days: number): Promise<DayCounts> {
-    const [account] = await this.prisma.$queryRaw<{ today: string }[]>`
-      SELECT ((${now}::timestamptz AT TIME ZONE timezone)::date)::text AS today
-      FROM users WHERE id = ${ownerId}::uuid`;
-
-    const today = account?.today ?? now.toISOString().slice(0, 10);
+    const today = await todayOf(this.prisma, ownerId, now);
     const from = addDays(today, -(days - 1));
 
     // El corte grueso va un día de más hacia atrás, por la zona; el fino, con `from`.
@@ -403,7 +434,29 @@ export class PrismaJournalAccountStatus implements AccountStatus {
   }
 }
 
-function toHabit(row: HabitRow): Habit {
+/** Hoy en la zona de la cuenta. Sin cuenta (no debería pasar), el día en UTC. */
+async function todayOf(prisma: PrismaService, ownerId: UserId, now: Date): Promise<string> {
+  const [account] = await prisma.$queryRaw<{ today: string }[]>`
+    SELECT ((${now}::timestamptz AT TIME ZONE timezone)::date)::text AS today
+    FROM users WHERE id = ${ownerId}::uuid`;
+
+  return account?.today ?? now.toISOString().slice(0, 10);
+}
+
+/** Una columna `DATE` llega como medianoche UTC: de ahí sale la clave del día. */
+function dayOf(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function toPauseRow(pause: HabitPauseRange): { id: string; startsOn: Date; endsOn: Date | null } {
+  return {
+    id: randomUUID(),
+    startsOn: new Date(`${pause.from}T00:00:00Z`),
+    endsOn: pause.to === null ? null : new Date(`${pause.to}T00:00:00Z`),
+  };
+}
+
+function toHabit(row: HabitRow & { pauses: HabitPauseRow[] }): Habit {
   return Habit.fromSnapshot({
     id: HabitId.from(row.id),
     ownerId: UserId.from(row.ownerId),
@@ -411,6 +464,10 @@ function toHabit(row: HabitRow): Habit {
     position: row.position,
     dailyTarget: row.dailyTarget,
     activeDays: row.activeDays,
+    pauses: row.pauses.map((pause) => ({
+      from: dayOf(pause.startsOn),
+      to: pause.endsOn === null ? null : dayOf(pause.endsOn),
+    })),
     createdAt: row.createdAt,
   });
 }

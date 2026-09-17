@@ -1,7 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { HabitId } from '../../shared/identifiers';
 import { MAX_PER_ACCOUNT } from '../domain/habit';
-import { ANA, BETO, CHAT, build, chatVinculado, foto, unHabito, type World } from './support';
+import {
+  AHORA,
+  ANA,
+  BETO,
+  CHAT,
+  build,
+  chatVinculado,
+  foto,
+  unHabito,
+  type World,
+} from './support';
 
 let world: World;
 
@@ -175,5 +185,94 @@ describe('cada quien ve lo suyo', () => {
 
     expect(await world.read.list(ANA)).toHaveLength(1);
     expect(await world.read.list(BETO)).toHaveLength(1);
+  });
+});
+
+describe('pausar', () => {
+  const DIA = 24 * 60 * 60 * 1000;
+
+  it('pausa desde hoy y al reanudar otro día guarda el tramo hasta ayer', async () => {
+    const id = await unHabito(world, 'Gimnasio');
+
+    await world.pauseHabit.execute(ANA, id);
+    expect((await world.read.list(ANA))[0]).toMatchObject({
+      paused: true,
+      pauses: [{ from: '2026-09-16', to: null }],
+    });
+
+    world.clock.advanceBy(3 * DIA);
+    await world.resumeHabit.execute(ANA, id);
+
+    expect((await world.read.list(ANA))[0]).toMatchObject({
+      paused: false,
+      pauses: [{ from: '2026-09-16', to: '2026-09-18' }],
+    });
+  });
+
+  it('una pausa de cero días no deja rastro', async () => {
+    const id = await unHabito(world, 'Gimnasio');
+
+    await world.pauseHabit.execute(ANA, id);
+    await world.resumeHabit.execute(ANA, id);
+
+    expect((await world.read.list(ANA))[0]?.pauses).toEqual([]);
+  });
+
+  it('no pausa dos veces ni reanuda lo que no está en pausa', async () => {
+    const id = await unHabito(world, 'Gimnasio');
+
+    const reanudar = await world.resumeHabit.execute(ANA, id);
+
+    expect(reanudar.ok ? '' : reanudar.error.code).toBe('habit.not_paused');
+
+    await world.pauseHabit.execute(ANA, id);
+    const otra = await world.pauseHabit.execute(ANA, id);
+
+    expect(otra.ok ? '' : otra.error.code).toBe('habit.already_paused');
+  });
+
+  it('editar el hábito no borra su pausa', async () => {
+    const id = await unHabito(world, 'Gimnasio');
+
+    await world.pauseHabit.execute(ANA, id);
+    await world.updateHabit.execute(ANA, id, { name: 'Pesas' });
+
+    expect((await world.read.list(ANA))[0]).toMatchObject({ name: 'Pesas', paused: true });
+  });
+
+  it('no se pausa un hábito ajeno', async () => {
+    const id = await unHabito(world, 'Gimnasio', ANA);
+
+    const ajeno = await world.pauseHabit.execute(BETO, id);
+
+    expect(ajeno.ok ? '' : ajeno.error.code).toBe('habit.not_found');
+    expect((await world.read.list(ANA))[0]?.paused).toBe(false);
+  });
+
+  it('los días en pausa no cortan la racha', async () => {
+    chatVinculado(world);
+    world.clock.set(new Date(AHORA.getTime() - 3 * DIA));
+    const id = await unHabito(world, 'Lectura');
+
+    const anotar = async () => {
+      await world.bot.handle({ chatId: CHAT, text: '/habits' });
+      await world.bot.tap({
+        chatId: CHAT,
+        callbackId: 't',
+        messageId: 1,
+        data: world.voice.said.at(-1)?.buttons[0]?.data ?? '',
+      });
+      await world.bot.handle({ chatId: CHAT, text: 'Leí' });
+      await world.bot.handle({ chatId: CHAT, text: '/fin' });
+    };
+
+    await anotar();
+    world.clock.advanceBy(DIA);
+    await world.pauseHabit.execute(ANA, id);
+    world.clock.advanceBy(2 * DIA);
+    await world.resumeHabit.execute(ANA, id);
+    await anotar();
+
+    expect((await world.read.list(ANA))[0]?.streak).toBe(2);
   });
 });

@@ -1,4 +1,4 @@
-import { addDays, weekdayOf } from '@reconectate/contracts';
+import { addDays, dayIn, weekdayOf, type HabitPauseRange } from '@reconectate/contracts';
 import type { Clock } from '../../shared/clock';
 import type { DomainError } from '../../shared/domain-error';
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import { EntryNotFound, HabitNotFound, TooManyHabits } from '../domain/errors';
-import { Habit, MAX_PER_ACCOUNT, type HabitChanges } from '../domain/habit';
+import { Habit, MAX_PER_ACCOUNT, STREAK_WINDOW_DAYS, type HabitChanges } from '../domain/habit';
 import type { EntryRepository, HabitRepository, JournalPhotos, StoredPhoto } from '../domain/ports';
 
 /** Lo que la pantalla muestra de un hábito. */
@@ -26,9 +26,14 @@ export interface HabitRow {
   readonly today: string;
   /** Anotaciones de cada día de esta semana, de lunes a domingo. */
   readonly week: readonly { day: string; count: number }[];
+  readonly streak: number;
+  readonly paused: boolean;
+  readonly pauses: readonly HabitPauseRange[];
 }
 
 const WEEK = 7;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Una anotación con sus fotos ya firmadas. */
 export interface EntryRow {
@@ -98,6 +103,59 @@ export class UpdateHabit {
 }
 
 /**
+ * Pone un hábito en pausa desde hoy: vacaciones, enfermedad.
+ *
+ * Mientras dure no cuenta como fallo, no corta la racha y el bot no lo ofrece.
+ */
+export class PauseHabit {
+  constructor(
+    private readonly habits: HabitRepository,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(ownerId: UserId, habitId: HabitId): Promise<Result<Habit, DomainError>> {
+    return changePause(this.habits, this.clock, ownerId, habitId, (habit, today) =>
+      habit.pause(today),
+    );
+  }
+}
+
+/** Lo contrario: desde hoy vuelve a contar. */
+export class ResumeHabit {
+  constructor(
+    private readonly habits: HabitRepository,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(ownerId: UserId, habitId: HabitId): Promise<Result<Habit, DomainError>> {
+    return changePause(this.habits, this.clock, ownerId, habitId, (habit, today) =>
+      habit.resume(today),
+    );
+  }
+}
+
+async function changePause(
+  habits: HabitRepository,
+  clock: Clock,
+  ownerId: UserId,
+  habitId: HabitId,
+  change: (habit: Habit, today: string) => Result<void, DomainError>,
+): Promise<Result<Habit, DomainError>> {
+  const habit = await habits.findOwned(habitId, ownerId);
+
+  if (!habit) return err(new HabitNotFound());
+
+  // El día lo corta la zona de la cuenta, igual que el bot y la lista.
+  const changed = change(habit, dayIn(await habits.timezoneOf(ownerId), clock.now()));
+
+  if (!changed.ok) return changed;
+
+  await habits.savePauses(habit);
+
+  return ok(habit);
+}
+
+/**
  * Borra el hábito con toda su bitácora, y los archivos con ella.
  *
  * Es lo que el usuario espera al borrar algo suyo: si quisiera guardar el
@@ -163,12 +221,24 @@ export class ReadJournal {
   ) {}
 
   async list(ownerId: UserId): Promise<HabitRow[]> {
-    const [habits, stats, days] = await Promise.all([
+    const now = this.clock.now();
+    const [habits, stats, timezone] = await Promise.all([
       this.habits.listOwnedBy(ownerId),
       this.habits.statsOf(ownerId),
-      // Siete días bastan: el lunes de esta semana nunca queda más atrás.
-      this.entries.dayCountsOf(ownerId, this.clock.now(), WEEK),
+      this.habits.timezoneOf(ownerId),
     ]);
+
+    // Una sola consulta para la semana y las rachas: desde el hábito más viejo,
+    // y nunca menos de una semana (el lunes de esta nunca queda más atrás).
+    const oldest = Math.min(
+      now.getTime(),
+      ...habits.map((h) => h.toSnapshot().createdAt.getTime()),
+    );
+    const window = Math.min(
+      STREAK_WINDOW_DAYS,
+      Math.max(WEEK, Math.ceil((now.getTime() - oldest) / DAY_MS) + 2),
+    );
+    const days = await this.entries.dayCountsOf(ownerId, now, window);
 
     const monday = addDays(days.today, -weekdayOf(days.today));
 
@@ -176,6 +246,7 @@ export class ReadJournal {
       const snapshot = habit.toSnapshot();
       const seen = stats.get(habit.id);
       const perDay = days.counts.get(habit.id);
+      const progress = habit.progressOn(perDay ?? new Map(), days.today, timezone);
 
       return {
         id: snapshot.id,
@@ -192,6 +263,9 @@ export class ReadJournal {
 
           return { day, count: perDay?.get(day) ?? 0 };
         }),
+        streak: progress.streak,
+        paused: habit.isPausedOn(days.today),
+        pauses: snapshot.pauses,
       };
     });
   }

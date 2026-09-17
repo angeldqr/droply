@@ -29,7 +29,9 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  PauseHabit,
   ReadJournal,
+  ResumeHabit,
   UpdateHabit,
   type EntryRow,
   type HabitRow,
@@ -50,6 +52,8 @@ export class JournalController {
     @Inject(CreateHabit) private readonly createHabit: CreateHabit,
     @Inject(UpdateHabit) private readonly updateHabit: UpdateHabit,
     @Inject(DeleteHabit) private readonly deleteHabit: DeleteHabit,
+    @Inject(PauseHabit) private readonly pauseHabit: PauseHabit,
+    @Inject(ResumeHabit) private readonly resumeHabit: ResumeHabit,
     @Inject(DeleteEntry) private readonly deleteEntry: DeleteEntry,
     @Inject(IssueChatLink) private readonly issueLink: IssueChatLink,
     @Inject(ReadChatLink) private readonly readLink: ReadChatLink,
@@ -81,6 +85,28 @@ export class JournalController {
     // La marca se pone en el borde, que es el único sitio donde entra texto de
     // fuera; a partir de acá el tipo impide cruzar un identificador con otro.
     const habit = orThrow(await this.updateHabit.execute(userId, HabitId.from(habitId), body));
+
+    return this.viewOf(userId, habit.id);
+  }
+
+  @Post('habits/:habitId/pause')
+  @HttpCode(HttpStatus.OK)
+  async pause(
+    @CurrentUserId() userId: UserId,
+    @Param('habitId') habitId: string,
+  ): Promise<HabitView> {
+    const habit = orThrow(await this.pauseHabit.execute(userId, HabitId.from(habitId)));
+
+    return this.viewOf(userId, habit.id);
+  }
+
+  @Post('habits/:habitId/resume')
+  @HttpCode(HttpStatus.OK)
+  async resume(
+    @CurrentUserId() userId: UserId,
+    @Param('habitId') habitId: string,
+  ): Promise<HabitView> {
+    const habit = orThrow(await this.resumeHabit.execute(userId, HabitId.from(habitId)));
 
     return this.viewOf(userId, habit.id);
   }
@@ -161,6 +187,9 @@ function toHabitView(row: HabitRow): HabitView {
     lastEntryAt: row.lastEntryAt?.toISOString() ?? null,
     today: row.today,
     week: row.week,
+    streak: row.streak,
+    paused: row.paused,
+    pauses: row.pauses,
   };
 }
 

@@ -18,7 +18,9 @@ import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
+  PauseHabit,
   ReadJournal,
+  ResumeHabit,
   UpdateHabit,
 } from '../application/habit-use-cases';
 import { JournalConversation } from '../application/journal-conversation';
@@ -135,6 +137,16 @@ export class InMemoryHabits implements HabitRepository {
   /** Los contadores solo los pinta la pantalla; acá no aportan nada. */
   statsOf(): Promise<Map<HabitId, { count: number; lastAt: Date }>> {
     return Promise.resolve(new Map<HabitId, { count: number; lastAt: Date }>());
+  }
+
+  /** Las pausas viven dentro del agregado, que ya está en el mapa. */
+  savePauses(habit: Habit): Promise<void> {
+    return this.save(habit);
+  }
+
+  /** La cuenta de los tests vive en UTC, igual que su reloj. */
+  timezoneOf(): Promise<string> {
+    return Promise.resolve('UTC');
   }
 }
 
@@ -390,6 +402,8 @@ export function build(startingAt = AHORA) {
     voice,
     createHabit: new CreateHabit(habits, ids, clock),
     updateHabit: new UpdateHabit(habits),
+    pauseHabit: new PauseHabit(habits, clock),
+    resumeHabit: new ResumeHabit(habits, clock),
     deleteHabit: new DeleteHabit(habits, entries, photos),
     deleteEntry: new DeleteEntry(entries, photos),
     read: new ReadJournal(habits, entries, photos, clock),

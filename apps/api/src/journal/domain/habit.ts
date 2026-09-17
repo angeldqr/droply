@@ -1,5 +1,16 @@
-import { ALL_DAYS, appliesOn, HABIT_DAILY_TARGET_MAX } from '@reconectate/contracts';
+import {
+  addDays,
+  ALL_DAYS,
+  appliesOn,
+  dayIn,
+  HABIT_DAILY_TARGET_MAX,
+  isPausedOn,
+  progressOf,
+  type HabitPauseRange,
+  type HabitProgress,
+} from '@reconectate/contracts';
 import { InvalidInputError } from '../../shared/domain-error';
+import { HabitAlreadyPaused, HabitNotPaused } from './errors';
 import type { HabitId, UserId } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 
@@ -13,6 +24,14 @@ export const NAME_MAX_LENGTH = 40;
  */
 export const MAX_PER_ACCOUNT = 20;
 
+/**
+ * Hasta dónde se mira atrás para contar una racha.
+ *
+ * ponytail: una racha de más de un año se ve como de un año; si hace falta más,
+ * guardar la racha calculada en vez de sumarla cada vez.
+ */
+export const STREAK_WINDOW_DAYS = 366;
+
 export interface HabitSnapshot {
   readonly id: HabitId;
   readonly ownerId: UserId;
@@ -22,6 +41,8 @@ export interface HabitSnapshot {
   readonly dailyTarget: number;
   /** En qué días aplica, con el lunes en el bit 0. */
   readonly activeDays: number;
+  /** Los tramos en pausa, del más viejo al más nuevo. Ver `HabitPause`. */
+  readonly pauses: readonly HabitPauseRange[];
   readonly createdAt: Date;
 }
 
@@ -57,6 +78,7 @@ export class Habit {
       position: input.position,
       dailyTarget: 1,
       activeDays: ALL_DAYS,
+      pauses: [],
       createdAt: input.now,
     });
 
@@ -89,9 +111,59 @@ export class Habit {
     return this.state.dailyTarget;
   }
 
-  /** Si la meta pide algo ese día (`AAAA-MM-DD`). */
+  /** Si la meta pide algo ese día (`AAAA-MM-DD`): no es día libre ni está en pausa. */
   appliesOn(day: string): boolean {
-    return appliesOn(this.state.activeDays, day);
+    return appliesOn(this.state.activeDays, day) && !this.isPausedOn(day);
+  }
+
+  isPausedOn(day: string): boolean {
+    return isPausedOn(this.state.pauses, day);
+  }
+
+  /** Pone el hábito en pausa desde `today`, que ya no cuenta. */
+  pause(today: string): Result<void, HabitAlreadyPaused> {
+    // Una abierta, aunque empiece otro día: el índice de la base no deja dos.
+    if (this.state.pauses.some((pause) => pause.to === null)) {
+      return err(new HabitAlreadyPaused());
+    }
+
+    this.state = { ...this.state, pauses: [...this.state.pauses, { from: today, to: null }] };
+
+    return ok();
+  }
+
+  /**
+   * Cierra la pausa en curso: hoy ya cuenta otra vez, así que termina ayer.
+   * Una pausa que empezó hoy no llegó a durar nada y se borra.
+   */
+  resume(today: string): Result<void, HabitNotPaused> {
+    const open = this.state.pauses.find((pause) => pause.to === null);
+
+    if (!open) return err(new HabitNotPaused());
+
+    const yesterday = addDays(today, -1);
+    const rest = this.state.pauses.filter((pause) => pause !== open);
+
+    this.state = {
+      ...this.state,
+      pauses: open.from > yesterday ? rest : [...rest, { from: open.from, to: yesterday }],
+    };
+
+    return ok();
+  }
+
+  /**
+   * Cómo va hasta `today`, con lo anotado cada día. Cuenta desde el día en que
+   * se creó, cortado en la zona de la cuenta como todo lo demás.
+   */
+  progressOn(perDay: ReadonlyMap<string, number>, today: string, timezone: string): HabitProgress {
+    return progressOf({
+      perDay,
+      goal: this.state,
+      since: dayIn(timezone, this.state.createdAt),
+      today,
+      pauses: this.state.pauses,
+    });
   }
 
   /** Cambia lo que venga; si algo no vale, no cambia nada. */

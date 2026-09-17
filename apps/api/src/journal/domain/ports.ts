@@ -14,6 +14,10 @@ export interface HabitRepository {
   remove(id: HabitId, ownerId: UserId): Promise<void>;
   /** Cuántas anotaciones tiene cada hábito y cuándo fue la última. */
   statsOf(ownerId: UserId): Promise<Map<HabitId, { count: number; lastAt: Date }>>;
+  /** Guarda los tramos en pausa. Aparte de `save`: editar el hábito no los toca. */
+  savePauses(habit: Habit): Promise<void>;
+  /** La zona IANA de la cuenta: donde se cortan los días. */
+  timezoneOf(ownerId: UserId): Promise<string>;
 }
 
 /** Una foto ya guardada, tal como la pinta la pantalla. */

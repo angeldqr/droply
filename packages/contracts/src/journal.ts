@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ALL_DAYS, HABIT_DAILY_TARGET_MAX } from './habit-progress.js';
+import { ALL_DAYS, HABIT_DAILY_TARGET_MAX, type HabitPauseRange } from './habit-progress.js';
 
 /**
  * La bitácora de hábitos.
@@ -113,6 +113,12 @@ export interface HabitView {
    * Los días que todavía no llegan vienen en cero.
    */
   readonly week: readonly WeekDayView[];
+  /** Días aplicables seguidos con la meta cumplida, hasta hoy. */
+  readonly streak: number;
+  /** Si hoy está en pausa: no cuenta, no sale en el bot. */
+  readonly paused: boolean;
+  /** Los tramos en pausa, del más viejo al más nuevo. */
+  readonly pauses: readonly HabitPauseRange[];
   /** Cuándo fue la última vez que se anotó algo. Nulo si nunca. */
   readonly lastEntryAt: string | null;
 }
@@ -138,3 +144,6 @@ export interface AccountChatView {
  * alguien lo cambie.
  */
 export const JOURNAL_COMMAND = '/habits';
+
+/** El comando que dice cómo va el día. Mismo motivo para vivir acá. */
+export const JOURNAL_TODAY_COMMAND = '/hoy';
