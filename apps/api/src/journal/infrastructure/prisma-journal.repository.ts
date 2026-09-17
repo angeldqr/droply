@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { addDays } from '@reconectate/contracts';
 import type {
   AccountChat as AccountChatRow,
   Habit as HabitRow,
@@ -19,6 +20,7 @@ import { HabitEntry, NOTE_MAX_LENGTH } from '../domain/entry';
 import { Habit } from '../domain/habit';
 import type {
   AccountChatRepository,
+  DayCounts,
   EntryRepository,
   HabitRepository,
   LinkCode,
@@ -39,6 +41,8 @@ export class PrismaHabitRepository implements HabitRepository {
         ownerId: snapshot.ownerId,
         name: snapshot.name,
         position: snapshot.position,
+        dailyTarget: snapshot.dailyTarget,
+        activeDays: snapshot.activeDays,
         createdAt: snapshot.createdAt,
       },
     });
@@ -49,7 +53,12 @@ export class PrismaHabitRepository implements HabitRepository {
 
     await this.prisma.habit.update({
       where: { id: snapshot.id },
-      data: { name: snapshot.name, position: snapshot.position },
+      data: {
+        name: snapshot.name,
+        position: snapshot.position,
+        dailyTarget: snapshot.dailyTarget,
+        activeDays: snapshot.activeDays,
+      },
     });
   }
 
@@ -120,6 +129,49 @@ export class PrismaHabitRepository implements HabitRepository {
 
 export class PrismaEntryRepository implements EntryRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Cuántas anotaciones tuvo cada hábito cada día, en la zona de la cuenta.
+   *
+   * `opened_at` no lleva zona y se guarda en UTC: primero se le dice que es UTC
+   * y después se pasa a la hora de la cuenta, y de ahí sale el día. Las vacías
+   * no cuentan: la que se acaba de abrir todavía no es una vez.
+   */
+  async dayCountsOf(ownerId: UserId, now: Date, days: number): Promise<DayCounts> {
+    const [account] = await this.prisma.$queryRaw<{ today: string }[]>`
+      SELECT ((${now}::timestamptz AT TIME ZONE timezone)::date)::text AS today
+      FROM users WHERE id = ${ownerId}::uuid`;
+
+    const today = account?.today ?? now.toISOString().slice(0, 10);
+    const from = addDays(today, -(days - 1));
+
+    // El corte grueso va un día de más hacia atrás, por la zona; el fino, con `from`.
+    const rows = await this.prisma.$queryRaw<{ habitId: string; day: string; n: number }[]>`
+      SELECT e.habit_id::text AS "habitId",
+             (((e.opened_at AT TIME ZONE 'UTC') AT TIME ZONE u.timezone)::date)::text AS day,
+             COUNT(*)::int AS n
+      FROM habit_entries e
+      JOIN users u ON u.id = e.owner_id
+      WHERE e.owner_id = ${ownerId}::uuid
+        AND e.opened_at >= ((${now}::timestamptz - make_interval(days => ${days}::int + 1)) AT TIME ZONE 'UTC')
+        AND (e.note IS NOT NULL
+             OR EXISTS (SELECT 1 FROM habit_entry_photos p WHERE p.entry_id = e.id))
+      GROUP BY 1, 2`;
+
+    const counts = new Map<HabitIdType, Map<string, number>>();
+
+    for (const row of rows) {
+      if (row.day < from || row.day > today) continue;
+
+      const habitId = HabitId.from(row.habitId);
+      const perDay = counts.get(habitId) ?? new Map<string, number>();
+
+      perDay.set(row.day, row.n);
+      counts.set(habitId, perDay);
+    }
+
+    return { today, counts };
+  }
 
   async add(entry: HabitEntry): Promise<void> {
     const snapshot = entry.toSnapshot();
@@ -357,6 +409,8 @@ function toHabit(row: HabitRow): Habit {
     ownerId: UserId.from(row.ownerId),
     name: row.name,
     position: row.position,
+    dailyTarget: row.dailyTarget,
+    activeDays: row.activeDays,
     createdAt: row.createdAt,
   });
 }

@@ -4,6 +4,7 @@ import { HABIT_NAME_MAX_LENGTH } from '@reconectate/contracts';
 import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
+import { goalFrom, HabitGoalFields } from '@/components/habit-goal-fields';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,7 @@ import { ApiError } from '@/lib/api';
 import { useCreateHabit } from '@/lib/journal';
 import { useMorphDialog } from '@/lib/morph-dialog';
 
-/** Un hábito es un nombre y nada más. Todo lo demás llega por el chat. */
+/** Un hábito es un nombre y una meta. Lo que se hace llega por el chat. */
 export function NewHabitDialog({ id }: { id: string }) {
   const dialog = useMorphDialog(id);
   const create = useCreateHabit();
@@ -32,7 +33,7 @@ export function NewHabitDialog({ id }: { id: string }) {
     const form = new FormData(event.currentTarget);
 
     try {
-      await create.mutateAsync({ name: String(form.get('name')) });
+      await create.mutateAsync({ name: String(form.get('name')), ...goalFrom(form) });
       dialog.close();
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : 'No se pudo crear.');
@@ -73,6 +74,8 @@ export function NewHabitDialog({ id }: { id: string }) {
               />
               <FieldDescription>Así lo vas a ver en la lista que te manda el bot.</FieldDescription>
             </Field>
+
+            <HabitGoalFields idPrefix="nuevo" />
           </FieldGroup>
 
           <DialogFooter>

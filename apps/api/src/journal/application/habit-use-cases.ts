@@ -1,3 +1,4 @@
+import { addDays, weekdayOf } from '@reconectate/contracts';
 import type { Clock } from '../../shared/clock';
 import type { DomainError } from '../../shared/domain-error';
 import {
@@ -8,7 +9,7 @@ import {
 } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import { EntryNotFound, HabitNotFound, TooManyHabits } from '../domain/errors';
-import { Habit, MAX_PER_ACCOUNT } from '../domain/habit';
+import { Habit, MAX_PER_ACCOUNT, type HabitChanges } from '../domain/habit';
 import type { EntryRepository, HabitRepository, JournalPhotos, StoredPhoto } from '../domain/ports';
 
 /** Lo que la pantalla muestra de un hábito. */
@@ -16,9 +17,18 @@ export interface HabitRow {
   readonly id: string;
   readonly name: string;
   readonly position: number;
+  readonly dailyTarget: number;
+  readonly activeDays: number;
+  readonly createdAt: Date;
   readonly entryCount: number;
   readonly lastEntryAt: Date | null;
+  /** Hoy en la zona de la cuenta, `AAAA-MM-DD`. */
+  readonly today: string;
+  /** Anotaciones de cada día de esta semana, de lunes a domingo. */
+  readonly week: readonly { day: string; count: number }[];
 }
+
+const WEEK = 7;
 
 /** Una anotación con sus fotos ya firmadas. */
 export interface EntryRow {
@@ -36,7 +46,10 @@ export class CreateHabit {
     private readonly clock: Clock,
   ) {}
 
-  async execute(ownerId: UserId, name: string): Promise<Result<Habit, DomainError>> {
+  async execute(
+    ownerId: UserId,
+    input: { name: string; dailyTarget?: number | undefined; activeDays?: number | undefined },
+  ): Promise<Result<Habit, DomainError>> {
     if ((await this.habits.countOwnedBy(ownerId)) >= MAX_PER_ACCOUNT) {
       return err(new TooManyHabits(MAX_PER_ACCOUNT));
     }
@@ -46,7 +59,7 @@ export class CreateHabit {
     const habit = Habit.create({
       id: HabitId.from(this.ids.generate()),
       ownerId,
-      name,
+      ...input,
       // Al final de la lista, que es donde el usuario espera ver lo que acaba
       // de crear. Un paso entero y no un promedio: no hay vecino de la derecha.
       position: (last ?? 0) + 1,
@@ -61,21 +74,22 @@ export class CreateHabit {
   }
 }
 
-export class RenameHabit {
+/** El nombre, la meta o las dos cosas. */
+export class UpdateHabit {
   constructor(private readonly habits: HabitRepository) {}
 
   async execute(
     ownerId: UserId,
     habitId: HabitId,
-    name: string,
+    changes: HabitChanges,
   ): Promise<Result<Habit, DomainError>> {
     const habit = await this.habits.findOwned(habitId, ownerId);
 
     if (!habit) return err(new HabitNotFound());
 
-    const renamed = habit.rename(name);
+    const updated = habit.update(changes);
 
-    if (!renamed.ok) return renamed;
+    if (!updated.ok) return updated;
 
     await this.habits.save(habit);
 
@@ -149,21 +163,35 @@ export class ReadJournal {
   ) {}
 
   async list(ownerId: UserId): Promise<HabitRow[]> {
-    const [habits, stats] = await Promise.all([
+    const [habits, stats, days] = await Promise.all([
       this.habits.listOwnedBy(ownerId),
       this.habits.statsOf(ownerId),
+      // Siete días bastan: el lunes de esta semana nunca queda más atrás.
+      this.entries.dayCountsOf(ownerId, this.clock.now(), WEEK),
     ]);
+
+    const monday = addDays(days.today, -weekdayOf(days.today));
 
     return habits.map((habit) => {
       const snapshot = habit.toSnapshot();
       const seen = stats.get(habit.id);
+      const perDay = days.counts.get(habit.id);
 
       return {
         id: snapshot.id,
         name: snapshot.name,
         position: snapshot.position,
+        dailyTarget: snapshot.dailyTarget,
+        activeDays: snapshot.activeDays,
+        createdAt: snapshot.createdAt,
         entryCount: seen?.count ?? 0,
         lastEntryAt: seen?.lastAt ?? null,
+        today: days.today,
+        week: Array.from({ length: WEEK }, (_, index) => {
+          const day = addDays(monday, index);
+
+          return { day, count: perDay?.get(day) ?? 0 };
+        }),
       };
     });
   }

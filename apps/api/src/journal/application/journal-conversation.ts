@@ -15,7 +15,6 @@ import {
   offerMoveButton,
   parseChatAction,
   pickButton,
-  type ChatButton,
 } from '../domain/chat-actions';
 import { HabitEntry, PHOTO_MAX_BYTES, PHOTO_TYPES, PHOTOS_MAX } from '../domain/entry';
 import type { Habit } from '../domain/habit';
@@ -56,6 +55,8 @@ const SAYS = {
 
     return `Anotado en ${name}: ${parts.join(' y ')}.`;
   },
+  soFar: (count: number, target: number) => `Hoy llevas ${count} de ${target}.`,
+  goalMet: '¡Meta de hoy cumplida! 🎯',
 } as const;
 
 function fotos(count: number): string {
@@ -172,7 +173,21 @@ export class JournalConversation implements JournalInbox {
     // sitios a la vez, y dejarlo abierto pegaría lo nuevo a lo viejo.
     await this.closeOpen(chat, chatId, { quiet: true });
 
-    await this.voice.say(chatId, SAYS.pick, buttonsFor(habits));
+    const days = await this.entries.dayCountsOf(chat.userId, this.clock.now(), 1);
+
+    // Un botón por fila, como la lámina: varios por fila serían ilegibles.
+    await this.voice.say(
+      chatId,
+      SAYS.pick,
+      habits.map((habit, index) =>
+        pickButton(
+          index + 1,
+          habit.name,
+          habit.id,
+          progressTag(habit, days.counts.get(habit.id)?.get(days.today) ?? 0, days.today),
+        ),
+      ),
+    );
 
     return true;
   }
@@ -485,17 +500,32 @@ export class JournalConversation implements JournalInbox {
     if (options.quiet) return;
 
     const habit = await this.habits.findOwned(entry.habitId, entry.ownerId);
+    const saved = SAYS.saved(habit?.name ?? 'tu hábito', entry.noteLength > 0, entry.photoCount);
+    const goal = habit ? await this.goalLine(habit) : null;
 
-    await this.voice.say(
-      chatId,
-      SAYS.saved(habit?.name ?? 'tu hábito', entry.noteLength > 0, entry.photoCount),
-    );
+    await this.voice.say(chatId, goal ? `${saved} ${goal}` : saved);
+  }
+
+  /**
+   * Cómo va la meta de hoy, dicho una vez: al quedar por debajo, el avance; al
+   * alcanzarla, la felicitación. Pasada la meta o en día de descanso, nada.
+   */
+  private async goalLine(habit: Habit): Promise<string | null> {
+    const days = await this.entries.dayCountsOf(habit.ownerId, this.clock.now(), 1);
+    const count = days.counts.get(habit.id)?.get(days.today) ?? 0;
+
+    if (!habit.appliesOn(days.today)) return null;
+    if (count < habit.dailyTarget) return SAYS.soFar(count, habit.dailyTarget);
+
+    return count === habit.dailyTarget ? SAYS.goalMet : null;
   }
 }
 
-/** Hasta ocho botones por fila serían ilegibles: uno por fila, como la lámina. */
-function buttonsFor(habits: readonly Habit[]): ChatButton[] {
-  return habits.map((habit, index) => pickButton(index + 1, habit.name, habit.id));
+/** «✓» si hoy ya está, «1/2» si no, «descanso» si hoy no aplica. */
+function progressTag(habit: Habit, count: number, today: string): string {
+  if (!habit.appliesOn(today)) return 'descanso';
+
+  return count >= habit.dailyTarget ? '✓' : `${count}/${habit.dailyTarget}`;
 }
 
 /**

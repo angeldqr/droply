@@ -5,5 +5,6 @@ export * from './recipients.js';
 export * from './scheduling.js';
 export * from './habits.js';
 export * from './journal.js';
+export * from './habit-progress.js';
 export * from './env/schema.js';
 export * from './env/load.js';

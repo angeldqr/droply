@@ -32,9 +32,24 @@ export type ChatAction =
   | { readonly kind: 'OFFER_MOVE' }
   | { readonly kind: 'MOVE'; readonly habitId: string };
 
-/** El botón de un hábito, numerado como pidió el cliente. */
-export function pickButton(position: number, name: string, habitId: string): ChatButton {
-  return { label: `${position} · ${name}`, data: `${PREFIX}:p:${habitId}` };
+/**
+ * El botón de un hábito, numerado como pidió el cliente.
+ *
+ * `progress` es cómo va hoy («1/2», «✓»). Va solo en el texto, que no tiene el
+ * tope de 64 bytes de `data`.
+ */
+export function pickButton(
+  position: number,
+  name: string,
+  habitId: string,
+  progress?: string,
+): ChatButton {
+  const label = `${position} · ${name}`;
+
+  return {
+    label: progress ? `${label} · ${progress}` : label,
+    data: `${PREFIX}:p:${habitId}`,
+  };
 }
 
 /** El botón que cierra la anotación. */

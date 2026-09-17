@@ -66,9 +66,9 @@ describe('/habits', () => {
     const botones = world.voice.said.at(-1)?.buttons ?? [];
 
     expect(botones.map((boton) => boton.label)).toEqual([
-      '1 · Ejercicio',
-      '2 · Alimentación',
-      '3 · Lectura',
+      '1 · Ejercicio · 0/1',
+      '2 · Alimentación · 0/1',
+      '3 · Lectura · 0/1',
     ]);
   });
 
@@ -108,7 +108,9 @@ describe('anotar', () => {
     expect(entry?.note).toBe('45 min de bici');
     expect(entry?.closedAt).not.toBeNull();
     expect(world.photos.originals()).toBe(3);
-    expect(world.voice.last()).toBe('Anotado en Ejercicio: lo que escribiste y 3 fotos.');
+    expect(world.voice.last()).toBe(
+      'Anotado en Ejercicio: lo que escribiste y 3 fotos. ¡Meta de hoy cumplida! 🎯',
+    );
   });
 
   it('el pie de una foto cuenta como texto', async () => {
@@ -342,7 +344,7 @@ describe('cada quien ve lo suyo', () => {
 
     const etiquetas = (world.voice.said.at(-1)?.buttons ?? []).map((boton) => boton.label);
 
-    expect(etiquetas).toEqual(['1 · Lo de Ana']);
+    expect(etiquetas).toEqual(['1 · Lo de Ana · 0/1']);
   });
 });
 
@@ -428,5 +430,64 @@ describe('miniaturas', () => {
     await world.deleteEntry.execute(ANA, entry!.id);
 
     expect(world.photos.objects.size).toBe(0);
+  });
+});
+
+describe('la meta del día', () => {
+  beforeEach(() => {
+    chatVinculado(world);
+  });
+
+  async function anotar(texto: string): Promise<void> {
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await elegir(world);
+    await world.bot.handle({ chatId: CHAT, text: texto });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+  }
+
+  /*
+   * La unidad es la anotación: una sesión con varios mensajes es una vez. Al
+   * cerrar, el bot dice cómo va y felicita solo al alcanzar la meta.
+   */
+  it('cuenta anotaciones y felicita al llegar', async () => {
+    await unHabito(world, 'Comidas', ANA, { dailyTarget: 2 });
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await elegir(world);
+    await world.bot.handle({ chatId: CHAT, text: 'Desayuno' });
+    await world.bot.handle({ chatId: CHAT, text: 'con fruta' });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+
+    expect(world.voice.last()).toContain('Hoy llevas 1 de 2.');
+
+    await anotar('Almuerzo');
+
+    expect(world.voice.last()).toContain('¡Meta de hoy cumplida!');
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+
+    expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Comidas · ✓');
+
+    await elegir(world);
+    await world.bot.handle({ chatId: CHAT, text: 'Cena' });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+
+    // Pasada la meta ya no hay nada que anunciar.
+    expect(world.voice.last()).not.toMatch(/Hoy llevas|Meta/);
+  });
+
+  it('un día de descanso se puede anotar, pero no se mide', async () => {
+    // AHORA es miércoles; el hábito es solo de sábado y domingo.
+    await unHabito(world, 'Paseo', ANA, { activeDays: 0b110_0000 });
+
+    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+
+    expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Paseo · descanso');
+
+    await elegir(world);
+    await world.bot.handle({ chatId: CHAT, text: 'Igual caminé' });
+    await world.bot.handle({ chatId: CHAT, text: '/fin' });
+
+    expect(world.voice.last()).toBe('Anotado en Paseo: lo que escribiste.');
   });
 });

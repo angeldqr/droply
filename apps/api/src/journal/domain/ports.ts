@@ -23,8 +23,18 @@ export interface StoredPhoto {
   readonly thumbKey: string | null;
 }
 
+/** Las anotaciones de cada hábito por día, cortadas en la zona de la cuenta. */
+export interface DayCounts {
+  /** Hoy en la zona de la cuenta, `AAAA-MM-DD`. */
+  readonly today: string;
+  /** Hábito → día → cuántas anotaciones no vacías. Los días sin nada no están. */
+  readonly counts: ReadonlyMap<HabitId, ReadonlyMap<string, number>>;
+}
+
 export interface EntryRepository {
   add(entry: HabitEntry): Promise<void>;
+  /** Las anotaciones de los últimos `days` días, hoy incluido. */
+  dayCountsOf(ownerId: UserId, now: Date, days: number): Promise<DayCounts>;
   save(entry: HabitEntry): Promise<void>;
   /**
    * La anotación abierta de ese chat **y de ese dueño**.

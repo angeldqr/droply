@@ -1,13 +1,20 @@
 'use client';
 
-import { JOURNAL_COMMAND, type EntryPhotoView, type HabitEntryView } from '@reconectate/contracts';
+import {
+  JOURNAL_COMMAND,
+  progressOf,
+  RATE_WINDOW_DAYS,
+  type EntryPhotoView,
+  type HabitEntryView,
+  type HabitProgress,
+} from '@reconectate/contracts';
 import { ChevronLeft, ChevronRight, NotebookPen, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { HabitCalendar } from '@/components/habit-calendar';
-import { dayKey, daysAgo, HabitMark } from '@/components/habit-mark';
+import { cuenta, dayKey, daysAgo, goalLabel, HabitMark } from '@/components/habit-mark';
 import { RequireSession } from '@/components/require-session';
 import {
   AlertDialog,
@@ -53,15 +60,30 @@ function Contents({ habitId }: { habitId: string }) {
   const list = entries.data ?? [];
   const photoCount = list.reduce((sum, entry) => sum + entry.photos.length, 0);
   const perDay = new Map<string, number>();
+  let counted = 0;
 
   for (const entry of list) {
+    // La que se acaba de abrir y está vacía todavía no es una vez.
+    if (entry.note === null && entry.photos.length === 0) continue;
+
     const key = dayKey(new Date(entry.openedAt));
 
     perDay.set(key, (perDay.get(key) ?? 0) + 1);
+    counted += 1;
   }
 
   // La lista llega de la más reciente a la más vieja: la última es la primera.
   const oldest = list.at(-1);
+  const goal = habit ? { dailyTarget: habit.dailyTarget, activeDays: habit.activeDays } : null;
+  const progress =
+    habit && goal
+      ? progressOf({
+          perDay,
+          goal,
+          since: dayKey(new Date(habit.createdAt)),
+          today: dayKey(new Date()),
+        })
+      : null;
 
   return (
     <AppShell crumbs={[{ label: 'Mi bitácora', href: '/habitos' }, { label: name }]}>
@@ -77,15 +99,26 @@ function Contents({ habitId }: { habitId: string }) {
             <div className="min-w-0">
               <h1 className="font-display truncate text-2xl font-bold md:text-3xl">{name}</h1>
               <p className="text-muted-foreground text-sm">
-                {entries.data && entries.data.length > 0
-                  ? `${cuenta(entries.data.length, 'anotación', 'anotaciones')} · ${cuenta(photoCount, 'foto', 'fotos')}`
+                {habit
+                  ? goalLabel(habit.dailyTarget, habit.activeDays)
                   : 'Tu diario de este hábito'}
               </p>
+              {counted > 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  {`${cuenta(counted, 'anotación', 'anotaciones')} · ${cuenta(photoCount, 'foto', 'fotos')}`}
+                </p>
+              ) : null}
             </div>
           </header>
 
-          {oldest ? <HabitCalendar days={perDay} firstDay={new Date(oldest.openedAt)} /> : null}
+          {oldest && goal ? (
+            <HabitCalendar days={perDay} firstDay={new Date(oldest.openedAt)} goal={goal} />
+          ) : null}
         </div>
+
+        {progress && habit ? (
+          <ProgressStrip progress={progress} target={habit.dailyTarget} />
+        ) : null}
 
         {entries.isPending ? (
           <div className="flex flex-col gap-3">
@@ -142,11 +175,71 @@ function Contents({ habitId }: { habitId: string }) {
 }
 
 /**
- * Una anotación.
- *
- * Sin porcentajes ni barras: esto se lee, no se mide. Medir es lo que hace «Yo
- * en 30 días», que es otra cosa.
+ * Las tres cifras que responden «¿lo estoy haciendo bien?»: cómo va hoy, cuántos
+ * días seguidos van y qué tan parejo fue el último mes.
  */
+function ProgressStrip({ progress, target }: { progress: HabitProgress; target: number }) {
+  const tiles = [
+    {
+      label: 'Hoy',
+      value: progress.todayDone
+        ? '¡Cumplido!'
+        : progress.todayApplies
+          ? `${progress.todayCount} de ${target}`
+          : 'Día libre',
+      hint: progress.todayDone
+        ? `${progress.todayCount} de ${target}`
+        : progress.todayApplies
+          ? 'veces anotadas'
+          : 'hoy no cuenta',
+      done: progress.todayDone,
+    },
+    {
+      label: 'Racha',
+      value: cuenta(progress.streak, 'día', 'días'),
+      hint:
+        progress.bestStreak > 0
+          ? `La mejor: ${cuenta(progress.bestStreak, 'día', 'días')}`
+          : 'Cumple hoy para empezarla',
+      done: false,
+    },
+    {
+      label: `Últimos ${RATE_WINDOW_DAYS} días`,
+      value: progress.rate === null ? '—' : `${Math.round(progress.rate * 100)} %`,
+      hint: progress.rate === null ? 'Todavía no hay días para medir' : 'de la meta cumplida',
+      done: false,
+    },
+  ];
+
+  return (
+    <dl className="grid grid-cols-3 gap-2 md:gap-3">
+      {tiles.map((tile) => (
+        <div
+          key={tile.label}
+          className={cn(
+            'bg-card border-border flex flex-col gap-0.5 rounded-2xl border p-3 md:p-4',
+            tile.done && 'border-logro-600/40 bg-logro-600/10',
+          )}
+        >
+          <dt className="text-muted-foreground text-[0.7rem] font-semibold uppercase tracking-wide">
+            {tile.label}
+          </dt>
+          <dd
+            className={cn(
+              'font-display text-lg font-bold tabular-nums md:text-2xl',
+              tile.done && 'text-logro-600',
+            )}
+          >
+            {tile.value}
+          </dd>
+          <dd className="text-muted-foreground text-xs">{tile.hint}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Una anotación. */
 function EntryCard({ entry, habitId }: { entry: HabitEntryView; habitId: string }) {
   const remove = useDeleteEntry(habitId);
   const open = entry.closedAt === null;
@@ -387,8 +480,4 @@ function diaDe(iso: string): string {
 
 function hora(iso: string): string {
   return new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-}
-
-function cuenta(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
 }

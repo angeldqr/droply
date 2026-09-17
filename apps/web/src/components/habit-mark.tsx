@@ -1,3 +1,4 @@
+import { ALL_DAYS, WEEKDAYS_ONLY } from '@reconectate/contracts';
 import { cn } from '@/lib/utils';
 
 /**
@@ -68,10 +69,43 @@ export function whenRelative(iso: string): string {
   return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(-days, 'day');
 }
 
+/** «1 anotación», «3 anotaciones». */
+export function cuenta(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 /** `2026-09-16`, en la fecha local: la clave de un día en el diario y el calendario. */
 export function dayKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** Lunes primero, como se lee una semana en español. El 5 de enero de 2026 fue lunes. */
+export const WEEKDAY_NAMES = Array.from({ length: 7 }, (_, index) => {
+  const date = new Date(2026, 0, 5 + index);
+
+  return {
+    narrow: date.toLocaleDateString('es', { weekday: 'narrow' }),
+    short: date.toLocaleDateString('es', { weekday: 'short' }).replace('.', ''),
+    long: date.toLocaleDateString('es', { weekday: 'long' }),
+  };
+});
+
+/** «2 veces al día · de lunes a viernes», dicho como lo diría una persona. */
+export function goalLabel(dailyTarget: number, activeDays: number): string {
+  const times = dailyTarget === 1 ? 'Una vez al día' : `${dailyTarget} veces al día`;
+
+  return `${times} · ${daysLabel(activeDays)}`;
+}
+
+function daysLabel(activeDays: number): string {
+  if (activeDays === ALL_DAYS) return 'todos los días';
+  if (activeDays === WEEKDAYS_ONLY) return 'de lunes a viernes';
+  if (activeDays === ALL_DAYS - WEEKDAYS_ONLY) return 'fines de semana';
+
+  return WEEKDAY_NAMES.filter((_, index) => (activeDays & (1 << index)) !== 0)
+    .map((day) => day.short)
+    .join(', ');
 }

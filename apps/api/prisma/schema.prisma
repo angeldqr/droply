@@ -606,11 +606,19 @@ model AccountChat {
 ///
 /// No manda nada ni recuerda nada: es una carpeta a la que se le van pegando
 /// anotaciones desde el chat. Esa es la diferencia con un horario.
+///
+/// La meta dice cuándo un día está cumplido: `dailyTarget` anotaciones, en los
+/// días que marque `activeDays`. Cambiarla recalcula también el pasado.
 model Habit {
   id      String @id @db.Uuid
   ownerId String @map("owner_id") @db.Uuid
 
   name String
+
+  /// De 1 a 10. El tope vive en el contrato y en un CHECK de la migración.
+  dailyTarget Int @default(1) @map("daily_target")
+  /// Máscara de bits con el lunes en el bit 0; 127 son todos los días.
+  activeDays  Int @default(127) @map("active_days")
 
   /// Decimal como en las bibliotecas: reordenar promedia vecinos en vez de
   /// renumerar la lista entera.

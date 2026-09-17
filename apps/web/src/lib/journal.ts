@@ -5,7 +5,7 @@ import type {
   CreateHabitInput,
   HabitEntryView,
   HabitView,
-  RenameHabitInput,
+  UpdateHabitInput,
 } from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
@@ -48,11 +48,11 @@ export function useCreateHabit() {
   });
 }
 
-export function useRenameHabit(habitId: string) {
+export function useUpdateHabit(habitId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: RenameHabitInput) =>
+    mutationFn: (input: UpdateHabitInput) =>
       api<HabitView>(`/journal/habits/${encodeURIComponent(habitId)}`, {
         method: 'PATCH',
         body: input,

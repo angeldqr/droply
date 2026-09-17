@@ -1,3 +1,4 @@
+import { addDays } from '@reconectate/contracts';
 import { FixedClock } from '../../shared/clock';
 import type { InboundPhoto } from '../../shared/journal-inbox';
 import {
@@ -18,7 +19,7 @@ import {
   DeleteEntry,
   DeleteHabit,
   ReadJournal,
-  RenameHabit,
+  UpdateHabit,
 } from '../application/habit-use-cases';
 import { JournalConversation } from '../application/journal-conversation';
 import { AccountChat } from '../domain/account-chat';
@@ -33,6 +34,7 @@ import type {
   JournalPhotos,
   LinkCode,
   LinkCodeFactory,
+  DayCounts,
   StoredPhoto,
 } from '../domain/ports';
 
@@ -151,6 +153,26 @@ export class InMemoryEntries implements EntryRepository {
     this.rows.set(entry.id, entry);
 
     return Promise.resolve();
+  }
+
+  /** Como la base, pero con la cuenta en UTC: el reloj de los tests lo está. */
+  dayCountsOf(ownerId: UserId, now: Date, days: number): Promise<DayCounts> {
+    const today = now.toISOString().slice(0, 10);
+    const from = addDays(today, -(days - 1));
+    const counts = new Map<HabitId, Map<string, number>>();
+
+    for (const entry of this.rows.values()) {
+      const day = entry.toSnapshot().openedAt.toISOString().slice(0, 10);
+
+      if (entry.ownerId !== ownerId || entry.isEmpty || day < from || day > today) continue;
+
+      const perDay = counts.get(entry.habitId) ?? new Map<string, number>();
+
+      perDay.set(day, (perDay.get(day) ?? 0) + 1);
+      counts.set(entry.habitId, perDay);
+    }
+
+    return Promise.resolve({ today, counts });
   }
 
   save(entry: HabitEntry): Promise<void> {
@@ -367,7 +389,7 @@ export function build(startingAt = AHORA) {
     photos,
     voice,
     createHabit: new CreateHabit(habits, ids, clock),
-    renameHabit: new RenameHabit(habits),
+    updateHabit: new UpdateHabit(habits),
     deleteHabit: new DeleteHabit(habits, entries, photos),
     deleteEntry: new DeleteEntry(entries, photos),
     read: new ReadJournal(habits, entries, photos, clock),
@@ -391,8 +413,13 @@ export function chatVinculado(world: World, userId = ANA, chatId = CHAT): void {
 }
 
 /** Crea un hábito de Ana y devuelve su identificador. */
-export async function unHabito(world: World, name: string, ownerId = ANA): Promise<HabitId> {
-  const created = await world.createHabit.execute(ownerId, name);
+export async function unHabito(
+  world: World,
+  name: string,
+  ownerId = ANA,
+  goal: { dailyTarget?: number; activeDays?: number } = {},
+): Promise<HabitId> {
+  const created = await world.createHabit.execute(ownerId, { name, ...goal });
 
   if (!created.ok) throw created.error;
 

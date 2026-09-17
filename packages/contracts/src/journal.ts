@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ALL_DAYS, HABIT_DAILY_TARGET_MAX } from './habit-progress.js';
 
 /**
  * La bitácora de hábitos.
@@ -34,14 +35,41 @@ export const ENTRY_PHOTOS_MAX = 10;
  */
 export const ENTRY_IDLE_MINUTES = 30;
 
+const habitName = z.string().trim().min(1, 'Ponle un nombre.').max(HABIT_NAME_MAX_LENGTH);
+
+/** Cuántas anotaciones en el día lo dan por cumplido. */
+const dailyTarget = z
+  .number()
+  .int()
+  .min(1, 'Al menos una vez al día.')
+  .max(HABIT_DAILY_TARGET_MAX, `Como mucho ${HABIT_DAILY_TARGET_MAX} veces al día.`);
+
+/** Máscara con el lunes en el bit 0. Ver `habit-progress`. */
+const activeDays = z.number().int().min(1, 'Elige al menos un día.').max(ALL_DAYS);
+
 export const createHabitSchema = z.object({
-  name: z.string().trim().min(1, 'Ponle un nombre.').max(HABIT_NAME_MAX_LENGTH),
+  name: habitName,
+  dailyTarget: dailyTarget.default(1),
+  activeDays: activeDays.default(ALL_DAYS),
 });
 
-export const renameHabitSchema = createHabitSchema;
+export const updateHabitSchema = z
+  .object({
+    name: habitName.optional(),
+    dailyTarget: dailyTarget.optional(),
+    activeDays: activeDays.optional(),
+  })
+  .refine(
+    (body) =>
+      body.name !== undefined || body.dailyTarget !== undefined || body.activeDays !== undefined,
+    'No hay nada que cambiar.',
+  );
 
-export type CreateHabitInput = z.infer<typeof createHabitSchema>;
-export type RenameHabitInput = z.infer<typeof renameHabitSchema>;
+/** Lo que manda la pantalla: la meta puede faltar. */
+export type CreateHabitInput = z.input<typeof createHabitSchema>;
+/** Lo que recibe la API ya validado, con los valores por defecto puestos. */
+export type CreateHabitBody = z.output<typeof createHabitSchema>;
+export type UpdateHabitInput = z.infer<typeof updateHabitSchema>;
 
 /** Una foto de una anotación, con su enlace firmado y de vida corta. */
 export interface EntryPhotoView {
@@ -61,11 +89,30 @@ export interface HabitEntryView {
   readonly closedAt: string | null;
 }
 
+/** Un día de la semana de la tarjeta. */
+export interface WeekDayView {
+  /** `AAAA-MM-DD` en la zona de la cuenta. */
+  readonly day: string;
+  readonly count: number;
+}
+
 export interface HabitView {
   readonly id: string;
   readonly name: string;
   readonly position: number;
+  /** Veces al día que lo dan por cumplido. */
+  readonly dailyTarget: number;
+  /** En qué días de la semana aplica. Ver `habit-progress`. */
+  readonly activeDays: number;
+  readonly createdAt: string;
   readonly entryCount: number;
+  /** Hoy en la zona de la cuenta, `AAAA-MM-DD`: el día que la tarjeta resalta. */
+  readonly today: string;
+  /**
+   * La semana en curso, de lunes a domingo, con las anotaciones de cada día.
+   * Los días que todavía no llegan vienen en cero.
+   */
+  readonly week: readonly WeekDayView[];
   /** Cuándo fue la última vez que se anotó algo. Nulo si nunca. */
   readonly lastEntryAt: string | null;
 }

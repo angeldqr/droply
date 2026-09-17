@@ -11,25 +11,26 @@ import {
 } from '@nestjs/common';
 import {
   createHabitSchema,
-  renameHabitSchema,
+  updateHabitSchema,
   type AccountChatView,
-  type CreateHabitInput,
+  type CreateHabitBody,
   type HabitEntryView,
   type HabitView,
-  type RenameHabitInput,
+  type UpdateHabitInput,
 } from '@reconectate/contracts';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { CurrentUserId } from '../../platform/http/current-user.decorator';
 import { ZodBody } from '../../platform/http/zod-body.decorator';
 import { HabitEntryId, HabitId, type UserId } from '../../shared/identifiers';
-import { orThrow } from '../../shared/result';
+import { err, ok, orThrow } from '../../shared/result';
+import { HabitNotFound } from '../domain/errors';
 import { IssueChatLink, ReadChatLink, UnlinkChat } from '../application/account-chat-use-cases';
 import {
   CreateHabit,
   DeleteEntry,
   DeleteHabit,
   ReadJournal,
-  RenameHabit,
+  UpdateHabit,
   type EntryRow,
   type HabitRow,
 } from '../application/habit-use-cases';
@@ -47,7 +48,7 @@ export class JournalController {
     @Inject(ENV) private readonly env: ApiEnv,
     @Inject(ReadJournal) private readonly read: ReadJournal,
     @Inject(CreateHabit) private readonly createHabit: CreateHabit,
-    @Inject(RenameHabit) private readonly renameHabit: RenameHabit,
+    @Inject(UpdateHabit) private readonly updateHabit: UpdateHabit,
     @Inject(DeleteHabit) private readonly deleteHabit: DeleteHabit,
     @Inject(DeleteEntry) private readonly deleteEntry: DeleteEntry,
     @Inject(IssueChatLink) private readonly issueLink: IssueChatLink,
@@ -64,36 +65,31 @@ export class JournalController {
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUserId() userId: UserId,
-    @ZodBody(createHabitSchema) body: CreateHabitInput,
+    @ZodBody(createHabitSchema) body: CreateHabitBody,
   ): Promise<HabitView> {
-    const habit = orThrow(await this.createHabit.execute(userId, body.name));
-    const snapshot = habit.toSnapshot();
+    const habit = orThrow(await this.createHabit.execute(userId, body));
 
-    return {
-      id: snapshot.id,
-      name: snapshot.name,
-      position: snapshot.position,
-      entryCount: 0,
-      lastEntryAt: null,
-    };
+    return this.viewOf(userId, habit.id);
   }
 
   @Patch('habits/:habitId')
-  async rename(
+  async update(
     @CurrentUserId() userId: UserId,
     @Param('habitId') habitId: string,
-    @ZodBody(renameHabitSchema) body: RenameHabitInput,
+    @ZodBody(updateHabitSchema) body: UpdateHabitInput,
   ): Promise<HabitView> {
     // La marca se pone en el borde, que es el único sitio donde entra texto de
     // fuera; a partir de acá el tipo impide cruzar un identificador con otro.
-    orThrow(await this.renameHabit.execute(userId, HabitId.from(habitId), body.name));
+    const habit = orThrow(await this.updateHabit.execute(userId, HabitId.from(habitId), body));
 
-    const rows = await this.read.list(userId);
-    const row = rows.find((habit) => habit.id === habitId);
+    return this.viewOf(userId, habit.id);
+  }
 
-    return toHabitView(
-      row ?? { id: habitId, name: body.name, position: 0, entryCount: 0, lastEntryAt: null },
-    );
+  /** La fila recién escrita, tal como la pinta la lista. */
+  private async viewOf(userId: UserId, habitId: string): Promise<HabitView> {
+    const row = (await this.read.list(userId)).find((habit) => habit.id === habitId);
+
+    return toHabitView(orThrow(row ? ok(row) : err(new HabitNotFound())));
   }
 
   @Delete('habits/:habitId')
@@ -158,8 +154,13 @@ function toHabitView(row: HabitRow): HabitView {
     id: row.id,
     name: row.name,
     position: row.position,
+    dailyTarget: row.dailyTarget,
+    activeDays: row.activeDays,
+    createdAt: row.createdAt.toISOString(),
     entryCount: row.entryCount,
     lastEntryAt: row.lastEntryAt?.toISOString() ?? null,
+    today: row.today,
+    week: row.week,
   };
 }
 

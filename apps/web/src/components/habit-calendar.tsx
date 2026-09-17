@@ -1,15 +1,11 @@
 'use client';
 
+import { appliesOn, dayScore, type HabitGoal } from '@reconectate/contracts';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { dayKey } from '@/components/habit-mark';
+import { dayKey, WEEKDAY_NAMES } from '@/components/habit-mark';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-/** Lunes primero, como se lee un calendario en español. El 5 de enero de 2026 fue lunes. */
-const WEEKDAYS = Array.from({ length: 7 }, (_, index) =>
-  new Date(2026, 0, 5 + index).toLocaleDateString('es', { weekday: 'narrow' }),
-);
 
 function monthStart(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -19,37 +15,38 @@ function addMonths(date: Date, step: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + step, 1);
 }
 
-/** El tono según cuántas anotaciones hubo: la misma escala morada de la app. */
-function toneOf(count: number): string {
-  if (count >= 3) return 'bg-morado-700 text-papel font-bold';
-  if (count === 2) return 'bg-morado-400 text-ciruela-900 font-bold';
-
-  return 'bg-lavanda-300 text-ciruela-900 font-semibold';
+/** Cumplido en el morado fuerte de la app; a medias, en el claro. */
+function toneOf(score: number): string {
+  return score === 1
+    ? 'bg-morado-700 text-papel font-bold'
+    : 'bg-lavanda-300 text-ciruela-900 font-semibold';
 }
 
-function labelOf(date: Date, count: number): string {
+function labelOf(date: Date, count: number, goal: HabitGoal, applies: boolean): string {
   const day = date.toLocaleDateString('es', { day: 'numeric', month: 'long' });
 
-  if (count === 0) return `${day}: sin anotaciones`;
+  if (!applies) return `${day}: día libre${count > 0 ? `, ${count} anotadas` : ''}`;
 
-  return `${day}: ${count} ${count === 1 ? 'anotación' : 'anotaciones'}`;
+  return `${day}: ${count} de ${goal.dailyTarget}`;
 }
 
 /**
- * Un mes con los días en que se anotó algo.
+ * Un mes con cómo fue cada día frente a la meta.
  *
- * Sin porcentajes ni rachas: solo dónde hay algo escrito. Tocar un día marcado
- * baja el diario hasta ese día. Empieza en el mes actual y se puede ir hacia
- * atrás hasta el de la primera anotación.
+ * Lleno si se cumplió, claro si quedó a medias, apagado si ese día no tocaba.
+ * Tocar un día anotado baja el diario hasta él. Empieza en el mes actual y se
+ * puede ir hacia atrás hasta el de la primera anotación.
  *
  * `days` va de la clave del día (`dayKey`) a cuántas anotaciones tuvo.
  */
 export function HabitCalendar({
   days,
   firstDay,
+  goal,
 }: {
   days: ReadonlyMap<string, number>;
   firstDay: Date;
+  goal: HabitGoal;
 }) {
   const today = new Date();
   const [month, setMonth] = useState(() => monthStart(today));
@@ -64,10 +61,18 @@ export function HabitCalendar({
     const date = new Date(month.getFullYear(), month.getMonth(), index + 1);
     const key = dayKey(date);
 
-    return { date, key, count: days.get(key) ?? 0 };
+    const count = days.get(key) ?? 0;
+
+    return {
+      date,
+      key,
+      count,
+      applies: appliesOn(goal.activeDays, key),
+      score: dayScore(count, goal.dailyTarget),
+    };
   });
 
-  const marked = cells.filter((cell) => cell.count > 0).length;
+  const met = cells.filter((cell) => cell.applies && cell.score === 1).length;
   const todayKey = dayKey(today);
 
   function jumpTo(key: string): void {
@@ -112,13 +117,18 @@ export function HabitCalendar({
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center">
-        {WEEKDAYS.map((weekday, index) => (
+        {WEEKDAY_NAMES.map((weekday, index) => (
           <span
-            key={index}
+            key={weekday.long}
             aria-hidden
-            className="text-muted-foreground pb-1 text-[0.7rem] font-semibold uppercase"
+            className={cn(
+              'pb-1 text-[0.7rem] font-semibold uppercase',
+              (goal.activeDays & (1 << index)) === 0
+                ? 'text-muted-foreground/50'
+                : 'text-muted-foreground',
+            )}
           >
-            {weekday}
+            {weekday.narrow}
           </span>
         ))}
 
@@ -131,16 +141,20 @@ export function HabitCalendar({
             'grid aspect-square place-items-center rounded-lg text-xs tabular-nums',
             cell.key === todayKey && 'ring-primary ring-offset-card ring-2 ring-offset-1',
           );
+          const label = labelOf(cell.date, cell.count, goal, cell.applies);
 
           return cell.count > 0 ? (
             <button
               key={cell.key}
               type="button"
               onClick={() => jumpTo(cell.key)}
-              aria-label={labelOf(cell.date, cell.count)}
+              aria-label={label}
               className={cn(
                 base,
-                toneOf(cell.count),
+                // Anotar en un día libre se ve, pero sin la escala de la meta.
+                cell.applies
+                  ? toneOf(cell.score)
+                  : 'border-lavanda-300 text-ciruela-900 border-2 border-dashed font-semibold',
                 'focus-visible:ring-ring transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
               )}
             >
@@ -148,18 +162,24 @@ export function HabitCalendar({
             </button>
           ) : (
             // Un `span` no lleva `aria-label` que se lea: el texto va oculto a la vista.
-            <span key={cell.key} className={cn(base, 'text-muted-foreground')}>
+            <span
+              key={cell.key}
+              className={cn(
+                base,
+                cell.applies ? 'text-muted-foreground' : 'text-muted-foreground/40',
+              )}
+            >
               <span aria-hidden>{cell.date.getDate()}</span>
-              <span className="sr-only">{labelOf(cell.date, 0)}</span>
+              <span className="sr-only">{label}</span>
             </span>
           );
         })}
       </div>
 
       <p className="text-muted-foreground text-xs">
-        {marked === 0
-          ? 'Ningún día con anotación este mes'
-          : `${marked} ${marked === 1 ? 'día' : 'días'} con anotación este mes`}
+        {met === 0
+          ? 'Ningún día cumplido este mes'
+          : `${met} ${met === 1 ? 'día cumplido' : 'días cumplidos'} este mes`}
       </p>
     </section>
   );
