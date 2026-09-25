@@ -135,7 +135,7 @@ export function HabitCalendar({
             className={cn(
               'pb-1 text-[0.7rem] font-semibold uppercase',
               (goal.activeDays & (1 << index)) === 0
-                ? 'text-muted-foreground/50'
+                ? 'text-muted-foreground/70'
                 : 'text-muted-foreground',
             )}
           >
@@ -177,7 +177,7 @@ export function HabitCalendar({
               key={cell.key}
               className={cn(
                 base,
-                cell.applies ? 'text-muted-foreground' : 'text-muted-foreground/40',
+                cell.applies ? 'text-muted-foreground' : 'text-muted-foreground/60',
               )}
             >
               <span aria-hidden>{cell.date.getDate()}</span>

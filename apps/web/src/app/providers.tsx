@@ -1,6 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'motion/react';
 import { useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -30,10 +31,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <TooltipProvider delayDuration={300}>
-          {children}
-          <Toaster position="bottom-right" />
-        </TooltipProvider>
+        {/*
+          Con «reducir movimiento» en el sistema, motion deja solo los fundidos:
+          nada se desliza, se estira ni rebota. Sin esto el menú lateral y las
+          listas se movían igual.
+        */}
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider delayDuration={300}>
+            {children}
+            <Toaster position="bottom-right" />
+          </TooltipProvider>
+        </MotionConfig>
       </SessionProvider>
     </QueryClientProvider>
   );

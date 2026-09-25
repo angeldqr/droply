@@ -10,6 +10,7 @@ import { Link2, MailCheck, Plus, Send, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { MotionItem, MotionList } from '@/components/motion-list';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { RecipientLinkDialog } from '@/components/recipient-link-dialog';
 import { RequireSession } from '@/components/require-session';
@@ -132,13 +133,13 @@ function Contents() {
             ) : null}
           </Empty>
         ) : (
-          <ul className="flex max-w-3xl flex-col gap-2">
-            {data.map((recipient) => (
-              <li key={recipient.id}>
+          <MotionList as="ul" className="flex max-w-3xl flex-col gap-2">
+            {data.map((recipient, index) => (
+              <MotionItem as="li" key={recipient.id} index={index}>
                 <RecipientRow recipient={recipient} onIssued={setIssued} />
-              </li>
+              </MotionItem>
             ))}
-          </ul>
+          </MotionList>
         )}
       </div>
 

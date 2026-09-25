@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { MotionItem, MotionList } from '@/components/motion-list';
 import { DayPlanDialog } from '@/components/day-plan-dialog';
 import { FixedItemsDialog } from '@/components/fixed-items-dialog';
 import { Notices } from '@/components/notices';
@@ -141,13 +142,13 @@ function Contents() {
             <NewScheduleDialog id="nuevo-horario-vacio" />
           </Empty>
         ) : (
-          <ul className="flex max-w-4xl flex-col gap-2">
-            {data.map((schedule) => (
-              <li key={schedule.id}>
+          <MotionList as="ul" className="flex max-w-4xl flex-col gap-2">
+            {data.map((schedule, index) => (
+              <MotionItem as="li" key={schedule.id} index={index}>
                 <ScheduleRow schedule={schedule} />
-              </li>
+              </MotionItem>
             ))}
-          </ul>
+          </MotionList>
         )}
       </div>
 

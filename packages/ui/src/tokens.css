@@ -57,7 +57,12 @@
    */
   --color-columna-texto: var(--color-lavanda-200);
   --color-columna-audio: var(--color-lavanda-300);
-  --color-columna-imagen: var(--color-morado-400);
+  /*
+   * Un paso más claro que `morado-400`: con ese, la tinta ciruela de las
+   * etiquetas quedaba en 4,3:1 y no llegaba al mínimo de lectura (4,5:1). Así
+   * queda en 5:1 y sigue entre Audio y Videos en la escala.
+   */
+  --color-columna-imagen: #a47ed5;
   --color-columna-video: var(--color-morado-700);
 
   /* Las dos primeras variables las inyecta next/font en el <html>. */

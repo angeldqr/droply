@@ -61,12 +61,19 @@ export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: Reac
   return (
     <div className="flex min-h-dvh w-full flex-col md:flex-row">
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:h-dvh md:justify-between md:gap-8">
+        <SidebarBody
+          brand={<MobileBrand />}
+          className="bg-sidebar text-sidebar-foreground md:justify-between md:gap-8"
+        >
           <ReconectateNav />
         </SidebarBody>
       </Sidebar>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      {/*
+        Cada pantalla monta su propio armazón, así que esto corre en cada cambio
+        de página: un fundido corto del contenido, sin mover el menú.
+      */}
+      <main className="animate-aparecer flex min-w-0 flex-1 flex-col">
         <header className="bg-background/70 sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-4 backdrop-blur-sm md:px-6">
           <Breadcrumb>
             <BreadcrumbList>
@@ -174,7 +181,7 @@ function ReconectateNav() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="hover:bg-sidebar-accent flex items-center gap-3 rounded-lg p-2 text-left transition-colors"
+            className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-lg p-2 text-left outline-none transition-colors focus-visible:ring-2"
           >
             <Avatar className="size-7 shrink-0">
               <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
@@ -272,7 +279,7 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`group/nav relative flex items-center gap-3 rounded-lg px-2 py-2 transition-colors ${
+      className={`group/nav focus-visible:ring-sidebar-ring relative flex items-center gap-3 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 ${
         active ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/60'
       }`}
     >
@@ -297,7 +304,10 @@ function NavLink({
 
 function Wordmark() {
   return (
-    <Link href="/bibliotecas" className="flex items-center gap-3 px-1 py-1">
+    <Link
+      href="/bibliotecas"
+      className="focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-lg px-1 py-1 outline-none focus-visible:ring-2"
+    >
       {/*
         La gota del nombre: un círculo al que se le cuadra una esquina. Es lo
         único gráfico de la marca, y lo que sigue viéndose con el panel plegado.
@@ -307,6 +317,25 @@ function Wordmark() {
         className="bg-sidebar-primary size-7 shrink-0 rounded-full rounded-tl-sm shadow-sm"
       />
       <Reveal className="font-display text-lg font-semibold">Reconéctate</Reveal>
+    </Link>
+  );
+}
+
+/**
+ * La marca en la barra del teléfono: la gota y el nombre, siempre a la vista.
+ * No usa `Reveal`, que la escondería con el panel cerrado.
+ */
+function MobileBrand() {
+  return (
+    <Link
+      href="/bibliotecas"
+      className="focus-visible:ring-sidebar-ring flex items-center gap-2 rounded-lg outline-none focus-visible:ring-2"
+    >
+      <span
+        aria-hidden
+        className="bg-sidebar-primary size-6 shrink-0 rounded-full rounded-tl-sm shadow-sm"
+      />
+      <span className="font-display text-base font-semibold">Reconéctate</span>
     </Link>
   );
 }

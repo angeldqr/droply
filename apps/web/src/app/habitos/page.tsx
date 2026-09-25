@@ -21,9 +21,11 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useAnimate, useReducedMotion } from 'motion/react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { MotionItem, MotionList } from '@/components/motion-list';
 import { ConnectTelegramCard } from '@/components/connect-telegram-card';
 import { goalFrom, HabitGoalFields } from '@/components/habit-goal-fields';
 import { cuenta, goalLabel, HabitMark, WEEKDAY_NAMES, whenRelative } from '@/components/habit-mark';
@@ -171,11 +173,13 @@ function Contents() {
           <NewHabitDialog id="nuevo-habito-vacio" />
         </Empty>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {byToday(data).map((habit) => (
-            <HabitCard key={habit.id} habit={habit} />
+        <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {byToday(data).map((habit, index) => (
+            <MotionItem key={habit.id} index={index}>
+              <HabitCard habit={habit} />
+            </MotionItem>
           ))}
-        </div>
+        </MotionList>
       )}
     </div>
   );
@@ -232,7 +236,7 @@ function HabitCard({ habit }: { habit: HabitView }) {
   return (
     <Card
       className={cn(
-        'group relative gap-4 py-5 transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+        'group relative h-full gap-4 py-5 transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0',
         paused && 'bg-muted/40 shadow-none',
       )}
     >
@@ -332,7 +336,13 @@ function StreakChip({ streak, celebrate }: { streak: number; celebrate: boolean 
       )}
     >
       <Flame aria-hidden />
-      <span aria-hidden>{celebrate ? `¡${streak} días!` : streak}</span>
+      <span
+        key={streak}
+        aria-hidden
+        className="animate-in fade-in-0 motion-safe:slide-in-from-bottom-1 duration-150"
+      >
+        {celebrate ? `¡${streak} días!` : streak}
+      </span>
       <span className="sr-only">
         {celebrate
           ? `¡Hito! ${cuenta(streak, 'día', 'días')} seguidos`
@@ -340,6 +350,34 @@ function StreakChip({ streak, celebrate }: { streak: number; celebrate: boolean 
       </span>
     </Badge>
   );
+}
+
+/**
+ * Hace latir una vez el anillo cuando `done` pasa de falso a verdadero con la
+ * pantalla abierta —al volver del chat—, no en cada carga: festejar lo que ya
+ * estaba hecho es ruido.
+ *
+ * Se anima el elemento que ya está en la pantalla, sin volver a montarlo: así
+ * el anillo termina de llenarse mientras late, en vez de aparecer ya lleno.
+ */
+function usePulseOnDone(done: boolean) {
+  const [scope, animate] = useAnimate<HTMLDivElement>();
+  const reduced = useReducedMotion();
+  const previous = useRef(done);
+
+  useEffect(() => {
+    if (done && !previous.current && !reduced && scope.current) {
+      void animate(
+        scope.current,
+        { scale: [1, 1.06, 1] },
+        { duration: 0.3, ease: [0.34, 1.56, 0.64, 1] },
+      );
+    }
+
+    previous.current = done;
+  }, [done, reduced, animate, scope]);
+
+  return scope;
 }
 
 const RING_RADIUS = 18;
@@ -358,10 +396,11 @@ function TodayRing({
   const score = dayScore(count, target);
   const done = applies && score === 1;
   const missing = target - count;
+  const ring = usePulseOnDone(done);
 
   return (
     <div className="flex items-center gap-3">
-      <div className="relative grid size-11 shrink-0 place-items-center">
+      <div ref={ring} className="relative grid size-11 shrink-0 place-items-center">
         <svg viewBox="0 0 44 44" className="absolute inset-0 -rotate-90" aria-hidden>
           <circle
             cx="22"
@@ -392,11 +431,16 @@ function TodayRing({
         {done ? (
           // Entra con un salto corto la vez que se pinta: confirma que se cumplió.
           <Check
-            className="text-logro-600 motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:fade-in size-5 motion-safe:duration-300"
+            className="text-logro-600 motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:fade-in size-5 motion-safe:duration-200"
             aria-hidden
           />
         ) : (
-          <span className="text-xs font-bold tabular-nums" aria-hidden>
+          // La `key` hace que el número nuevo entre con un desliz en vez de cambiar de golpe.
+          <span
+            key={count}
+            className="animate-in fade-in-0 motion-safe:slide-in-from-bottom-1 text-xs font-bold tabular-nums duration-150"
+            aria-hidden
+          >
             {count}/{target}
           </span>
         )}

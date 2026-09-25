@@ -105,7 +105,7 @@ function DayCell({
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={`grid size-7 shrink-0 place-items-center rounded font-mono text-[10px] tabular-nums ${toneOf(day)}`}
+          className={`grid size-7 shrink-0 place-items-center rounded font-mono text-xs font-semibold tabular-nums ${toneOf(day)}`}
           aria-label={describe(label, number, day)}
         >
           {pending ? '' : Math.round(day.percent ?? 0)}
@@ -127,7 +127,8 @@ function DayCell({
 function toneOf(day: HabitDayView | undefined): string {
   if (!day || day.percent === null) return 'bg-lavanda-200/60 text-transparent';
   if (day.percent >= 80) return 'bg-logro-600 text-white';
-  if (day.percent >= 50) return 'bg-medias-500 text-white';
+  // Tinta y no blanco sobre el ámbar: en blanco quedaba en 2,9:1, ilegible.
+  if (day.percent >= 50) return 'bg-medias-500 text-ciruela-900';
 
   return 'bg-alerta-500 text-white';
 }

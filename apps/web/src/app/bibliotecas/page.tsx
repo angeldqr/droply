@@ -12,6 +12,7 @@ import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { MotionItem, MotionList } from '@/components/motion-list';
 import { LibraryActions } from '@/components/library-actions';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { RequireSession } from '@/components/require-session';
@@ -96,11 +97,13 @@ function Content() {
             <NewLibraryDialog id="nueva-biblioteca-vacio" />
           </Empty>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((library) => (
-              <LibraryCard key={library.id} library={library} />
+          <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.map((library, index) => (
+              <MotionItem key={library.id} index={index}>
+                <LibraryCard library={library} />
+              </MotionItem>
             ))}
-          </div>
+          </MotionList>
         )}
       </div>
     </div>

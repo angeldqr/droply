@@ -5,6 +5,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Un fundido que solo toca la opacidad.
+ *
+ * El `animate-in` de tw-animate-css pone siempre un `transform` —aunque solo se
+ * pida el fundido—, y mientras dura, el elemento pasa a ser la referencia de
+ * todo lo `position: fixed` que tenga dentro. En el contenido de cada página y
+ * en las pestañas eso es una trampa para el primer elemento fijo que caiga ahí.
+ */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@theme inline {
+  --animate-aparecer: aparecer 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 @source '../../../../packages/ui/src';
 
 @theme inline {
