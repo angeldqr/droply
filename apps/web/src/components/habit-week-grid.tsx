@@ -20,6 +20,9 @@ type Cell =
  * La evaluación de la semana: una fila por hábito y una casilla por día, de
  * lunes a domingo, con el porcentaje de la meta de cada día.
  *
+ * Las casillas son más grandes que las de la rejilla del plan: aquí son siete
+ * por fila y no treinta, así que hay sitio para que se lean de lejos.
+ *
  * La columna «Semana» promedia solo los días que contaban: un día libre no
  * castiga, y hoy entra únicamente si ya se cumplió —igual que la tendencia del
  * detalle—, para que la semana no se vea peor por la tarde de lo que es.
@@ -37,11 +40,11 @@ export function HabitWeekGrid({ habits }: { habits: readonly HabitView[] }) {
     <div className="flex flex-col gap-6">
       <div className="overflow-x-auto pb-1">
         <div className="min-w-fit">
-          <div className="flex items-end gap-1 pl-[9.5rem]" aria-hidden>
+          <div className="flex items-end gap-1.5 pl-[9.875rem]" aria-hidden>
             {WEEKDAY_NAMES.map((name) => (
               <span
                 key={name.long}
-                className="text-muted-foreground w-9 text-center text-xs font-medium uppercase"
+                className="text-muted-foreground w-12.5 text-center text-base font-medium uppercase"
               >
                 {name.narrow}
               </span>
@@ -51,7 +54,7 @@ export function HabitWeekGrid({ habits }: { habits: readonly HabitView[] }) {
             </span>
           </div>
 
-          <div className="mt-1 flex flex-col gap-1">
+          <div className="mt-1.5 flex flex-col gap-1.5">
             {habits.map((habit) => (
               <WeekRow
                 key={habit.id}
@@ -77,7 +80,7 @@ function WeekRow({ habit, since }: { habit: HabitView; since: string }) {
       : Math.round(counted.reduce((sum, cell) => sum + cell.percent, 0) / counted.length);
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <span className="w-38 shrink-0 truncate pr-2 text-sm" title={habit.name}>
         {habit.name}
       </span>
@@ -115,14 +118,14 @@ function WeekCell({ cell, label }: { cell: Cell; label: string }) {
       : cell.kind === 'open'
         ? 'border-morado-400 text-foreground border border-dashed'
         : cell.kind === 'free'
-          ? 'bg-lavanda-200 text-muted-foreground text-[10px] font-normal'
+          ? 'bg-lavanda-200 text-muted-foreground text-sm font-normal'
           : 'bg-lavanda-200/30';
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={`grid h-7 w-9 shrink-0 place-items-center rounded font-mono text-xs font-semibold tabular-nums ${tone}`}
+          className={`w-12.5 grid h-10 shrink-0 place-items-center rounded-md font-mono text-base font-semibold tabular-nums ${tone}`}
           aria-label={label}
         >
           {cell.kind === 'score' || cell.kind === 'open'
