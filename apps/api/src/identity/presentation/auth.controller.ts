@@ -13,6 +13,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import {
   changePasswordSchema,
+  changeTimezoneSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
@@ -21,6 +22,7 @@ import {
   verifyEmailSchema,
   type AuthenticatedUser,
   type ChangePasswordInput,
+  type ChangeTimezoneInput,
   type ForgotPasswordInput,
   type LoginInput,
   type RegisterInput,
@@ -43,6 +45,7 @@ import {
   ResetAccountPassword,
   SetAccountActive,
 } from '../application/account-admin-use-cases';
+import { ChangeTimezone } from '../application/change-timezone.use-case';
 import { LoginUseCase } from '../application/login.use-case';
 import {
   ChangePassword,
@@ -80,6 +83,7 @@ export class AuthController {
     @Inject(ResendVerificationUseCase)
     private readonly resendVerification: ResendVerificationUseCase,
     @Inject(ChangePassword) private readonly changePassword: ChangePassword,
+    @Inject(ChangeTimezone) private readonly changeTimezone: ChangeTimezone,
     @Inject(ResetAccountPassword) private readonly resetAccountPassword: ResetAccountPassword,
     @Inject(SetAccountActive) private readonly setAccountActive: SetAccountActive,
     @Inject(DeleteAccount) private readonly deleteAccount: DeleteAccount,
@@ -185,6 +189,15 @@ export class AuthController {
     orThrow(await this.changePassword.execute(userId, body));
 
     reply.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH });
+  }
+
+  /** Cambia la zona horaria y devuelve la cuenta ya cambiada, para la sesión. */
+  @Patch('me/timezone')
+  async changeTimezoneRoute(
+    @CurrentUserId() userId: UserId,
+    @ZodBody(changeTimezoneSchema) body: ChangeTimezoneInput,
+  ): Promise<AuthenticatedUser> {
+    return toAuthenticatedUser(orThrow(await this.changeTimezone.execute(userId, body.timezone)));
   }
 
   /**

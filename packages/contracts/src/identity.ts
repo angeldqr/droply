@@ -52,6 +52,9 @@ const newPasswordSchema = z
   .min(PASSWORD_MIN_LENGTH, `Necesita al menos ${PASSWORD_MIN_LENGTH} caracteres.`)
   .max(PASSWORD_MAX_LENGTH);
 
+/** La zona de la cuenta: de ella sale a qué hora termina el día en la bitácora. */
+export const changeTimezoneSchema = z.object({ timezone: timezoneSchema });
+
 /**
  * Se pide la actual aunque haya sesión abierta: sin ese paso, quien se siente
  * frente a una pantalla desbloqueada se lleva la cuenta entera.
@@ -88,6 +91,7 @@ export interface TemporaryPasswordView {
 }
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ChangeTimezoneInput = z.infer<typeof changeTimezoneSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 

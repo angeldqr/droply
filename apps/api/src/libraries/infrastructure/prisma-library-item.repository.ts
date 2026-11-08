@@ -67,6 +67,7 @@ export class PrismaLibraryItemRepository implements LibraryItemRepository {
       data: {
         position: snapshot.position,
         timesPerDay: snapshot.timesPerDay,
+        textContent: snapshot.textContent,
         sizeBytes: snapshot.sizeBytes,
         mediaReadyAt: snapshot.mediaReadyAt,
       },

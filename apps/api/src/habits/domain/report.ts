@@ -67,6 +67,30 @@ export function closingReport(input: {
   ].join('\n');
 }
 
+/**
+ * El aviso de progreso: cómo va hoy cada hábito, lo mismo que dice el globo
+ * de la casilla de hoy en la pantalla. Solo informa; no tiene botones.
+ */
+export function progressReport(input: {
+  planName: string;
+  lines: readonly { label: string; sent: number; answered: number; percent: number | null }[];
+}): string {
+  return [
+    `Avance plan «${input.planName}»`,
+    'En este momento tu avance es:',
+    '',
+    ...input.lines.map((line) =>
+      line.sent === 0
+        ? `${line.label}: sin envíos todavía`
+        : `${line.label}: ${format(line.percent)} (${plural(line.sent, 'notificación', 'notificaciones')} · ${plural(line.answered, 'respuesta', 'respuestas')})`,
+    ),
+  ].join('\n');
+}
+
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 /** El promedio de un hábito sobre los días que contaron. */
 export function averageOf(days: readonly ScoredDay[], libraryId: string): number | null {
   return averagePercent(

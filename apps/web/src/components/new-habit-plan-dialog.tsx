@@ -4,6 +4,7 @@ import {
   HABIT_PLAN_DURATIONS,
   HABIT_PLAN_LIBRARIES_MAX,
   HABIT_PLAN_NAME_MAX_LENGTH,
+  HABIT_PLAN_PROGRESS_MAX,
   type HabitPlanSummary,
 } from '@reconectate/contracts';
 import { Plus } from 'lucide-react';
@@ -63,6 +64,7 @@ export function NewHabitPlanDialog({
   const [chosen, setChosen] = useState<string[]>([]);
   const [recipientId, setRecipientId] = useState('');
   const [durationDays, setDurationDays] = useState('30');
+  const [progressPerDay, setProgressPerDay] = useState('0');
 
   // Un bot no puede escribirle a alguien que nunca le habló, así que un
   // destinatario pendiente no puede recibir ni los botones ni el informe.
@@ -83,6 +85,7 @@ export function NewHabitPlanDialog({
       setChosen([]);
       setRecipientId('');
       setDurationDays('30');
+      setProgressPerDay('0');
     }
   }
 
@@ -97,13 +100,13 @@ export function NewHabitPlanDialog({
         recipientId,
         durationDays: Number(durationDays) as (typeof HABIT_PLAN_DURATIONS)[number],
         libraryIds: chosen,
+        progressPerDay: Number(progressPerDay),
         // La zona del navegador, que es la que el usuario tiene en la cabeza
         // cuando dice «el resumen de hoy». Igual que al crear un horario.
         timezone: browserTimezone(),
       });
 
       reset(false);
-      dialog.close();
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : 'No se pudo crear el plan.');
     }
@@ -182,6 +185,26 @@ export function NewHabitPlanDialog({
             </Field>
 
             <Field>
+              <FieldLabel htmlFor="progress">Avisos de mi progreso</FieldLabel>
+              <Select value={progressPerDay} onValueChange={setProgressPerDay}>
+                <SelectTrigger id="progress">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: HABIT_PLAN_PROGRESS_MAX + 1 }, (_, times) => (
+                    <SelectItem key={times} value={String(times)}>
+                      {times === 0 ? 'Ninguno' : times === 1 ? '1 al día' : `${times} al día`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                Un mensaje con cómo vas hoy en cada hábito, repartido entre las 8:00 y las 20:00. No
+                tiene botones ni cuenta para el porcentaje.
+              </FieldDescription>
+            </Field>
+
+            <Field>
               <FieldLabel>Hábitos</FieldLabel>
 
               <ScrollArea className="border-border max-h-56 rounded-lg border">
@@ -225,7 +248,8 @@ export function NewHabitPlanDialog({
             <Alert>
               <AlertTitle>Esto no se puede cambiar después</AlertTitle>
               <AlertDescription>
-                Ni las bibliotecas ni la duración. Si te equivocas, anula el plan y crea otro.
+                Ni las bibliotecas, ni la duración, ni los avisos. Si te equivocas, anula el plan y
+                crea otro.
               </AlertDescription>
             </Alert>
           </FieldGroup>

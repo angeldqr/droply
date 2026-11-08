@@ -9,10 +9,11 @@ import {
   type MediaView,
   type UploadableKind,
 } from '@reconectate/contracts';
-import { Archive, ArrowDown, ArrowUp, Plus, Repeat, Trash2 } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, Pencil, Plus, Repeat, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddTextDialog } from '@/components/add-text-dialog';
+import { EditTextDialog } from '@/components/edit-text-dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import {
@@ -275,6 +276,7 @@ function StackedItem({
   const move = useMoveItem(libraryId);
   const remove = useRemoveItem(libraryId);
   const repetitions = useSetTimesPerDay(libraryId);
+  const [editing, setEditing] = useState(false);
 
   const reorder = (target: {
     afterItemId?: string | undefined;
@@ -314,6 +316,14 @@ function StackedItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {item.kind === 'TEXT' ? (
+              <>
+                <DropdownMenuItem onSelect={() => setEditing(true)}>
+                  <Pencil /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             <DropdownMenuItem
               disabled={!previousId}
               onSelect={() => reorder({ beforeItemId: previousId })}
@@ -381,6 +391,15 @@ function StackedItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </ItemActions>
+
+      {editing ? (
+        <EditTextDialog
+          libraryId={libraryId}
+          itemId={item.id}
+          initialText={item.text ?? ''}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
     </Item>
   );
 }

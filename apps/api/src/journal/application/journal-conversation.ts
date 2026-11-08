@@ -603,7 +603,7 @@ export class JournalConversation implements JournalInbox {
 
   /**
    * Cómo va la meta de hoy, dicho una vez: al quedar por debajo, el avance; al
-   * alcanzarla, la felicitación. Pasada la meta o en día de descanso, nada.
+   * alcanzarla, la felicitación. Pasada la meta o en día libre, nada.
    */
   private async goalLine(habit: Habit): Promise<string | null> {
     const now = this.clock.now();
@@ -636,9 +636,9 @@ export class JournalConversation implements JournalInbox {
   }
 }
 
-/** «✓» si hoy ya está, «1/2» si no, «descanso» si hoy no aplica. */
+/** «✓» si hoy ya está, «1/2» si no, «día libre» si hoy no aplica, igual que en la web. */
 function progressTag(habit: Habit, count: number, today: string): string {
-  if (!habit.appliesOn(today)) return 'descanso';
+  if (!habit.appliesOn(today)) return 'día libre';
 
   return count >= habit.dailyTarget ? '✓' : `${count}/${habit.dailyTarget}`;
 }

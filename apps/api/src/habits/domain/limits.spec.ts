@@ -2,10 +2,11 @@ import {
   HABIT_PLAN_DURATIONS,
   HABIT_PLAN_LIBRARIES_MAX,
   HABIT_PLAN_NAME_MAX_LENGTH,
+  HABIT_PLAN_PROGRESS_MAX,
 } from '@reconectate/contracts';
 import { MAX_PER_ACCOUNT as LIBRARIES_PER_ACCOUNT } from '../../libraries/domain/library';
 import { describe, expect, it } from 'vitest';
-import { DURATIONS, LIBRARIES_MAX, NAME_MAX_LENGTH } from './habit-plan';
+import { DURATIONS, LIBRARIES_MAX, NAME_MAX_LENGTH, PROGRESS_PER_DAY_MAX } from './habit-plan';
 
 /**
  * Los topes están escritos dos veces y tienen que decir lo mismo.
@@ -26,6 +27,10 @@ describe('topes de un plan frente al contrato', () => {
 
   it('coinciden cuántas bibliotecas caben', () => {
     expect(LIBRARIES_MAX).toBe(HABIT_PLAN_LIBRARIES_MAX);
+  });
+
+  it('coinciden cuántos avisos de progreso al día', () => {
+    expect(PROGRESS_PER_DAY_MAX).toBe(HABIT_PLAN_PROGRESS_MAX);
   });
 
   it('coinciden los cuatro plazos, y en el mismo orden', () => {

@@ -117,20 +117,36 @@ function DayCell({
   );
 }
 
+export type Band = 'logro' | 'medias' | 'alerta';
+
 /**
- * Los tres colores, con los cortes donde importan.
+ * Los tres tramos, con los cortes donde importan.
  *
  * Ochenta es el listón de un día bueno y cincuenta el de un día a medias — que
  * es justo lo que vale el botón del medio, así que un día entero respondido «a
  * medias» cae en ámbar y no en rojo.
+ *
+ * Lo usan la rejilla, la gráfica de consistencia y la semana de la bitácora:
+ * un mismo día no puede ser verde en una y ámbar en otra.
  */
+export function bandOf(percent: number): Band {
+  if (percent >= 80) return 'logro';
+  if (percent >= 50) return 'medias';
+
+  return 'alerta';
+}
+
+export const BAND_TONE: Record<Band, string> = {
+  logro: 'bg-logro-600 text-white',
+  // Tinta y no blanco sobre el ámbar: en blanco quedaba en 2,9:1, ilegible.
+  medias: 'bg-medias-500 text-ciruela-900',
+  alerta: 'bg-alerta-500 text-white',
+};
+
 function toneOf(day: HabitDayView | undefined): string {
   if (!day || day.percent === null) return 'bg-lavanda-200/60 text-transparent';
-  if (day.percent >= 80) return 'bg-logro-600 text-white';
-  // Tinta y no blanco sobre el ámbar: en blanco quedaba en 2,9:1, ilegible.
-  if (day.percent >= 50) return 'bg-medias-500 text-ciruela-900';
 
-  return 'bg-alerta-500 text-white';
+  return BAND_TONE[bandOf(day.percent)];
 }
 
 function describe(label: string, number: number, day: HabitDayView | undefined): string {
@@ -139,13 +155,13 @@ function describe(label: string, number: number, day: HabitDayView | undefined):
   return `${label}, día ${number}: ${day.percent}%, ${day.answered} de ${day.sent} respondidos`;
 }
 
-function Legend() {
+export function Legend({ empty = 'Sin envíos ese día' }: { empty?: string | null }) {
   return (
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
       <Swatch className="bg-logro-600">80% o más</Swatch>
       <Swatch className="bg-medias-500">Entre 50 y 79%</Swatch>
       <Swatch className="bg-alerta-500">Menos de 50%</Swatch>
-      <Swatch className="bg-lavanda-200">Sin envíos ese día</Swatch>
+      {empty ? <Swatch className="bg-lavanda-200">{empty}</Swatch> : null}
     </div>
   );
 }
@@ -156,6 +172,78 @@ function Swatch({ className, children }: { className: string; children: React.Re
       <span className={`size-3 rounded-sm ${className}`} aria-hidden />
       {children}
     </span>
+  );
+}
+
+/**
+ * Cuántos días se cumplió bien cada hábito: una barra por hábito, partida en
+ * días verdes, ámbar y rojos.
+ *
+ * Cuenta solo los días con envío que ya pasaron o van corriendo, así que en un
+ * plan de quince días que va por el doce la barra suma doce o menos. Las barras
+ * se miden contra el hábito con más días con envío, para que se puedan comparar
+ * de un vistazo.
+ */
+export function HabitPlanConsistency({ habits }: { habits: readonly HabitProgressView[] }) {
+  const rows = habits.map((habit) => {
+    const counts: Record<Band, number> = { logro: 0, medias: 0, alerta: 0 };
+
+    for (const day of habit.days) {
+      if (day.percent !== null) counts[bandOf(day.percent)] += 1;
+    }
+
+    return { habit, counts, total: counts.logro + counts.medias + counts.alerta };
+  });
+  const longest = Math.max(0, ...rows.map((row) => row.total));
+
+  if (longest === 0) {
+    return <p className="text-muted-foreground text-sm">Todavía no hay días con envíos.</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        {rows.map(({ habit, counts, total }) => (
+          <div key={habit.libraryId} className="flex items-center gap-2">
+            <span className="w-38 shrink-0 truncate pr-2 text-sm" title={habit.label}>
+              {habit.label}
+            </span>
+
+            <div className="flex min-w-0 flex-1">
+              <div
+                role="img"
+                aria-label={`${habit.label}: ${counts.logro} días en verde, ${counts.medias} en ámbar y ${counts.alerta} en rojo, de ${total} con envío`}
+                className="flex h-7 min-w-fit overflow-hidden rounded"
+                style={{ width: `${(total / longest) * 100}%` }}
+              >
+                {(['logro', 'medias', 'alerta'] as const).map((band) =>
+                  counts[band] > 0 ? (
+                    <span
+                      key={band}
+                      className={`grid min-w-6 place-items-center font-mono text-xs font-semibold tabular-nums ${BAND_TONE[band]}`}
+                      style={{ flexGrow: counts[band] }}
+                    >
+                      {counts[band]}
+                    </span>
+                  ) : null,
+                )}
+              </div>
+            </div>
+
+            <span className="text-muted-foreground w-24 shrink-0 text-right font-mono text-xs tabular-nums">
+              {habit.percent === null ? '—' : `Prom. ${habit.percent}%`}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-muted-foreground text-xs">
+        Cada número es una cantidad de días, de {longest} con envío como máximo. Los días sin envíos
+        no cuentan.
+      </p>
+
+      <Legend empty={null} />
+    </div>
   );
 }
 

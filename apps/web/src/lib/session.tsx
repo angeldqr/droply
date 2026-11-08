@@ -11,6 +11,8 @@ interface SessionState {
   readonly loading: boolean;
   signIn: (input: LoginInput) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Para cuando el servidor devuelve la cuenta ya cambiada, como la zona horaria. */
+  updateUser: (user: AuthenticatedUser) => void;
 }
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -74,7 +76,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <SessionContext.Provider value={{ user, loading, signIn, signOut }}>
+    <SessionContext.Provider value={{ user, loading, signIn, signOut, updateUser: setUser }}>
       {children}
     </SessionContext.Provider>
   );

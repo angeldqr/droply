@@ -1,6 +1,7 @@
 'use client';
 
-import { PASSWORD_MIN_LENGTH } from '@reconectate/contracts';
+import { PASSWORD_MIN_LENGTH, type AuthenticatedUser } from '@reconectate/contracts';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -12,6 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -71,6 +79,8 @@ function Account() {
         </ItemContent>
       </Item>
 
+      <TimezoneCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Cambiar la contraseña</CardTitle>
@@ -126,5 +136,74 @@ function Account() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Todas las zonas que conoce el navegador; la de la cuenta siempre está. */
+function timezones(current: string): string[] {
+  const all = Intl.supportedValuesOf('timeZone');
+
+  return all.includes(current) ? all : [current, ...all];
+}
+
+/**
+ * La zona de la cuenta decide a qué hora termina el día en la bitácora y en
+ * `/hoy`. Se guarda al elegirla: no hay nada más que confirmar.
+ */
+function TimezoneCard() {
+  const { user, updateUser } = useSession();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  if (!user) return null;
+
+  async function change(timezone: string) {
+    setBusy(true);
+
+    try {
+      updateUser(
+        await api<AuthenticatedUser>('/auth/me/timezone', { method: 'PATCH', body: { timezone } }),
+      );
+      // Lo que ya estaba cargado se calculó con el «hoy» de la zona anterior.
+      await queryClient.invalidateQueries();
+      toast.success('Zona horaria guardada.');
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo guardar la zona.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Zona horaria</CardTitle>
+        <CardDescription>
+          De ella sale a qué hora termina tu día en la bitácora y en /hoy.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <Field>
+          <FieldLabel htmlFor="timezone">Dónde vives</FieldLabel>
+          <Select
+            value={user.timezone}
+            onValueChange={(value) => void change(value)}
+            disabled={busy}
+          >
+            <SelectTrigger id="timezone" className="w-full sm:w-80">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timezones(user.timezone).map((zone) => (
+                <SelectItem key={zone} value={zone}>
+                  {zone.replaceAll('_', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </CardContent>
+    </Card>
   );
 }

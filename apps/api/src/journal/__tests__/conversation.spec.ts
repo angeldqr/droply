@@ -476,13 +476,13 @@ describe('la meta del día', () => {
     expect(world.voice.last()).not.toMatch(/Hoy llevas|Meta/);
   });
 
-  it('un día de descanso se puede anotar, pero no se mide', async () => {
+  it('un día libre se puede anotar, pero no se mide', async () => {
     // AHORA es miércoles; el hábito es solo de sábado y domingo.
     await unHabito(world, 'Paseo', ANA, { activeDays: 0b110_0000 });
 
     await world.bot.handle({ chatId: CHAT, text: '/habits' });
 
-    expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Paseo · descanso');
+    expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Paseo · día libre');
 
     await elegir(world);
     await world.bot.handle({ chatId: CHAT, text: 'Igual caminé' });
@@ -542,7 +542,7 @@ describe('rachas, /hoy y pausa', () => {
         '',
         '1. Gimnasio · ✓',
         '2. Comidas · 0/3',
-        '3. Paseo · descanso',
+        '3. Paseo · día libre',
       ].join('\n'),
     );
     expect(dicho?.buttons.map((boton) => boton.label)).toEqual(['2 · Comidas · 0/3']);

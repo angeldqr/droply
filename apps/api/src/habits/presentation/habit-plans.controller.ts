@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
 import {
   createHabitPlanSchema,
   habitPlanStatus,
@@ -13,6 +13,7 @@ import { orThrow } from '../../shared/result';
 import {
   CancelHabitPlan,
   CreateHabitPlan,
+  DeleteHabitPlan,
   ReadHabitPlans,
   type PlanView,
 } from '../application/habit-plan-use-cases';
@@ -21,13 +22,16 @@ import { SendPlanReport } from '../application/close-due-days';
 /**
  * Los planes de hábitos.
  *
- * **No hay `PATCH` ni `DELETE`, y es la decisión de diseño de este contexto.**
- * Un plan no se edita: sus bibliotecas y su fecha de cierre son lo que hace que
- * el número del final signifique algo, y un plan al que se le cambian los
- * hábitos a mitad de camino mide algo distinto cada semana. La salida antes de
- * tiempo es anularlo, que libera las bibliotecas y deja lo contado a la vista.
- * Que la interfaz no muestre el botón sería un aviso; que la API no tenga la
- * ruta es una propiedad.
+ * **No hay `PATCH`, y es la decisión de diseño de este contexto.** Un plan no
+ * se edita: sus bibliotecas y su fecha de cierre son lo que hace que el número
+ * del final signifique algo, y un plan al que se le cambian los hábitos a mitad
+ * de camino mide algo distinto cada semana. La salida antes de tiempo es
+ * anularlo, que libera las bibliotecas y deja lo contado a la vista. Que la
+ * interfaz no muestre el botón sería un aviso; que la API no tenga la ruta es
+ * una propiedad.
+ *
+ * `DELETE` existe solo para los anulados: ya no miden nada y estorban en la
+ * lista. Los terminados se quedan, son el registro de lo logrado.
  */
 @Controller('habit-plans')
 export class HabitPlansController {
@@ -35,6 +39,7 @@ export class HabitPlansController {
     @Inject(ReadHabitPlans) private readonly read: ReadHabitPlans,
     @Inject(CreateHabitPlan) private readonly createPlan: CreateHabitPlan,
     @Inject(CancelHabitPlan) private readonly cancelPlan: CancelHabitPlan,
+    @Inject(DeleteHabitPlan) private readonly deletePlan: DeleteHabitPlan,
     @Inject(SendPlanReport) private readonly sendReport: SendPlanReport,
   ) {}
 
@@ -70,6 +75,7 @@ export class HabitPlansController {
           recipientId: RecipientId.from(body.recipientId),
           durationDays: body.durationDays,
           libraryIds: body.libraryIds.map((id) => LibraryId.from(id)),
+          progressPerDay: body.progressPerDay,
         },
         body.timezone,
       ),
@@ -88,6 +94,12 @@ export class HabitPlansController {
     orThrow(await this.cancelPlan.execute(userId, id));
 
     return toSummary(orThrow(await this.read.detail(userId, id)));
+  }
+
+  @Delete(':planId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@CurrentUserId() userId: UserId, @Param('planId') planId: string): Promise<void> {
+    orThrow(await this.deletePlan.execute(userId, HabitPlanId.from(planId)));
   }
 
   /**
@@ -119,6 +131,7 @@ function toSummary(view: PlanView): HabitPlanSummary {
     dayNumber: view.dayNumber,
     libraryIds: view.habits.map((habit) => habit.libraryId),
     percent: view.percent,
+    progressPerDay: view.progressPerDay,
     reportSentAt: view.reportSentAt?.toISOString() ?? null,
   };
 }

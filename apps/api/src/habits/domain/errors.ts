@@ -71,6 +71,16 @@ export class HabitPlanNotActive extends PreconditionFailedError {
   }
 }
 
+/**
+ * Se quiso eliminar un plan que no está anulado. Uno en marcha se anula
+ * primero; uno terminado es un registro de lo que se logró y se queda.
+ */
+export class HabitPlanNotCancelled extends PreconditionFailedError {
+  constructor() {
+    super('habit_plan.not_cancelled', 'Solo se pueden eliminar los planes anulados.');
+  }
+}
+
 /** Se pidió reenviar el informe de un plan que todavía no terminó. */
 export class HabitPlanNotClosed extends PreconditionFailedError {
   constructor() {

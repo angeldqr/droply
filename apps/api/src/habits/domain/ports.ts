@@ -7,6 +7,15 @@ import type { HabitAnswer } from './vocabulary';
 export interface HabitPlanRepository {
   add(plan: HabitPlan): Promise<void>;
   save(plan: HabitPlan): Promise<void>;
+  /** Lo borra con sus días contados y las respuestas de sus botones. */
+  remove(id: HabitPlanId): Promise<void>;
+  /** Los planes en marcha que pidieron avisos de progreso. */
+  listWithProgress(): Promise<HabitPlan[]>;
+  /**
+   * Se queda con el aviso de esa hora si nadie lo mandó todavía. Devuelve si
+   * lo consiguió: la escritura condicional es lo que impide mandarlo dos veces.
+   */
+  claimProgress(id: HabitPlanId, slot: Date): Promise<boolean>;
   listOwnedBy(ownerId: UserId): Promise<HabitPlan[]>;
   findOwned(id: HabitPlanId, ownerId: UserId): Promise<HabitPlan | null>;
   /**

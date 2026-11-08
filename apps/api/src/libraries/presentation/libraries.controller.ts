@@ -39,6 +39,7 @@ import { LibraryId, LibraryItemId, type UserId } from '../../shared/identifiers'
 import { orThrow } from '../../shared/result';
 import {
   AddTextItem,
+  EditTextItem,
   MoveItem,
   RemoveItem,
   SetItemTimesPerDay,
@@ -76,6 +77,7 @@ export class LibrariesController {
     @Inject(ListLibraryRecipients) private readonly listRecipients: ListLibraryRecipients,
     @Inject(SetLibraryRecipients) private readonly setRecipients: SetLibraryRecipients,
     @Inject(SetItemTimesPerDay) private readonly setTimesPerDay: SetItemTimesPerDay,
+    @Inject(EditTextItem) private readonly editTextItem: EditTextItem,
     @Inject(OpenVault) private readonly openVault: OpenVault,
     @Inject(CopyFromVault) private readonly copyFromVault: CopyFromVault,
   ) {}
@@ -247,6 +249,21 @@ export class LibrariesController {
     );
 
     return items.map((item) => toItemView(item, null));
+  }
+
+  /** Corrige el texto de un elemento de texto; lo que salga después ya sale así. */
+  @Patch(':libraryId/items/:itemId/text')
+  async editText(
+    @CurrentUserId() userId: UserId,
+    @Param('libraryId') libraryId: string,
+    @Param('itemId') itemId: string,
+    @ZodBody(addTextItemSchema) body: AddTextItemInput,
+  ): Promise<LibraryItemView> {
+    const item = orThrow(
+      await this.editTextItem.execute(userId, toLibraryId(libraryId), toItemId(itemId), body.text),
+    );
+
+    return toItemView(item, null);
   }
 
   /** Cuántas veces al día se manda este elemento dentro de la franja. */

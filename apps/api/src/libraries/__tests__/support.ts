@@ -1,6 +1,6 @@
 import { FixedClock } from '../../shared/clock';
 import { UserId, type IdGenerator } from '../../shared/identifiers';
-import { AddTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
+import { AddTextItem, EditTextItem, MoveItem, RemoveItem } from '../application/item-use-cases';
 import {
   ConfirmMediaUpload,
   RequestMediaUpload,
@@ -51,6 +51,7 @@ export function buildLibraries(startingAt = new Date('2026-08-17T09:00:00.000Z')
     rename: new RenameLibrary(libraries, clock),
     remove: new DeleteLibrary(libraries, storage),
     addText: new AddTextItem(libraries, items, ids, clock),
+    editText: new EditTextItem(libraries, items, clock),
     removeItem: new RemoveItem(libraries, items, storage, clock),
     move: new MoveItem(libraries, items, clock),
     requestUpload: new RequestMediaUpload(libraries, items, storage, ids, clock),

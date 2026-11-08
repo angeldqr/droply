@@ -1,11 +1,11 @@
 'use client';
 
 import { HABIT_PLAN_STATUS_LABELS, type HabitPlanDetail } from '@reconectate/contracts';
-import { Ban, Send } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { Ban, Send, Trash2 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
-import { HabitPlanGrid, PlanProgress } from '@/components/habit-plan-grid';
+import { HabitPlanConsistency, HabitPlanGrid, PlanProgress } from '@/components/habit-plan-grid';
 import { RequireSession } from '@/components/require-session';
 import {
   AlertDialog,
@@ -25,7 +25,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
-import { useCancelHabitPlan, useHabitPlan, useResendPlanReport } from '@/lib/habits';
+import {
+  useCancelHabitPlan,
+  useDeleteHabitPlan,
+  useHabitPlan,
+  useResendPlanReport,
+} from '@/lib/habits';
 
 export default function HabitPlanPage() {
   const params = useParams<{ planId: string }>();
@@ -75,6 +80,9 @@ function Plan({ plan }: { plan: HabitPlanDetail }) {
           <p className="text-muted-foreground text-sm">
             Para {plan.recipientLabel} · del {plan.startOn} al {plan.endOn}
             {plan.status === 'ACTIVE' ? ` · día ${plan.dayNumber} de ${plan.durationDays}` : ''}
+            {plan.progressPerDay > 0
+              ? ` · ${plan.progressPerDay} ${plan.progressPerDay === 1 ? 'aviso' : 'avisos'} de progreso al día`
+              : ''}
           </p>
         </div>
 
@@ -99,12 +107,21 @@ function Plan({ plan }: { plan: HabitPlanDetail }) {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>¿Cuántos días se cumplió bien?</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HabitPlanConsistency habits={plan.habits} />
+        </CardContent>
+      </Card>
+
       {plan.status === 'CANCELLED' ? (
         <Alert>
           <AlertTitle>Este plan se anuló</AlertTitle>
           <AlertDescription>
             Sus bibliotecas volvieron a estar libres y siguen enviando lo suyo, pero ya sin botones.
-            Lo que se contó hasta el día que se anuló sigue acá.
+            Lo que se contó hasta el día que se anuló sigue aquí, hasta que lo elimines.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -150,7 +167,7 @@ function Actions({ plan }: { plan: HabitPlanDetail }) {
     );
   }
 
-  if (plan.status !== 'ACTIVE') return null;
+  if (plan.status === 'CANCELLED') return <DeleteAction plan={plan} />;
 
   return (
     <AlertDialog>
@@ -172,6 +189,50 @@ function Actions({ plan }: { plan: HabitPlanDetail }) {
         <AlertDialogFooter>
           <AlertDialogCancel>Dejarlo como está</AlertDialogCancel>
           <AlertDialogAction onClick={() => void onCancel()}>Anular el plan</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** Un plan anulado ya no mide nada: se puede borrar para que no estorbe en la lista. */
+function DeleteAction({ plan }: { plan: HabitPlanDetail }) {
+  const remove = useDeleteHabitPlan();
+  const router = useRouter();
+
+  async function onDelete(): Promise<void> {
+    try {
+      await remove.mutateAsync(plan.id);
+      toast.success('Plan eliminado.');
+      router.push('/yo-en-30-dias');
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'No se pudo eliminar.');
+    }
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" disabled={remove.isPending}>
+          {remove.isPending ? <Spinner /> : <Trash2 />}
+          Eliminar
+        </Button>
+      </AlertDialogTrigger>
+
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar «{plan.name}»?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se borra del todo, con lo que se contó y las respuestas de sus botones. No se puede
+            deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>Dejarlo</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => void onDelete()}>
+            Eliminar el plan
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

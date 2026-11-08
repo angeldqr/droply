@@ -2,7 +2,7 @@ import { InvalidInputError } from '../../shared/domain-error';
 import type { HabitPlanId, LibraryId, RecipientId, UserId } from '../../shared/identifiers';
 import { err, ok, type Result } from '../../shared/result';
 import { addDays, daysBetween, isAfter, type CivilDay } from './civil-day';
-import { HabitPlanNotActive, HabitPlanNotClosed } from './errors';
+import { HabitPlanNotActive, HabitPlanNotCancelled, HabitPlanNotClosed } from './errors';
 import type { HabitPlanStatus } from './vocabulary';
 
 export const NAME_MAX_LENGTH = 60;
@@ -15,6 +15,9 @@ export const NAME_MAX_LENGTH = 60;
  * fondo. El cliente pidió «una o varias» y esto no lo contradice.
  */
 export const LIBRARIES_MAX = 20;
+
+/** Cuántos avisos de progreso al día puede pedir un plan. */
+export const PROGRESS_PER_DAY_MAX = 6;
 
 /** Los cuatro plazos, cerrados. El contrato repite la lista para la pantalla. */
 export const DURATIONS = [7, 14, 21, 30] as const;
@@ -45,6 +48,10 @@ export interface HabitPlanSnapshot {
   readonly scoredThrough: CivilDay | null;
   readonly closedAt: Date | null;
   readonly reportSentAt: Date | null;
+  /** Avisos de progreso al día. Cero si no pidió ninguno. */
+  readonly progressPerDay: number;
+  /** La hora del último aviso de progreso que salió. */
+  readonly progressSentAt: Date | null;
   readonly habits: readonly PlanHabit[];
   readonly createdAt: Date;
 }
@@ -75,6 +82,7 @@ export class HabitPlan {
     /** Hoy, ya traducido a la zona de la cuenta. El plan arranca hoy mismo. */
     today: CivilDay;
     habits: readonly PlanHabit[];
+    progressPerDay: number;
     now: Date;
   }): Result<HabitPlan, InvalidInputError> {
     const name = input.name.trim();
@@ -100,6 +108,17 @@ export class HabitPlan {
       );
     }
 
+    const progress = input.progressPerDay;
+
+    if (!Number.isInteger(progress) || progress < 0 || progress > PROGRESS_PER_DAY_MAX) {
+      return err(
+        new InvalidInputError(
+          'habit_plan.invalid_progress',
+          `Los avisos de progreso van de 0 a ${PROGRESS_PER_DAY_MAX} al día.`,
+        ),
+      );
+    }
+
     return ok(
       new HabitPlan({
         id: input.id,
@@ -116,6 +135,8 @@ export class HabitPlan {
         scoredThrough: null,
         closedAt: null,
         reportSentAt: null,
+        progressPerDay: progress,
+        progressSentAt: null,
         habits: [...input.habits],
         createdAt: input.now,
       }),
@@ -211,6 +232,11 @@ export class HabitPlan {
     this.state = { ...this.state, status: 'CANCELLED' };
 
     return ok();
+  }
+
+  /** Solo un plan anulado se puede borrar del todo. */
+  ensureDeletable(): Result<void, HabitPlanNotCancelled> {
+    return this.state.status === 'CANCELLED' ? ok() : err(new HabitPlanNotCancelled());
   }
 
   /** Sella que el informe salió. Solo tiene sentido con el plan terminado. */

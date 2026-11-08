@@ -13,6 +13,9 @@ export const HABIT_PLAN_NAME_MAX_LENGTH = 60;
  */
 export const HABIT_PLAN_LIBRARIES_MAX = 20;
 
+/** Cuántos avisos de progreso al día puede pedir un plan. */
+export const HABIT_PLAN_PROGRESS_MAX = 6;
+
 /**
  * Los plazos, cerrados a cuatro.
  *
@@ -51,6 +54,11 @@ export const createHabitPlanSchema = z.object({
    * mueve los días ya contados.
    */
   timezone: timezoneSchema,
+  /**
+   * Cuántas veces al día le llega a la persona cómo va hoy, repartidas entre
+   * las 8 y las 20. Solo informa: no tiene botones ni cuenta para el porcentaje.
+   */
+  progressPerDay: z.number().int().min(0).max(HABIT_PLAN_PROGRESS_MAX).default(0),
   libraryIds: z
     .array(z.uuid())
     .min(1, 'Elige al menos una biblioteca.')
@@ -108,8 +116,10 @@ export interface HabitPlanSummary {
    * cada plan solo para poder deshabilitar tres casillas.
    */
   readonly libraryIds: readonly string[];
-  /** El promedio de sus hábitos, o `null` si aún no hay ningún día cerrado. */
+  /** El promedio de sus hábitos con el día en curso, o `null` si aún no hubo envíos. */
   readonly percent: number | null;
+  /** Avisos de progreso al día; cero si no pidió ninguno. */
+  readonly progressPerDay: number;
   readonly reportSentAt: string | null;
 }
 

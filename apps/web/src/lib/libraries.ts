@@ -156,6 +156,20 @@ export function useMoveItem(libraryId: string) {
   });
 }
 
+/** Corrige el texto de un elemento de texto. */
+export function useEditTextItem(libraryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ itemId, ...input }: AddTextItemInput & { itemId: string }) =>
+      api<LibraryItemView>(
+        `/libraries/${encodeURIComponent(libraryId)}/items/${encodeURIComponent(itemId)}/text`,
+        { method: 'PATCH', body: input },
+      ),
+    onSuccess: () => queryClient.invalidateQueries(everything),
+  });
+}
+
 /** Cuántas veces al día se manda este elemento dentro de la franja del horario. */
 export function useSetTimesPerDay(libraryId: string) {
   const queryClient = useQueryClient();

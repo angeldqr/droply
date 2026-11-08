@@ -80,7 +80,10 @@ export function useMorphDialog(id: string) {
   }, [cancelarRespaldo]);
 
   const close = useCallback(() => {
-    cancelarRespaldo();
+    // Un cierre ya en curso se deja terminar. Blendy no aguanta dos `untoggle`
+    // seguidos: el segundo corta la animación de vuelta a mitad y el botón de
+    // origen queda estirado al tamaño del diálogo, como una franja morada.
+    if (respaldo.current) return;
 
     if (!blendy.current) {
       setOpen(false);

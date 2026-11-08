@@ -36,7 +36,7 @@ export class User {
     private passwordHash: string,
     readonly displayName: string,
     private currentRole: UserRole,
-    readonly timezone: string,
+    private currentTimezone: string,
     private emailVerifiedAt: Date | null,
     private deactivatedAt: Date | null,
     readonly createdAt: Date,
@@ -64,14 +64,7 @@ export class User {
       return err(new InvalidInputError('display_name.too_long', 'Ese nombre es demasiado largo.'));
     }
 
-    if (!isIanaTimezone(input.timezone)) {
-      return err(
-        new InvalidInputError(
-          'timezone.invalid',
-          'Elige una zona horaria válida, por ejemplo America/Bogota.',
-        ),
-      );
-    }
+    if (!isIanaTimezone(input.timezone)) return err(invalidTimezone());
 
     return ok(
       new User(
@@ -112,6 +105,19 @@ export class User {
 
   get isAdmin(): boolean {
     return this.currentRole === 'ADMIN';
+  }
+
+  /** La zona donde vive: de ella sale qué día es «hoy» en la bitácora. */
+  get timezone(): string {
+    return this.currentTimezone;
+  }
+
+  changeTimezone(timezone: string): Result<void, InvalidInputError> {
+    if (!isIanaTimezone(timezone)) return err(invalidTimezone());
+
+    this.currentTimezone = timezone;
+
+    return ok();
   }
 
   /**
@@ -185,7 +191,7 @@ export class User {
       passwordHash: this.passwordHash,
       displayName: this.displayName,
       role: this.currentRole,
-      timezone: this.timezone,
+      timezone: this.currentTimezone,
       emailVerifiedAt: this.emailVerifiedAt,
       deactivatedAt: this.deactivatedAt,
       createdAt: this.createdAt,
@@ -204,4 +210,11 @@ function isIanaTimezone(candidate: string): boolean {
   } catch {
     return false;
   }
+}
+
+function invalidTimezone(): InvalidInputError {
+  return new InvalidInputError(
+    'timezone.invalid',
+    'Elige una zona horaria válida, por ejemplo America/Bogota.',
+  );
 }

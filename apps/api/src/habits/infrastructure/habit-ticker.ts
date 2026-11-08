@@ -1,5 +1,6 @@
 import { Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import type { CloseDueDays } from '../application/close-due-days';
+import type { SendPlanProgress } from '../application/send-plan-progress';
 
 /**
  * Una vuelta por minuto. No hace falta más fino: lo que se busca es el momento
@@ -25,7 +26,10 @@ export class HabitTicker implements OnApplicationBootstrap, OnApplicationShutdow
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
-  constructor(private readonly closeDue: CloseDueDays) {}
+  constructor(
+    private readonly closeDue: CloseDueDays,
+    private readonly sendProgress: SendPlanProgress,
+  ) {}
 
   onApplicationBootstrap(): void {
     this.timer = setInterval(() => void this.tick(), TICK_MS);
@@ -61,6 +65,15 @@ export class HabitTicker implements OnApplicationBootstrap, OnApplicationShutdow
       // Un fallo no puede matar el latido: la vuelta siguiente reintenta, y el
       // día sigue sin cerrar hasta que alguna lo consiga.
       this.logger.error('Falló una vuelta de los planes de hábitos.', caught);
+    }
+
+    // Aparte: que no cierre un día no es motivo para callar los avisos.
+    try {
+      for (const sent of await this.sendProgress.execute()) {
+        this.logger.log(`Aviso de progreso: ${sent}`);
+      }
+    } catch (caught) {
+      this.logger.error('Fallaron los avisos de progreso.', caught);
     } finally {
       this.running = false;
     }

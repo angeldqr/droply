@@ -45,6 +45,7 @@ export class PrismaHabitPlanRepository implements HabitPlanRepository {
         endOn: toDate(snapshot.endOn),
         status: snapshot.status,
         scoredThrough: null,
+        progressPerDay: snapshot.progressPerDay,
         createdAt: snapshot.createdAt,
         habits: {
           create: snapshot.habits.map((habit) => ({
@@ -81,6 +82,34 @@ export class PrismaHabitPlanRepository implements HabitPlanRepository {
         data: { active: alive },
       }),
     ]);
+  }
+
+  async remove(id: HabitPlanIdType): Promise<void> {
+    await this.prisma.$transaction([
+      // Las respuestas no tienen llave foránea hacia el plan —sobreviven a que
+      // se borre un envío—, así que la cascada no las alcanza.
+      this.prisma.habitResponse.deleteMany({ where: { planId: id } }),
+      // Sus bibliotecas y sus días contados caen en cascada.
+      this.prisma.habitPlan.delete({ where: { id } }),
+    ]);
+  }
+
+  async listWithProgress(): Promise<HabitPlan[]> {
+    const rows = await this.prisma.habitPlan.findMany({
+      where: { status: 'ACTIVE', progressPerDay: { gt: 0 } },
+      include: { habits: true },
+    });
+
+    return rows.map(toDomain);
+  }
+
+  async claimProgress(id: HabitPlanIdType, slot: Date): Promise<boolean> {
+    const { count } = await this.prisma.habitPlan.updateMany({
+      where: { id, OR: [{ progressSentAt: null }, { progressSentAt: { lt: slot } }] },
+      data: { progressSentAt: slot },
+    });
+
+    return count === 1;
   }
 
   async listOwnedBy(ownerId: UserId): Promise<HabitPlan[]> {
@@ -264,6 +293,8 @@ function toDomain(row: HabitPlanRow & { habits: HabitPlanLibrary[] }): HabitPlan
     scoredThrough: row.scoredThrough === null ? null : toCivilDay(row.scoredThrough),
     closedAt: row.closedAt,
     reportSentAt: row.reportSentAt,
+    progressPerDay: row.progressPerDay,
+    progressSentAt: row.progressSentAt,
     habits: row.habits.map((habit) => ({
       libraryId: LibraryId.from(habit.libraryId),
       label: habit.label,

@@ -8,15 +8,17 @@ import {
 } from '../../shared/identifiers';
 import { CastHabitVote } from '../application/cast-habit-vote';
 import { CloseDueDays, SendPlanReport } from '../application/close-due-days';
+import { SendPlanProgress } from '../application/send-plan-progress';
 import { ScoreADay } from '../application/score-a-day';
 import {
   CancelHabitPlan,
   CreateHabitPlan,
+  DeleteHabitPlan,
   ReadHabitPlans,
 } from '../application/habit-plan-use-cases';
 import type { CivilDay } from '../domain/civil-day';
 import { addDays, isBefore } from '../domain/civil-day';
-import type { HabitPlan } from '../domain/habit-plan';
+import { HabitPlan } from '../domain/habit-plan';
 import type {
   DayCalendar,
   DeliveryDirectory,
@@ -87,6 +89,33 @@ export class FakePlans implements HabitPlanRepository {
     this.rows.set(plan.id, plan);
 
     return Promise.resolve();
+  }
+
+  remove(id: string): Promise<void> {
+    this.rows.delete(id);
+    this.days.delete(id);
+
+    return Promise.resolve();
+  }
+
+  listWithProgress(): Promise<HabitPlan[]> {
+    return Promise.resolve(
+      [...this.rows.values()].filter(
+        (plan) => plan.status === 'ACTIVE' && plan.toSnapshot().progressPerDay > 0,
+      ),
+    );
+  }
+
+  claimProgress(id: string, slot: Date): Promise<boolean> {
+    const plan = this.rows.get(id);
+    const last = plan?.toSnapshot().progressSentAt;
+
+    // La misma condición que la escritura de la base: solo si nadie la mandó.
+    if (!plan || (last && last >= slot)) return Promise.resolve(false);
+
+    this.rows.set(id, HabitPlan.fromSnapshot({ ...plan.toSnapshot(), progressSentAt: slot }));
+
+    return Promise.resolve(true);
   }
 
   listOwnedBy(ownerId: UserId): Promise<HabitPlan[]> {
@@ -327,17 +356,23 @@ export function build() {
     scoreADay,
     create: new CreateHabitPlan(plans, libraries, recipients, calendar, ids, clock),
     cancel: new CancelHabitPlan(plans, scoreADay, calendar, clock),
+    remove: new DeleteHabitPlan(plans),
     read: new ReadHabitPlans(plans, scores, scoreADay, recipients, calendar, clock),
     close: new CloseDueDays(plans, scoreADay, scores, recipients, notifier, calendar, clock),
     report: new SendPlanReport(plans, scores, recipients, notifier, clock),
     vote: new CastHabitVote(plans, responses, calendar, clock),
+    progress: new SendPlanProgress(plans, scoreADay, recipients, notifier, calendar, clock),
   };
 }
 
 export type World = ReturnType<typeof build>;
 
 /** Un plan de siete días sobre las dos bibliotecas, ya creado. */
-export async function unPlan(world: World, durationDays = 7): Promise<HabitPlan> {
+export async function unPlan(
+  world: World,
+  durationDays = 7,
+  progressPerDay = 0,
+): Promise<HabitPlan> {
   const created = await world.create.execute(
     ANA,
     {
@@ -345,6 +380,7 @@ export async function unPlan(world: World, durationDays = 7): Promise<HabitPlan>
       recipientId: DESTINATARIO,
       durationDays,
       libraryIds: [EJERCICIO, LEER],
+      progressPerDay,
     },
     ZONA,
   );

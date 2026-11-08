@@ -10,6 +10,7 @@ import { ScoreADay } from '../application/score-a-day';
 import {
   CancelHabitPlan,
   CreateHabitPlan,
+  DeleteHabitPlan,
   ReadHabitPlans,
 } from '../application/habit-plan-use-cases';
 import {
@@ -30,6 +31,7 @@ import {
   type ResponseStore,
   type ScoreStore,
 } from '../domain/ports';
+import { SendPlanProgress } from '../application/send-plan-progress';
 import { HabitTicker } from '../infrastructure/habit-ticker';
 import { LuxonDayCalendar } from '../infrastructure/luxon-day-calendar';
 import {
@@ -135,6 +137,11 @@ import { HabitPlansController } from './habit-plans.controller';
       ) => new CancelHabitPlan(plans, scoreADay, calendar, clock),
     },
     {
+      provide: DeleteHabitPlan,
+      inject: [HABIT_PLAN_REPOSITORY],
+      useFactory: (plans: HabitPlanRepository) => new DeleteHabitPlan(plans),
+    },
+    {
       provide: ReadHabitPlans,
       inject: [
         HABIT_PLAN_REPOSITORY,
@@ -186,9 +193,29 @@ import { HabitPlansController } from './habit-plans.controller';
       ) => new SendPlanReport(plans, scores, recipients, notifier, clock),
     },
     {
+      provide: SendPlanProgress,
+      inject: [
+        HABIT_PLAN_REPOSITORY,
+        ScoreADay,
+        HABIT_RECIPIENT_DIRECTORY,
+        PLAN_NOTIFIER,
+        DAY_CALENDAR,
+        CLOCK,
+      ],
+      useFactory: (
+        plans: HabitPlanRepository,
+        scoreADay: ScoreADay,
+        recipients: RecipientDirectory,
+        notifier: PlanNotifier,
+        calendar: DayCalendar,
+        clock: Clock,
+      ) => new SendPlanProgress(plans, scoreADay, recipients, notifier, calendar, clock),
+    },
+    {
       provide: HabitTicker,
-      inject: [CloseDueDays],
-      useFactory: (closeDue: CloseDueDays) => new HabitTicker(closeDue),
+      inject: [CloseDueDays, SendPlanProgress],
+      useFactory: (closeDue: CloseDueDays, sendProgress: SendPlanProgress) =>
+        new HabitTicker(closeDue, sendProgress),
     },
 
     {

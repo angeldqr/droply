@@ -1,6 +1,6 @@
 'use client';
 import { cn } from '@/lib/utils';
-import React, { useRef, useState, createContext, useContext } from 'react';
+import React, { useRef, useState, createContext, useContext, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { IconMenu2, IconX } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ interface SidebarContextProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   animate: boolean;
+  /** En escritorio, el panel se queda abierto aunque el ratón se vaya. */
+  pinned: boolean;
+  setPinned: (pinned: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
@@ -26,6 +29,46 @@ export const useSidebar = () => {
   }
   return context;
 };
+
+/*
+ * Si el panel va fijo, recordado en este navegador. Por defecto sí: es lo que
+ * se pidió, que el menú esté siempre a la vista y se pueda recoger.
+ *
+ * Va por `useSyncExternalStore` porque cada pantalla monta su propio armazón:
+ * leerlo en un efecto lo haría abrirse y recogerse en cada cambio de página.
+ * Si el navegador no deja guardar, se recuerda mientras la pestaña siga abierta.
+ */
+const PINNED_KEY = 'reconectate:menu-fijo';
+const pinnedListeners = new Set<() => void>();
+let pinnedInMemory: boolean | null = null;
+
+function readPinned(): boolean {
+  if (pinnedInMemory !== null) return pinnedInMemory;
+
+  try {
+    return localStorage.getItem(PINNED_KEY) !== 'no';
+  } catch {
+    return true;
+  }
+}
+
+function storePinned(pinned: boolean): void {
+  pinnedInMemory = pinned;
+
+  try {
+    localStorage.setItem(PINNED_KEY, pinned ? 'si' : 'no');
+  } catch {
+    // Sin almacenamiento queda en memoria; no hay nada más que hacer.
+  }
+
+  pinnedListeners.forEach((listener) => listener());
+}
+
+function subscribePinned(listener: () => void): () => void {
+  pinnedListeners.add(listener);
+
+  return () => pinnedListeners.delete(listener);
+}
 
 export const SidebarProvider = ({
   children,
@@ -42,9 +85,10 @@ export const SidebarProvider = ({
 
   const open = openProp !== undefined ? openProp : openState;
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+  const pinned = useSyncExternalStore(subscribePinned, readPinned, () => true);
 
   return (
-    <SidebarContext.Provider value={{ open, setOpen, animate: animate }}>
+    <SidebarContext.Provider value={{ open, setOpen, animate, pinned, setPinned: storePinned }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -89,22 +133,26 @@ const HOVER_DELAY_MS = 150;
 /**
  * El panel de escritorio.
  *
- * Ocupa siempre un carril fijo de 60 px, y al abrirse se dibuja **encima** del
- * contenido en vez de ensancharse dentro de la página: antes, cada paso del
- * ratón por el borde movía la pantalla entera 240 px a la derecha.
+ * **Fijo** (lo normal): mide 300 px dentro de la página, empuja el contenido y
+ * no se cierra al quitar el ratón.
  *
- * Se abre también con el foco del teclado, que sin esto recorría iconos sin
- * nombre.
+ * **Recogido**: ocupa un carril de 60 px, y al pasar el ratón se dibuja
+ * **encima** del contenido en vez de ensancharse dentro de la página, que
+ * movería la pantalla entera en cada paso del ratón. Se abre también con el
+ * foco del teclado, que sin esto recorría iconos sin nombre.
  */
 export const DesktopSidebar = ({
   className,
   children,
   ...props
 }: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
+  const context = useSidebar();
+  const { open, setOpen, animate, pinned } = context;
+  const expanded = pinned || open;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function openSoon(): void {
+    if (pinned) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
   }
@@ -125,14 +173,20 @@ export const DesktopSidebar = ({
   return (
     // `z-40` en el carril y no solo en el panel: `sticky` arma su propio contexto de
     // apilado, y sin esto las tarjetas y el encabezado quedaban por encima.
-    <div className="relative z-40 hidden w-[60px] shrink-0 md:sticky md:top-0 md:block md:h-dvh">
+    <motion.div
+      initial={false}
+      animate={{ width: pinned ? 300 : 60 }}
+      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+      className="relative z-40 hidden shrink-0 md:sticky md:top-0 md:block md:h-dvh"
+    >
       <motion.div
+        initial={false}
         className={cn(
           'absolute inset-y-0 left-0 z-40 flex h-full w-[300px] flex-col overflow-hidden px-4 py-4',
-          open && 'shadow-ciruela-900/30 shadow-2xl',
+          open && !pinned && 'shadow-ciruela-900/30 shadow-2xl',
           className,
         )}
-        animate={{ width: animate ? (open ? '300px' : '60px') : '300px' }}
+        animate={{ width: animate ? (expanded ? '300px' : '60px') : '300px' }}
         transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
         onMouseEnter={openSoon}
         onMouseLeave={(event) => {
@@ -140,7 +194,7 @@ export const DesktopSidebar = ({
           if (!keyboardFocusIn(event.currentTarget)) close();
         }}
         onFocus={(event) => {
-          if ((event.target as HTMLElement).matches(':focus-visible')) setOpen(true);
+          if (!pinned && (event.target as HTMLElement).matches(':focus-visible')) setOpen(true);
         }}
         onBlur={(event) => {
           const next = event.relatedTarget as HTMLElement | null;
@@ -153,9 +207,17 @@ export const DesktopSidebar = ({
         }}
         {...props}
       >
-        {children}
+        {/*
+          Lo de adentro (rótulos, nombres) mira `open` para mostrarse. Aquí
+          «abierto» es también estar fijo; el cajón del teléfono sigue con el
+          suyo, que si no se abriría solo.
+        */}
+        <SidebarContext.Provider value={{ ...context, open: expanded }}>
+          {/* `motion.div` admite valores animados como hijos; aquí siempre son nodos. */}
+          {children as React.ReactNode}
+        </SidebarContext.Provider>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 

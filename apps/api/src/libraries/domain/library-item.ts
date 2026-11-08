@@ -39,20 +39,8 @@ export class LibraryItem {
     text: string;
     now: Date;
   }): Result<LibraryItem, InvalidInputError> {
-    const content = input.text.trim();
-
-    if (content.length === 0) {
-      return err(new InvalidInputError('item.text_empty', 'El texto no puede estar vacío.'));
-    }
-
-    if (content.length > TEXT_MAX_LENGTH) {
-      return err(
-        new InvalidInputError(
-          'item.text_too_long',
-          `El texto no puede pasar de ${TEXT_MAX_LENGTH} caracteres.`,
-        ),
-      );
-    }
+    const content = textOf(input.text);
+    if (!content.ok) return content;
 
     return ok(
       new LibraryItem({
@@ -61,7 +49,7 @@ export class LibraryItem {
         kind: 'TEXT',
         position: input.position,
         timesPerDay: 1,
-        textContent: content,
+        textContent: content.value,
         storageKey: null,
         fileName: null,
         mimeType: null,
@@ -201,6 +189,23 @@ export class LibraryItem {
   }
 
   /**
+   * Corrige un texto: una tilde o una letra no obligan a borrarlo y crearlo de
+   * nuevo. Las fotos, videos y audios no se editan; se cambian por otro.
+   */
+  editText(text: string): Result<void, InvalidInputError> {
+    if (this.state.kind !== 'TEXT') {
+      return err(new InvalidInputError('item.not_text', 'Solo los textos se pueden editar.'));
+    }
+
+    const content = textOf(text);
+    if (!content.ok) return content;
+
+    this.state = { ...this.state, textContent: content.value };
+
+    return ok();
+  }
+
+  /**
    * Cuántas veces al día quiere enviarse este elemento.
    *
    * El horario decide entre qué horas; esto decide cuántas veces dentro de esa
@@ -234,4 +239,24 @@ export class LibraryItem {
   toSnapshot(): LibraryItemSnapshot {
     return this.state;
   }
+}
+
+/** El texto sin espacios de sobra, si no queda vacío ni pasa del tope. */
+function textOf(raw: string): Result<string, InvalidInputError> {
+  const content = raw.trim();
+
+  if (content.length === 0) {
+    return err(new InvalidInputError('item.text_empty', 'El texto no puede estar vacío.'));
+  }
+
+  if (content.length > TEXT_MAX_LENGTH) {
+    return err(
+      new InvalidInputError(
+        'item.text_too_long',
+        `El texto no puede pasar de ${TEXT_MAX_LENGTH} caracteres.`,
+      ),
+    );
+  }
+
+  return ok(content);
 }

@@ -6,6 +6,8 @@ import {
   LibraryBig,
   LogOut,
   NotebookPen,
+  PanelLeftClose,
+  PanelLeftOpen,
   Send,
   ShieldCheck,
   Sparkles,
@@ -16,6 +18,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Fragment, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,10 +47,10 @@ export interface Crumb {
 /**
  * El armazón de la aplicación.
  *
- * El panel lateral vive plegado a un carril de iconos y se abre solo al pasar
- * el ratón por encima: no hay que apretar nada para ver dónde estás, y en
- * cuanto te vas vuelve a dejar el ancho al contenido. En móvil es un cajón que
- * entra desde la izquierda.
+ * El panel lateral va fijo y abierto, con un botón para recogerlo a un carril
+ * de iconos; recogido, se abre solo al pasar el ratón por encima. La elección
+ * se recuerda en el navegador. En móvil es un cajón que entra desde la
+ * izquierda.
  *
  * Va oscuro contra una aplicación clara, y es la decisión más visible de la
  * paleta: la ciruela ancla la pantalla por la izquierda y hace que el contenido
@@ -158,7 +161,10 @@ function ReconectateNav() {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <Wordmark />
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark />
+          <PinButton />
+        </div>
 
         {groups.map((group) => (
           <div key={group.label} className="mt-3 flex flex-col gap-1">
@@ -299,6 +305,29 @@ function NavLink({
       <span className="shrink-0 transition-transform group-hover/nav:translate-x-0.5">{icon}</span>
       <Reveal className="text-sm">{label}</Reveal>
     </Link>
+  );
+}
+
+/**
+ * Fija o recoge el panel de escritorio. Solo aparece con el panel abierto: con
+ * el carril de iconos no cabe, y al pasar el ratón ya se ve.
+ */
+function PinButton() {
+  const { open, pinned, setPinned } = useSidebar();
+
+  if (!open) return null;
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-sidebar-ring hidden size-8 shrink-0 md:inline-flex"
+      onClick={() => setPinned(!pinned)}
+      aria-label={pinned ? 'Recoger menú' : 'Fijar menú'}
+      title={pinned ? 'Recoger menú' : 'Fijar menú'}
+    >
+      {pinned ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+    </Button>
   );
 }
 

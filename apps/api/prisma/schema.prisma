@@ -467,6 +467,14 @@ model HabitPlan {
   closedAt     DateTime? @map("closed_at")
   reportSentAt DateTime? @map("report_sent_at")
 
+  /// Avisos de progreso al día, de 0 a 6, repartidos entre las 8 y las 20 en
+  /// la zona del plan. Solo informan: no llevan botones ni cuentan.
+  progressPerDay Int @default(0) @map("progress_per_day")
+
+  /// La hora del último aviso que salió. Se reclama antes de mandarlo, así que
+  /// ninguna vuelta ni otra réplica lo repite.
+  progressSentAt DateTime? @map("progress_sent_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

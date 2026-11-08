@@ -29,6 +29,7 @@ import { MotionItem, MotionList } from '@/components/motion-list';
 import { ConnectTelegramCard } from '@/components/connect-telegram-card';
 import { goalFrom, HabitGoalFields } from '@/components/habit-goal-fields';
 import { cuenta, goalLabel, HabitMark, WEEKDAY_NAMES, whenRelative } from '@/components/habit-mark';
+import { HabitWeekGrid } from '@/components/habit-week-grid';
 import { NewHabitDialog } from '@/components/new-habit-dialog';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -173,13 +174,24 @@ function Contents() {
           <NewHabitDialog id="nuevo-habito-vacio" />
         </Empty>
       ) : (
-        <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {byToday(data).map((habit, index) => (
-            <MotionItem key={habit.id} index={index}>
-              <HabitCard habit={habit} />
-            </MotionItem>
-          ))}
-        </MotionList>
+        <>
+          <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {byToday(data).map((habit, index) => (
+              <MotionItem key={habit.id} index={index}>
+                <HabitCard habit={habit} />
+              </MotionItem>
+            ))}
+          </MotionList>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tu semana</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <HabitWeekGrid habits={data} />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

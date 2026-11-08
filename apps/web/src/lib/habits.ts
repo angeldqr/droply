@@ -62,6 +62,19 @@ export function useCancelHabitPlan() {
   });
 }
 
+/** Borra del todo un plan anulado, para que deje de aparecer en la lista. */
+export function useDeleteHabitPlan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (planId: string) =>
+      api<void>(`/habit-plans/${encodeURIComponent(planId)}`, { method: 'DELETE' }),
+    // El detalle no se toca: la pantalla que lo muestra se va enseguida a la
+    // lista, y quitarlo antes la haría pedirlo de nuevo y chocar con un 404.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listKey, exact: true }),
+  });
+}
+
 /**
  * Reenvía el informe de un plan terminado.
  *

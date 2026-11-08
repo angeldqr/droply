@@ -57,6 +57,7 @@ export interface PlanView {
   readonly status: string;
   readonly dayNumber: number;
   readonly percent: number | null;
+  readonly progressPerDay: number;
   readonly reportSentAt: Date | null;
   readonly habits: readonly PlanHabitView[];
 }
@@ -78,6 +79,7 @@ export class CreateHabitPlan {
       recipientId: RecipientId;
       durationDays: number;
       libraryIds: readonly LibraryId[];
+      progressPerDay?: number;
     },
     timezone: string,
   ): Promise<Result<HabitPlan, DomainError>> {
@@ -117,6 +119,7 @@ export class CreateHabitPlan {
       timezone,
       today: this.calendar.dayAt(now, timezone),
       habits,
+      progressPerDay: input.progressPerDay ?? 0,
       now,
     });
 
@@ -170,6 +173,27 @@ export class CancelHabitPlan {
 }
 
 /**
+ * Borra del todo un plan anulado, para que deje de aparecer en la lista.
+ * Los terminados no: son el registro de lo que se logró.
+ */
+export class DeleteHabitPlan {
+  constructor(private readonly plans: HabitPlanRepository) {}
+
+  async execute(ownerId: UserId, planId: HabitPlanId): Promise<Result<void, DomainError>> {
+    const plan = await this.plans.findOwned(planId, ownerId);
+
+    if (!plan) return err(new HabitPlanNotFound());
+
+    const deletable = plan.ensureDeletable();
+    if (!deletable.ok) return deletable;
+
+    await this.plans.remove(plan.id);
+
+    return ok();
+  }
+}
+
+/**
  * Arma la vista de uno o de todos los planes de una cuenta.
  *
  * El día en curso se suma al vuelo y no sale de las filas cerradas: si no,
@@ -199,8 +223,17 @@ export class ReadHabitPlans {
       ),
     ]);
 
-    return plans.map((plan) =>
-      this.view(plan, scores.get(plan.id) ?? [], labels.get(plan.recipientId) ?? '', false),
+    // El día en curso también en el listado: sin él, un plan en su primer día
+    // mostraba «—» en la tarjeta y 100 % al abrirlo.
+    return Promise.all(
+      plans.map(async (plan) =>
+        this.view(
+          plan,
+          [...(scores.get(plan.id) ?? []), ...(await this.today(plan))],
+          labels.get(plan.recipientId) ?? '',
+          false,
+        ),
+      ),
     );
   }
 
@@ -220,10 +253,8 @@ export class ReadHabitPlans {
   }
 
   /**
-   * El día que todavía corre, sumado al vuelo y sin escribir nada.
-   *
-   * Solo para el detalle: en el listado serían dos consultas por plan a cambio
-   * de una barra que se mueve unas horas antes.
+   * El día que todavía corre, sumado al vuelo y sin escribir nada. Son dos
+   * consultas por plan en marcha; los anulados y terminados no cuestan nada.
    */
   private async today(plan: HabitPlan): Promise<ScoredDay[]> {
     const snapshot = plan.toSnapshot();
@@ -266,6 +297,7 @@ export class ReadHabitPlans {
       status: snapshot.status,
       dayNumber: plan.dayNumber(today),
       percent: averagePercent(habits.map((habit) => habit.percent)),
+      progressPerDay: snapshot.progressPerDay,
       reportSentAt: snapshot.reportSentAt,
       habits,
     };

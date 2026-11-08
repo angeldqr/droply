@@ -15,6 +15,7 @@ import {
   ResetAccountPassword,
   SetAccountActive,
 } from '../application/account-admin-use-cases';
+import { ChangeTimezone } from '../application/change-timezone.use-case';
 import { PasswordResetSender } from '../application/password-reset-sender';
 import {
   ChangePassword,
@@ -222,9 +223,10 @@ import { IS_PRODUCTION } from './tokens';
         new AdminBootstrap(users, hasher, ids, clock, {
           email: env.ADMIN_EMAIL,
           initialPassword: env.ADMIN_INITIAL_PASSWORD,
-          // La zona de la cuenta de administración da igual: no programa
-          // envíos. Se toma la del servidor para no inventar una.
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          // No la del servidor, que en el contenedor es UTC: con ella la
+          // bitácora cortaba el día a las siete de la noche de Colombia. Se
+          // cambia después desde «Tu cuenta».
+          timezone: 'America/Bogota',
         }),
     },
     {
@@ -273,6 +275,11 @@ import { IS_PRODUCTION } from './tokens';
         sessions: RefreshTokenRepository,
         clock: Clock,
       ) => new ChangePassword(users, hasher, sessions, clock),
+    },
+    {
+      provide: ChangeTimezone,
+      inject: [USER_REPOSITORY],
+      useFactory: (users: UserRepository) => new ChangeTimezone(users),
     },
     {
       provide: RequestPasswordReset,

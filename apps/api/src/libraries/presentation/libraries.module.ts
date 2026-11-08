@@ -6,6 +6,7 @@ import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { OWNER_STORAGE, type OwnerStorage } from '../../shared/owner-storage';
 import {
   AddTextItem,
+  EditTextItem,
   MoveItem,
   RemoveItem,
   SetItemTimesPerDay,
@@ -155,6 +156,12 @@ import { LibrariesController } from './libraries.controller';
         storage: MediaStorage,
         clock: Clock,
       ) => new RemoveItem(libraries, items, storage, clock),
+    },
+    {
+      provide: EditTextItem,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY, CLOCK],
+      useFactory: (libraries: LibraryRepository, items: LibraryItemRepository, clock: Clock) =>
+        new EditTextItem(libraries, items, clock),
     },
     {
       provide: SetItemTimesPerDay,

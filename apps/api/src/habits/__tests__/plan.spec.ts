@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  AHORA,
   ANA,
   BAUL,
   build,
@@ -8,6 +9,7 @@ import {
   LEER,
   OTRO,
   OTRO_DESTINATARIO,
+  unEnvio,
   unPlan,
   ZONA,
   type World,
@@ -169,5 +171,50 @@ describe('cada quien ve lo suyo', () => {
 
     expect(await world.read.list(ANA)).toHaveLength(1);
     expect(await world.read.list(OTRO)).toHaveLength(0);
+  });
+});
+
+describe('el listado cuenta el día en curso', () => {
+  it('un plan en su primer día ya muestra su porcentaje', async () => {
+    const plan = await unPlan(world);
+
+    unEnvio(world, plan, { deliveryId: 'envio-1', libraryId: EJERCICIO, at: AHORA });
+    await world.vote.cast({ deliveryId: 'envio-1', chatId: '555', answer: 'DONE' });
+
+    const [tarjeta] = await world.read.list(ANA);
+    const detalle = await world.read.detail(ANA, plan.id);
+
+    expect(tarjeta?.percent).toBe(100);
+    expect(detalle.ok ? detalle.value.percent : null).toBe(tarjeta?.percent);
+  });
+});
+
+describe('eliminar un plan', () => {
+  it('uno anulado desaparece de la lista', async () => {
+    const plan = await unPlan(world);
+    await world.cancel.execute(ANA, plan.id);
+
+    const eliminado = await world.remove.execute(ANA, plan.id);
+
+    expect(eliminado.ok).toBe(true);
+    expect(await world.read.list(ANA)).toHaveLength(0);
+  });
+
+  it('uno en marcha no: primero se anula', async () => {
+    const plan = await unPlan(world);
+
+    const eliminado = await world.remove.execute(ANA, plan.id);
+
+    expect(eliminado.ok ? '' : eliminado.error.code).toBe('habit_plan.not_cancelled');
+    expect(await world.read.list(ANA)).toHaveLength(1);
+  });
+
+  it('el de otra cuenta no existe', async () => {
+    const plan = await unPlan(world);
+    await world.cancel.execute(ANA, plan.id);
+
+    const eliminado = await world.remove.execute(OTRO, plan.id);
+
+    expect(eliminado.ok ? '' : eliminado.error.code).toBe('habit_plan.not_found');
   });
 });
