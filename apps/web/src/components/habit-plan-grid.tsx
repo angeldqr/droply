@@ -252,7 +252,7 @@ export function PlanProgress({ percent }: { percent: number | null }) {
   return (
     <div className="flex items-center gap-3">
       <Progress value={percent ?? 0} className="h-2 flex-1" />
-      <span className="w-16 text-right font-mono text-sm tabular-nums">
+      <span className="w-20 whitespace-nowrap text-right font-mono text-sm tabular-nums">
         {percent === null ? 'Sin datos' : `${percent}%`}
       </span>
     </div>
