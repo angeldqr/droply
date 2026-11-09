@@ -1,6 +1,7 @@
 import type { PrismaService } from '../../platform/prisma/prisma.service';
 import type { LibraryId, RecipientId, UserId } from '../../shared/identifiers';
 import type {
+  AccountDirectory,
   DeliveryDirectory,
   LibraryDirectory,
   RecipientDirectory,
@@ -31,6 +32,20 @@ export class PrismaHabitLibraryDirectory implements LibraryDirectory {
       where: { id: { in: [...libraryIds] }, ownerId },
       select: { id: true, name: true, isVault: true },
     });
+  }
+}
+
+export class PrismaHabitAccountDirectory implements AccountDirectory {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async timezoneOf(ownerId: UserId): Promise<string> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { timezone: true },
+    });
+
+    // Solo sin cuenta, que con sesión no pasa. Es el mismo respaldo de Mi bitácora.
+    return row?.timezone ?? 'UTC';
   }
 }
 

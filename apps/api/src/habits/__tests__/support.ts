@@ -20,6 +20,7 @@ import type { CivilDay } from '../domain/civil-day';
 import { addDays, isBefore } from '../domain/civil-day';
 import { HabitPlan } from '../domain/habit-plan';
 import type {
+  AccountDirectory,
   DayCalendar,
   DeliveryDirectory,
   HabitPlanRepository,
@@ -216,6 +217,15 @@ export class FakeLibraries implements LibraryDirectory {
   }
 }
 
+/** La zona de cada cuenta. Ana está en Bogotá salvo que el test diga otra cosa. */
+export class FakeAccounts implements AccountDirectory {
+  timezone = ZONA;
+
+  timezoneOf(ownerId: UserId): Promise<string> {
+    return Promise.resolve(ownerId === ANA ? this.timezone : 'UTC');
+  }
+}
+
 export class FakeRecipients implements RecipientDirectory {
   chatId: string | null = '555';
 
@@ -335,6 +345,7 @@ export function build() {
   const plans = new FakePlans();
   const libraries = new FakeLibraries();
   const recipients = new FakeRecipients();
+  const accounts = new FakeAccounts();
   const deliveries = new FakeDeliveries();
   const responses = new FakeResponses();
   const scores = new FakeScores(plans);
@@ -348,13 +359,14 @@ export function build() {
     plans,
     libraries,
     recipients,
+    accounts,
     deliveries,
     responses,
     scores,
     notifier,
     calendar,
     scoreADay,
-    create: new CreateHabitPlan(plans, libraries, recipients, calendar, ids, clock),
+    create: new CreateHabitPlan(plans, libraries, recipients, accounts, calendar, ids, clock),
     cancel: new CancelHabitPlan(plans, scoreADay, calendar, clock),
     remove: new DeleteHabitPlan(plans),
     read: new ReadHabitPlans(plans, scores, scoreADay, recipients, calendar, clock),
@@ -373,17 +385,13 @@ export async function unPlan(
   durationDays = 7,
   progressPerDay = 0,
 ): Promise<HabitPlan> {
-  const created = await world.create.execute(
-    ANA,
-    {
-      name: 'Yo en 30 días',
-      recipientId: DESTINATARIO,
-      durationDays,
-      libraryIds: [EJERCICIO, LEER],
-      progressPerDay,
-    },
-    ZONA,
-  );
+  const created = await world.create.execute(ANA, {
+    name: 'Yo en 30 días',
+    recipientId: DESTINATARIO,
+    durationDays,
+    libraryIds: [EJERCICIO, LEER],
+    progressPerDay,
+  });
 
   if (!created.ok) throw created.error;
 

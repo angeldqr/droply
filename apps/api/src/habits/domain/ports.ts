@@ -140,6 +140,17 @@ export interface RecipientDirectory {
   chatOf(ownerId: UserId, recipientId: RecipientId): Promise<string | null>;
 }
 
+/** Lo que `habits` necesita saber de la cuenta del dueño. */
+export interface AccountDirectory {
+  /**
+   * La zona horaria de la cuenta: la del selector de Tu cuenta.
+   *
+   * Un plan nuevo corta sus días con esta zona y no con la del navegador, para
+   * que el día del plan y el de Mi bitácora empiecen a la misma hora.
+   */
+  timezoneOf(ownerId: UserId): Promise<string>;
+}
+
 /** La respuesta de alguien a un envío. */
 export interface StoredResponse {
   readonly deliveryId: string;
@@ -216,6 +227,7 @@ export const HABIT_PLAN_REPOSITORY = Symbol('HabitPlanRepository');
 export const DELIVERY_DIRECTORY = Symbol('DeliveryDirectory');
 export const HABIT_LIBRARY_DIRECTORY = Symbol('HabitLibraryDirectory');
 export const HABIT_RECIPIENT_DIRECTORY = Symbol('HabitRecipientDirectory');
+export const HABIT_ACCOUNT_DIRECTORY = Symbol('HabitAccountDirectory');
 export const RESPONSE_STORE = Symbol('ResponseStore');
 export const SCORE_STORE = Symbol('ScoreStore');
 export const DAY_CALENDAR = Symbol('DayCalendar');

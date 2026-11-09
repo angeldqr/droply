@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { timezoneSchema } from './identity.js';
 import type { HabitAnswer, HabitPlanStatus } from './primitives.js';
 
 export const HABIT_PLAN_NAME_MAX_LENGTH = 60;
@@ -45,15 +44,6 @@ export const createHabitPlanSchema = z.object({
   name: z.string().trim().min(1, 'Ponle un nombre.').max(HABIT_PLAN_NAME_MAX_LENGTH),
   recipientId: z.uuid(),
   durationDays: habitDurationSchema,
-  /**
-   * La zona en la que se corta el día de este plan.
-   *
-   * La manda el navegador, igual que al crear un horario: es la que el usuario
-   * tiene en la cabeza cuando dice «el resumen de hoy». Se copia al plan y no
-   * se vuelve a leer, así que mudarse de país a mitad de los treinta días no le
-   * mueve los días ya contados.
-   */
-  timezone: timezoneSchema,
   /**
    * Cuántas veces al día le llega a la persona cómo va hoy, repartidas entre
    * las 8 y las 20. Solo informa: no tiene botones ni cuenta para el porcentaje.

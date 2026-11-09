@@ -16,12 +16,14 @@ import {
 import {
   DAY_CALENDAR,
   DELIVERY_DIRECTORY,
+  HABIT_ACCOUNT_DIRECTORY,
   HABIT_LIBRARY_DIRECTORY,
   HABIT_PLAN_REPOSITORY,
   HABIT_RECIPIENT_DIRECTORY,
   PLAN_NOTIFIER,
   RESPONSE_STORE,
   SCORE_STORE,
+  type AccountDirectory,
   type DayCalendar,
   type DeliveryDirectory,
   type HabitPlanRepository,
@@ -36,6 +38,7 @@ import { HabitTicker } from '../infrastructure/habit-ticker';
 import { LuxonDayCalendar } from '../infrastructure/luxon-day-calendar';
 import {
   PrismaDeliveryDirectory,
+  PrismaHabitAccountDirectory,
   PrismaHabitLibraryDirectory,
   PrismaHabitRecipientDirectory,
   PrismaResponseStore,
@@ -73,6 +76,11 @@ import { HabitPlansController } from './habit-plans.controller';
       provide: HABIT_RECIPIENT_DIRECTORY,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new PrismaHabitRecipientDirectory(prisma),
+    },
+    {
+      provide: HABIT_ACCOUNT_DIRECTORY,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => new PrismaHabitAccountDirectory(prisma),
     },
     {
       provide: DELIVERY_DIRECTORY,
@@ -113,6 +121,7 @@ import { HabitPlansController } from './habit-plans.controller';
         HABIT_PLAN_REPOSITORY,
         HABIT_LIBRARY_DIRECTORY,
         HABIT_RECIPIENT_DIRECTORY,
+        HABIT_ACCOUNT_DIRECTORY,
         DAY_CALENDAR,
         ID_GENERATOR,
         CLOCK,
@@ -121,10 +130,11 @@ import { HabitPlansController } from './habit-plans.controller';
         plans: HabitPlanRepository,
         libraries: LibraryDirectory,
         recipients: RecipientDirectory,
+        accounts: AccountDirectory,
         calendar: DayCalendar,
         ids: IdGenerator,
         clock: Clock,
-      ) => new CreateHabitPlan(plans, libraries, recipients, calendar, ids, clock),
+      ) => new CreateHabitPlan(plans, libraries, recipients, accounts, calendar, ids, clock),
     },
     {
       provide: CancelHabitPlan,

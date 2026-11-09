@@ -18,6 +18,7 @@ import {
 } from '../domain/errors';
 import { HabitPlan, type PlanHabit } from '../domain/habit-plan';
 import type {
+  AccountDirectory,
   DayCalendar,
   HabitPlanRepository,
   LibraryDirectory,
@@ -67,6 +68,7 @@ export class CreateHabitPlan {
     private readonly plans: HabitPlanRepository,
     private readonly libraries: LibraryDirectory,
     private readonly recipients: RecipientDirectory,
+    private readonly accounts: AccountDirectory,
     private readonly calendar: DayCalendar,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
@@ -81,7 +83,6 @@ export class CreateHabitPlan {
       libraryIds: readonly LibraryId[];
       progressPerDay?: number;
     },
-    timezone: string,
   ): Promise<Result<HabitPlan, DomainError>> {
     const recipient = await this.recipients.find(input.recipientId, ownerId);
 
@@ -104,6 +105,8 @@ export class CreateHabitPlan {
 
     if (taken) return err(new LibraryAlreadyInPlan(taken.label));
 
+    // Se copia al plan y no se vuelve a leer: cambiarla después no mueve sus días.
+    const timezone = await this.accounts.timezoneOf(ownerId);
     const now = this.clock.now();
     const habits: PlanHabit[] = owned.map((library) => ({
       libraryId: LibraryId.from(library.id),

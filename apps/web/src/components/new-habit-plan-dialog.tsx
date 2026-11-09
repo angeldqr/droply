@@ -39,7 +39,6 @@ import { librariesInUse, useCreateHabitPlan } from '@/lib/habits';
 import { useLibraries } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
 import { useRecipients } from '@/lib/recipients';
-import { browserTimezone } from '@/lib/schedules';
 
 /**
  * Armar un plan: a quién, con qué bibliotecas y por cuánto tiempo.
@@ -101,9 +100,6 @@ export function NewHabitPlanDialog({
         durationDays: Number(durationDays) as (typeof HABIT_PLAN_DURATIONS)[number],
         libraryIds: chosen,
         progressPerDay: Number(progressPerDay),
-        // La zona del navegador, que es la que el usuario tiene en la cabeza
-        // cuando dice «el resumen de hoy». Igual que al crear un horario.
-        timezone: browserTimezone(),
       });
 
       reset(false);

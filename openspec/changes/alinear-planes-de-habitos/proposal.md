@@ -2,30 +2,22 @@
 
 ## Why
 
-La Reverse-Spec de `habits` encontró dos desfases, y en los dos el cliente o el usuario ve algo que no
-cuadra:
-
-1. **Bibliotecas ocupadas.** La API permite usar una biblioteca en planes vivos hacia personas
-   distintas, que es la regla deliberada (migración `habitos_por_destinatario`). La pantalla
-   "Nuevo plan" la bloquea para cualquier destinatario y dice "Una biblioteca solo puede estar en un
-   plan a la vez".
-2. **Zona horaria.** Un plan toma la zona del navegador al crearse, mientras Mi bitácora usa la de la
-   cuenta (el selector de Tu cuenta). Si no coinciden, el día del plan y el de la bitácora se cortan
-   a horas distintas.
+Un plan de hábitos toma la zona horaria del navegador desde donde se crea, mientras que Mi bitácora usa
+la de la cuenta (el selector de Tu cuenta). Si no coinciden, el día del plan y el de la bitácora se
+cortan a horas distintas. Es el mismo síntoma que reportó el cliente en Mi bitácora (un día contado
+como el siguiente), esta vez en "Yo en 30 días".
 
 ## What Changes
 
-- La pantalla "Nuevo plan" deshabilita una biblioteca solo si ya está en un plan vivo **hacia el
-  destinatario elegido**. Al cambiar de destinatario, se quitan de la selección las que pasan a estar
-  ocupadas. El texto de ayuda dice la regla real.
-- Un plan nuevo toma la zona horaria **de la cuenta**. La API deja de leer la zona que manda el
-  navegador; si llega, se ignora y no da error.
+- Un plan nuevo toma la zona horaria **de la cuenta** del dueño.
+- La API deja de leer la zona que manda el navegador; si llega, se ignora y no da error.
 - Los planes ya creados conservan su zona: no se migra nada.
 
 Fuera de alcance:
 - Cambiar la zona de un plan existente.
-- Que un plan siga a la cuenta si después cambia su zona: se copia al crearlo, como hoy.
-- Cambiar la regla de la API sobre bibliotecas.
+- Que un plan siga a la cuenta si después cambia su zona: se copia al crearlo.
+- La regla de bibliotecas ocupadas en la pantalla de "Nuevo plan". Es más estricta que la API sin
+  romper nada, y el cliente no lo pidió.
 
 ## Capabilities
 
@@ -35,22 +27,14 @@ Ninguna.
 
 ### Modified Capabilities
 
-- `habits`:
-  - "Una biblioteca, un plan vivo por destinatario": el escenario de la pantalla pasa a aplicar la
-    misma regla que la API.
-  - "Zona horaria del plan": la zona sale de la cuenta, no del navegador.
+- `habits`: "Zona horaria del plan" pasa a salir de la cuenta y no del navegador.
 
 ## Impact
 
-- **API:**
-  - `apps/api/src/habits/` (crear un plan): nuevo puerto para leer la zona de la cuenta, implementado
-    en `infrastructure/prisma-directories.ts`.
-  - El controlador deja de pasar `body.timezone`.
-- **Contrato:** toca `packages/contracts`. Se quita `timezone` de `createHabitPlanSchema`. No rompe a
-  nadie, porque Zod descarta las claves desconocidas, así que un cliente viejo que la mande sigue
-  funcionando.
-- **Web:**
-  - `apps/web/src/lib/habits.ts` (`librariesInUse` por destinatario).
-  - `apps/web/src/components/new-habit-plan-dialog.tsx`: quita `browserTimezone()`, filtra por
-    destinatario y cambia el texto.
+- **API:** `apps/api/src/habits/` (crear un plan). Nuevo puerto para leer la zona de la cuenta,
+  implementado en `infrastructure/prisma-directories.ts`; el controlador deja de pasar
+  `body.timezone`.
+- **Contrato:** toca `packages/contracts`. Se quita `timezone` de `createHabitPlanSchema`. Zod descarta
+  las claves desconocidas, así que un cliente viejo que la mande sigue funcionando.
+- **Web:** `apps/web/src/components/new-habit-plan-dialog.tsx` deja de mandar `browserTimezone()`.
 - **Base de datos:** sin cambios en `prisma/schema.prisma` ni migraciones.

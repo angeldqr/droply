@@ -65,20 +65,16 @@ export class HabitPlansController {
     @ZodBody(createHabitPlanSchema) body: CreateHabitPlanInput,
   ): Promise<HabitPlanSummary> {
     const plan = orThrow(
-      await this.createPlan.execute(
-        userId,
-        {
-          name: body.name,
-          // La marca se pone acá, en el borde, y no dentro del caso de uso: es
-          // el único sitio donde entra texto de fuera, y a partir de acá el tipo
-          // impide cruzar un identificador con otro.
-          recipientId: RecipientId.from(body.recipientId),
-          durationDays: body.durationDays,
-          libraryIds: body.libraryIds.map((id) => LibraryId.from(id)),
-          progressPerDay: body.progressPerDay,
-        },
-        body.timezone,
-      ),
+      await this.createPlan.execute(userId, {
+        name: body.name,
+        // La marca se pone acá, en el borde, y no dentro del caso de uso: es
+        // el único sitio donde entra texto de fuera, y a partir de acá el tipo
+        // impide cruzar un identificador con otro.
+        recipientId: RecipientId.from(body.recipientId),
+        durationDays: body.durationDays,
+        libraryIds: body.libraryIds.map((id) => LibraryId.from(id)),
+        progressPerDay: body.progressPerDay,
+      }),
     );
 
     return toSummary(orThrow(await this.read.detail(userId, plan.id)));

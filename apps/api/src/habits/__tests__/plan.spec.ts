@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DayCalendar } from '../domain/ports';
 import {
   AHORA,
   ANA,
@@ -11,7 +12,6 @@ import {
   OTRO_DESTINATARIO,
   unEnvio,
   unPlan,
-  ZONA,
   type World,
 } from './support';
 
@@ -31,6 +31,27 @@ describe('crear un plan', () => {
     expect(plan.status).toBe('ACTIVE');
   });
 
+  it('corta los días con la zona de la cuenta, no con la del navegador', async () => {
+    world.accounts.timezone = 'Europe/Madrid';
+    const dayAt = vi.spyOn(world.calendar as DayCalendar, 'dayAt');
+
+    const plan = (await unPlan(world)).toSnapshot();
+
+    expect(plan.timezone).toBe('Europe/Madrid');
+    // El día de arranque también sale de esa zona, no solo lo que se guarda.
+    expect(dayAt).toHaveBeenCalledWith(AHORA, 'Europe/Madrid');
+  });
+
+  it('cambiar después la zona de la cuenta no mueve un plan ya creado', async () => {
+    const plan = await unPlan(world);
+    world.accounts.timezone = 'Europe/Madrid';
+
+    const [listed] = await world.read.list(ANA);
+
+    expect(listed?.id).toBe(plan.id);
+    expect(listed?.timezone).toBe('America/Bogota');
+  });
+
   it('copia el nombre de cada biblioteca, para que sobreviva a que la borren', async () => {
     const plan = (await unPlan(world)).toSnapshot();
 
@@ -44,42 +65,46 @@ describe('crear un plan', () => {
   it('no deja armarlo hacia alguien que no abrió su enlace', async () => {
     world.recipients.chatId = null;
 
-    const created = await world.create.execute(
-      ANA,
-      { name: 'Plan', recipientId: DESTINATARIO, durationDays: 7, libraryIds: [EJERCICIO] },
-      ZONA,
-    );
+    const created = await world.create.execute(ANA, {
+      name: 'Plan',
+      recipientId: DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [EJERCICIO],
+    });
 
     expect(created.ok).toBe(false);
     expect(created.ok ? '' : created.error.code).toBe('habit_plan.recipient_not_linked');
   });
 
   it('el baúl no puede ser un hábito', async () => {
-    const created = await world.create.execute(
-      ANA,
-      { name: 'Plan', recipientId: DESTINATARIO, durationDays: 7, libraryIds: [BAUL] },
-      ZONA,
-    );
+    const created = await world.create.execute(ANA, {
+      name: 'Plan',
+      recipientId: DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [BAUL],
+    });
 
     expect(created.ok ? '' : created.error.code).toBe('habit_plan.vault_is_not_a_habit');
   });
 
   it('no deja meter la biblioteca de otra cuenta', async () => {
-    const created = await world.create.execute(
-      OTRO,
-      { name: 'Plan', recipientId: DESTINATARIO, durationDays: 7, libraryIds: [EJERCICIO] },
-      ZONA,
-    );
+    const created = await world.create.execute(OTRO, {
+      name: 'Plan',
+      recipientId: DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [EJERCICIO],
+    });
 
     expect(created.ok).toBe(false);
   });
 
   it('rechaza un plazo que no es de los cuatro', async () => {
-    const created = await world.create.execute(
-      ANA,
-      { name: 'Plan', recipientId: DESTINATARIO, durationDays: 10, libraryIds: [EJERCICIO] },
-      ZONA,
-    );
+    const created = await world.create.execute(ANA, {
+      name: 'Plan',
+      recipientId: DESTINATARIO,
+      durationDays: 10,
+      libraryIds: [EJERCICIO],
+    });
 
     expect(created.ok ? '' : created.error.code).toBe('habit_plan.invalid_duration');
   });
@@ -89,11 +114,12 @@ describe('una biblioteca, un plan por destinatario', () => {
   it('no deja meterla dos veces hacia la misma persona', async () => {
     await unPlan(world);
 
-    const segundo = await world.create.execute(
-      ANA,
-      { name: 'Otro', recipientId: DESTINATARIO, durationDays: 7, libraryIds: [EJERCICIO] },
-      ZONA,
-    );
+    const segundo = await world.create.execute(ANA, {
+      name: 'Otro',
+      recipientId: DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [EJERCICIO],
+    });
 
     expect(segundo.ok ? '' : segundo.error.code).toBe('habit_plan.library_already_in_plan');
     expect(segundo.ok ? '' : segundo.error.message).toContain('Ejercicio');
@@ -108,16 +134,12 @@ describe('una biblioteca, un plan por destinatario', () => {
   it('sí deja meterla en otro plan hacia otra persona', async () => {
     await unPlan(world);
 
-    const segundo = await world.create.execute(
-      ANA,
-      {
-        name: 'Para mamá',
-        recipientId: OTRO_DESTINATARIO,
-        durationDays: 7,
-        libraryIds: [EJERCICIO],
-      },
-      ZONA,
-    );
+    const segundo = await world.create.execute(ANA, {
+      name: 'Para mamá',
+      recipientId: OTRO_DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [EJERCICIO],
+    });
 
     expect(segundo.ok).toBe(true);
   });
@@ -127,11 +149,12 @@ describe('una biblioteca, un plan por destinatario', () => {
 
     await world.cancel.execute(ANA, plan.id);
 
-    const segundo = await world.create.execute(
-      ANA,
-      { name: 'Otro', recipientId: DESTINATARIO, durationDays: 7, libraryIds: [EJERCICIO, LEER] },
-      ZONA,
-    );
+    const segundo = await world.create.execute(ANA, {
+      name: 'Otro',
+      recipientId: DESTINATARIO,
+      durationDays: 7,
+      libraryIds: [EJERCICIO, LEER],
+    });
 
     expect(segundo.ok).toBe(true);
   });

@@ -1,43 +1,27 @@
 # Tasks
 
-## 1. Zona de la cuenta (API y contrato)
+## 1. Zona de la cuenta
 
-- [ ] 1.1 Agregar el puerto `AccountDirectory.timezoneOf(ownerId)` en `habits/domain/ports.ts` e
-  implementarlo en `infrastructure/prisma-directories.ts`, que lee `users.timezone`. Cablearlo en
+- [x] 1.1 Agregar el puerto `AccountDirectory.timezoneOf(ownerId)` en `habits/domain/ports.ts`.
+  Implementarlo en `infrastructure/prisma-directories.ts` leyendo `users.timezone` y cablearlo en
   `habits.module.ts`. Verifica: `pnpm --filter api typecheck`.
-- [ ] 1.2 `CreateHabitPlan` toma la zona del puerto y pierde el parámetro `timezone`. El controlador
+- [x] 1.2 `CreateHabitPlan` toma la zona del puerto y pierde el parámetro `timezone`. El controlador
   deja de pasar `body.timezone`. Verifica: typecheck.
-- [ ] 1.3 Quitar `timezone` de `createHabitPlanSchema` en `packages/contracts/src/habits.ts` y
-  recompilar el paquete. Verifica: `pnpm --filter @reconectate/contracts build` y typecheck de api y
-  web.
-- [ ] 1.4 Agregar el fake del puerto en `habits/__tests__/support.ts`, más un test en `plan.spec.ts`:
-  con la cuenta en America/Bogota, el plan queda en America/Bogota y su `startOn` es el día de Bogotá
-  aunque en UTC ya sea el día siguiente. Verifica: `pnpm --filter api test`.
+- [x] 1.3 Quitar `timezone` de `createHabitPlanSchema` en `packages/contracts/src/habits.ts` y
+  recompilar el paquete. Quitar `browserTimezone()` de `new-habit-plan-dialog.tsx`. Verifica:
+  `pnpm --filter @reconectate/contracts build` y typecheck de api y web.
+- [x] 1.4 Agregar el fake del puerto en `habits/__tests__/support.ts` y dos tests en `plan.spec.ts`:
+  - el plan queda con la zona de la cuenta;
+  - cambiar después la zona de la cuenta no mueve un plan ya creado.
 
-## 2. Bibliotecas ocupadas por destinatario (web)
+  Verifica: `pnpm --filter api test`.
 
-- [ ] 2.1 `librariesInUse(plans, recipientId)` en `apps/web/src/lib/habits.ts`: solo los planes
-  `ACTIVE` hacia ese destinatario; con `recipientId` vacío devuelve un mapa vacío. Verifica:
-  typecheck de web.
-- [ ] 2.2 En `new-habit-plan-dialog.tsx`:
-  - usar el destinatario elegido;
-  - al cambiarlo, quitar de `chosen` las bibliotecas ocupadas;
-  - quitar `browserTimezone()`;
-  - cambiar la ayuda a "Una biblioteca no puede estar en dos planes vivos hacia la misma persona;
-    anular el otro la libera."
+## 2. Cierre
 
-  Verifica: typecheck y lint de web.
-- [ ] 2.3 Prueba manual en el navegador, con un plan vivo hacia A que use la biblioteca X:
-  - "Nuevo plan" hacia A deshabilita X;
-  - hacia B la deja elegir y el plan se crea;
-  - cambiar de B a A con X marcada la desmarca.
-
-## 3. Cierre
-
-- [ ] 3.1 `pnpm --filter api test`, más typecheck y lint de api, web y contracts, en verde. El fallo
-  conocido de DST en `occurrences.spec.ts` no cuenta.
-- [ ] 3.2 `/code-review` contra esta spec y corregir lo que salga.
-- [ ] 3.3 Dar el comando de commit (`git commit -F`, ASCII, sin atribución).
+- [x] 2.1 Correr `pnpm --filter api test` y el typecheck y el lint de api, web y contracts; todo debe
+  quedar en verde. El fallo conocido de DST en `occurrences.spec.ts` no cuenta.
+- [x] 2.2 `/code-review` contra esta spec y corregir lo que salga.
+- [x] 2.3 Dar el comando de commit (`git commit -F`, ASCII, sin atribución).
 
 ## Workflow follow-up
 
