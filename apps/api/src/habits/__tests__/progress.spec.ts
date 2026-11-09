@@ -54,6 +54,13 @@ describe('avisos de progreso', () => {
     expect(await world.progress.execute()).toEqual([]);
   });
 
+  it('pasado el último día no avisa, aunque el plan siga sin cerrar', async () => {
+    await unPlan(world, 7, 3);
+    world.clock.set(new Date('2026-05-18T20:05:00.000Z'));
+
+    expect(await world.progress.execute()).toEqual([]);
+  });
+
   it('un plan anulado deja de avisar', async () => {
     const plan = await unPlan(world, 7, 3);
     await world.cancel.execute(plan.ownerId, plan.id);

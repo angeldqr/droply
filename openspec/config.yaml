@@ -1,0 +1,61 @@
+schema: spec-driven
+
+# Constitución del proyecto: lo que todo artefacto (propuesta, diseño, specs,
+# tareas) da por sentado. Es lo único de la configuración de agentes que va en
+# el repositorio: .claude/, .agents/, CLAUDE.md y AGENTS.md están en .gitignore.
+context: |
+  Language: es
+  All artifacts must be written in es (español neutro, sin voseo ni regionalismos).
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Producto: Reconéctate. Un usuario arma bibliotecas de contenido (audio, video,
+  imagen, texto) y un bot de Telegram le envía elementos a sus destinatarios en
+  los horarios que elija. Encima: planes de hábitos con botones de respuesta,
+  Mi bitácora (hábitos personales), el baúl y un panel de administración.
+  Cliente colombiano: la zona por defecto es America/Bogota.
+
+  Stack:
+  - Monorepo pnpm + Turborepo. apps/api (NestJS 11 + Fastify + Prisma 6 +
+    Postgres), apps/web (Next.js 15 App Router + TanStack Query + Tailwind v4 +
+    shadcn/ui), packages/contracts (esquemas Zod, única fuente de verdad
+    api<->web), packages/ui (tokens), packages/tooling.
+  - Pruebas con Vitest y repositorios en memoria (sin base de datos).
+
+  Arquitectura (se hace cumplir con eslint-plugin-boundaries):
+  - Screaming architecture: apps/api/src/<contexto>/ con identity, libraries,
+    recipients, scheduling, delivery, habits, journal, admin; platform/ es
+    cableado y shared/ el kernel.
+  - Clean architecture dentro de cada contexto: domain/ (TypeScript puro, sin
+    Nest, Prisma ni Zod) <- application/ (un caso de uso por clase) <-
+    infrastructure/ y presentation/.
+  - Un contexto no importa el domain/ de otro: se hablan por puertos propios.
+  - Result<T, E> en los casos de uso; orThrow() solo en el controlador.
+  - Todo repositorio filtra por ownerId en la consulta. Lo de otra cuenta
+    responde "no existe", nunca "prohibido".
+  - Límites duplicados entre domain/ y contracts/ se atan con un test guardián.
+  - Cambios de esquema: una migración Prisma nueva, nunca editar una aplicada.
+
+  Interfaz:
+  - Todo componente de UI sale de shadcn por CLI (pnpm dlx shadcn@latest add).
+    Nada a mano.
+  - Diálogos con transición usan MorphDialogContent y useMorphDialog.
+  - Un solo tema claro; paleta y tipografía en packages/ui/src/tokens.css.
+
+  Flujo de trabajo:
+  - Docker solo para el despliegue; en desarrollo todo nativo.
+  - El cliente levanta los servidores de desarrollo y hace los commits. Nunca
+    correr next build con el servidor de desarrollo arriba.
+  - Commits sin atribución a IA, sin secretos, mensaje en archivo (git commit -F).
+  - Antes de cada commit: /code-review (estándares y spec).
+  - Despliegue: respaldo pg_dump, git pull --ff-only, compose con --profile apps.
+
+rules:
+  proposal:
+    - Decir qué queda fuera de alcance.
+    - Si toca packages/contracts o prisma/schema.prisma, decirlo en Impact.
+  specs:
+    - Describir comportamiento observable, no clases ni archivos.
+    - Cada requisito con al menos un escenario WHEN/THEN.
+  tasks:
+    - Incluir la prueba de cada requisito nuevo o modificado.
+    - Cerrar con typecheck, lint y test del paquete tocado, y /code-review.
