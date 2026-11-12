@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'motion/react';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { AssistantWidget } from '@/components/assistant-widget';
 import { Toaster } from '@/components/ui/sonner';
@@ -50,12 +51,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Las pantallas de fuera de la aplicación: la portada y las de entrar. */
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/entrar',
+  '/recuperar-contrasena',
+  '/restablecer-contrasena',
+  '/verificar-correo',
+]);
+
 /**
- * El asistente, solo con sesión. Al cerrarla se desmonta y la conversación se
- * va con él: lo que preguntó una cuenta no lo ve la siguiente.
+ * El asistente, solo con sesión y dentro de la aplicación. Al cerrar sesión se
+ * desmonta y la conversación se va con él: lo que preguntó una cuenta no lo ve
+ * la siguiente.
+ *
+ * La sesión sola no alcanza: con la cookie de una visita anterior la sesión se
+ * restaura también en la portada y en "Entrar", donde el botón no tiene sentido.
  */
 function SignedInAssistant() {
   const { user } = useSession();
+  const pathname = usePathname();
 
-  return user ? <AssistantWidget /> : null;
+  return user && !PUBLIC_PATHS.has(pathname) ? <AssistantWidget /> : null;
 }
