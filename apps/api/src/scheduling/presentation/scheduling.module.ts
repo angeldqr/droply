@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
+import { SCHEDULES_SOURCE } from '../../shared/assistant-source';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { OCCURRENCE_SINK, type OccurrenceSink } from '../../shared/occurrence-sink';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
@@ -31,8 +32,14 @@ import {
 import { PrismaScheduleRepository } from '../infrastructure/prisma-schedule.repository';
 import { WindowOccurrencePlanner } from '../infrastructure/window-occurrence-planner';
 import { ScheduleTicker } from '../infrastructure/schedule-ticker';
+import { schedulesSource } from './assistant-source';
 import { SchedulesController } from './schedules.controller';
 
+/**
+ * Es `@Global` solo para exportar su lectura al asistente, que no puede
+ * importar el módulo de otro contexto.
+ */
+@Global()
 @Module({
   controllers: [SchedulesController],
   providers: [
@@ -167,6 +174,12 @@ import { SchedulesController } from './schedules.controller';
       inject: [RunDueSchedules],
       useFactory: (runDue: RunDueSchedules) => new ScheduleTicker(runDue),
     },
+    {
+      provide: SCHEDULES_SOURCE,
+      inject: [ListSchedules],
+      useFactory: schedulesSource,
+    },
   ],
+  exports: [SCHEDULES_SOURCE],
 })
 export class SchedulingModule {}

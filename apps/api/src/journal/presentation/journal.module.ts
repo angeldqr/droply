@@ -3,6 +3,7 @@ import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
+import { JOURNAL_SOURCE } from '../../shared/assistant-source';
 import { JOURNAL_INBOX } from '../../shared/journal-inbox';
 import {
   IssueChatLink,
@@ -46,6 +47,7 @@ import {
 } from '../infrastructure/prisma-journal.repository';
 import { S3JournalPhotos } from '../infrastructure/s3-journal-photos';
 import { TelegramChatVoice } from '../infrastructure/telegram-chat-voice';
+import { journalSource } from './assistant-source';
 import { JournalController } from './journal.controller';
 
 /**
@@ -193,7 +195,12 @@ import { JournalController } from './journal.controller';
         clock: Clock,
       ) => new JournalConversation(chats, habits, entries, photos, voice, linkChat, ids, clock),
     },
+    {
+      provide: JOURNAL_SOURCE,
+      inject: [ReadJournal, HABIT_REPOSITORY],
+      useFactory: journalSource,
+    },
   ],
-  exports: [JOURNAL_INBOX],
+  exports: [JOURNAL_INBOX, JOURNAL_SOURCE],
 })
 export class JournalModule {}

@@ -3,6 +3,7 @@ import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
+import { LIBRARIES_SOURCE } from '../../shared/assistant-source';
 import { OWNER_STORAGE, type OwnerStorage } from '../../shared/owner-storage';
 import {
   AddTextItem,
@@ -51,6 +52,7 @@ import {
 import { PrismaLibraryRepository } from '../infrastructure/prisma-library.repository';
 import { S3MediaStorage } from '../infrastructure/s3-media-storage';
 import { UploadSweeper } from '../infrastructure/upload-sweeper';
+import { librariesSource } from './assistant-source';
 import { LibrariesController } from './libraries.controller';
 
 /*
@@ -252,8 +254,13 @@ import { LibrariesController } from './libraries.controller';
         clock: Clock,
       ) => new CopyFromVault(libraries, items, storage, ids, clock),
     },
+    {
+      provide: LIBRARIES_SOURCE,
+      inject: [LIBRARY_REPOSITORY, LIBRARY_ITEM_REPOSITORY],
+      useFactory: librariesSource,
+    },
   ],
   // Solo esto sale del contexto: el resto de sus proveedores son asunto suyo.
-  exports: [OWNER_STORAGE],
+  exports: [OWNER_STORAGE, LIBRARIES_SOURCE],
 })
 export class LibrariesModule {}

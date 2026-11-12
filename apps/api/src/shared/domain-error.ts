@@ -10,7 +10,11 @@ export type DomainErrorKind =
   | 'unauthenticated'
   /** La identidad es válida, pero el recurso es de otra cuenta. */
   | 'forbidden'
-  | 'precondition_failed';
+  | 'precondition_failed'
+  /** Se acabó la cuota por un rato: vuelve a intentarlo más tarde. */
+  | 'rate_limited'
+  /** Falta algo que no depende del usuario, como la clave de un proveedor. */
+  | 'unavailable';
 
 export class DomainError extends Error {
   readonly kind: DomainErrorKind;
@@ -65,5 +69,17 @@ export class ForbiddenError extends DomainError {
 export class PreconditionFailedError extends DomainError {
   constructor(code: string, message: string, details?: Record<string, unknown>) {
     super('precondition_failed', code, message, details);
+  }
+}
+
+export class RateLimitedError extends DomainError {
+  constructor(code: string, message: string) {
+    super('rate_limited', code, message);
+  }
+}
+
+export class UnavailableError extends DomainError {
+  constructor(code: string, message: string) {
+    super('unavailable', code, message);
   }
 }

@@ -3,10 +3,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'motion/react';
 import { useState } from 'react';
+import { AssistantWidget } from '@/components/assistant-widget';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ApiError } from '@/lib/api';
-import { SessionProvider } from '@/lib/session';
+import { SessionProvider, useSession } from '@/lib/session';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // El cliente se crea una sola vez por montaje: fuera del componente sería
@@ -39,10 +40,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <MotionConfig reducedMotion="user">
           <TooltipProvider delayDuration={300}>
             {children}
-            <Toaster position="bottom-right" />
+            <SignedInAssistant />
+            {/* Al centro y no a la derecha: abajo a la derecha está el botón del asistente. */}
+            <Toaster position="bottom-center" />
           </TooltipProvider>
         </MotionConfig>
       </SessionProvider>
     </QueryClientProvider>
   );
+}
+
+/**
+ * El asistente, solo con sesión. Al cerrarla se desmonta y la conversación se
+ * va con él: lo que preguntó una cuenta no lo ve la siguiente.
+ */
+function SignedInAssistant() {
+  const { user } = useSession();
+
+  return user ? <AssistantWidget /> : null;
 }

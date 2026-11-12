@@ -48,6 +48,8 @@ context: |
   - Commits sin atribución a IA, sin secretos, mensaje en archivo (git commit -F).
   - Antes de cada commit: /code-review (estándares y spec).
   - Despliegue: respaldo pg_dump, git pull --ff-only, compose con --profile apps.
+  - El asistente aprende la aplicación de apps/api/src/assistant/infrastructure/guia.ts:
+    todo cambio que altere cómo funciona algo para el usuario actualiza también esa guía.
 
 rules:
   proposal:

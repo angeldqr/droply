@@ -14,6 +14,7 @@ archivarse, actualizan la spec.
 | delivery | pendiente | Selección, envío, reintentos, historial | scheduling, libraries, recipients |
 | recipients | pendiente | Destinatarios, vinculación por Telegram, botones recibidos | — |
 | admin | pendiente | Panel de administración | identity |
+| assistant | en curso (changes/agregar-asistente) | Chat con IA: qué responde, qué lee y sus límites | habits, journal, libraries, recipients, scheduling, delivery |
 
 Orden recomendado para las Reverse-Specs que faltan: journal → libraries → identity → recipients →
 scheduling → delivery → admin.

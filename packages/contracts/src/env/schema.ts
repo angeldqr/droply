@@ -105,6 +105,12 @@ export const apiEnvSchema = z
      */
     ADMIN_EMAIL: optional(z.email()),
     ADMIN_INITIAL_PASSWORD: optional(z.string().min(PASSWORD_MIN_LENGTH)),
+
+    /**
+     * La clave del asistente del chat, de console.groq.com. Es opcional: sin
+     * ella el resto funciona igual y el asistente responde "no disponible".
+     */
+    GROQ_API_KEY: optional(z.string().min(1)),
   })
   .superRefine((env, ctx) => {
     /*

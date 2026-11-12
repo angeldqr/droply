@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
+import { RECIPIENTS_SOURCE } from '../../shared/assistant-source';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { HABIT_VOTE_SINK, type HabitVoteSink } from '../../shared/habit-vote-sink';
 import { JOURNAL_INBOX, type JournalInbox } from '../../shared/journal-inbox';
@@ -32,12 +33,18 @@ import { Sha256LinkCodeFactory } from '../infrastructure/sha256-link-code-factor
 import { TelegramApi } from '../infrastructure/telegram-api';
 import { TelegramChannelGateway } from '../infrastructure/telegram-channel-gateway';
 import { TelegramConnection } from '../infrastructure/telegram-connection';
+import { recipientsSource } from './assistant-source';
 import { RecipientsController } from './recipients.controller';
 import { TelegramController } from './telegram.controller';
 
 /** El cliente HTTP del bot, compartido entre el envío y la conexión entrante. */
 const TELEGRAM_API = Symbol('TelegramApi');
 
+/**
+ * Es `@Global` solo para exportar su lectura al asistente, que no puede
+ * importar el módulo de otro contexto.
+ */
+@Global()
 @Module({
   controllers: [RecipientsController, TelegramController],
   providers: [
@@ -138,6 +145,12 @@ const TELEGRAM_API = Symbol('TelegramApi');
           botUsername: env.TELEGRAM_BOT_USERNAME,
         }),
     },
+    {
+      provide: RECIPIENTS_SOURCE,
+      inject: [ListRecipients],
+      useFactory: recipientsSource,
+    },
   ],
+  exports: [RECIPIENTS_SOURCE],
 })
 export class RecipientsModule {}

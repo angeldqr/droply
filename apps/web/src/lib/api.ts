@@ -53,6 +53,34 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
 
+/** La dirección completa de una ruta del API, para quien no pase por `api()`. */
+export function apiUrl(path: string): string {
+  return `${API_URL}/api${path}`;
+}
+
+/**
+ * Un `fetch` con la sesión puesta, para las respuestas que se leen en streaming
+ * y no como JSON (el asistente). Renueva el token ante un 401 igual que `api()`,
+ * y un error del servidor sale como `ApiError` con su mensaje.
+ */
+export const authorizedFetch: typeof fetch = async (input, init) => {
+  const attempt = () => {
+    const headers = new Headers(init?.headers);
+
+    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+
+    return fetch(input, { ...init, headers, credentials: 'include' });
+  };
+
+  let response = await attempt();
+
+  if (response.status === 401 && (await renewSession())) response = await attempt();
+
+  if (!response.ok) throw await toError(response);
+
+  return response;
+};
+
 function send(path: string, options: RequestOptions): Promise<Response> {
   return fetch(`${API_URL}/api${path}`, {
     method: options.method ?? 'GET',

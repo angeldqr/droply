@@ -7,6 +7,7 @@ import { DomainErrorFilter } from './platform/http/domain-error.filter';
 import { loggerConfig } from './platform/logging/logger.config';
 import { PlatformModule } from './platform/platform.module';
 import { AdminModule } from './admin/presentation/admin.module';
+import { AssistantModule } from './assistant/presentation/assistant.module';
 import { DeliveryModule } from './delivery/presentation/delivery.module';
 import { HabitsModule } from './habits/presentation/habits.module';
 import { IdentityModule } from './identity/presentation/identity.module';
@@ -38,6 +39,7 @@ import { SchedulingModule } from './scheduling/presentation/scheduling.module';
     RecipientsModule,
     SchedulingModule,
     AdminModule,
+    AssistantModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

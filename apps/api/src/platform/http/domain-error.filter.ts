@@ -9,6 +9,8 @@ const STATUS_BY_KIND: Record<DomainErrorKind, number> = {
   unauthenticated: HttpStatus.UNAUTHORIZED,
   forbidden: HttpStatus.FORBIDDEN,
   precondition_failed: HttpStatus.PRECONDITION_FAILED,
+  rate_limited: HttpStatus.TOO_MANY_REQUESTS,
+  unavailable: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
 /**

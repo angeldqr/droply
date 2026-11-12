@@ -2,6 +2,7 @@ import { Global, Logger, Module } from '@nestjs/common';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { OCCURRENCE_SINK, type DueOccurrenceEvent } from '../../shared/occurrence-sink';
+import { DELIVERIES_SOURCE } from '../../shared/assistant-source';
 import { CLOCK, type Clock } from '../../shared/clock';
 import { DispatchOccurrence } from '../application/dispatch-occurrence';
 import { RunDueRetries } from '../application/run-due-retries';
@@ -29,6 +30,7 @@ import {
 import { RetryTicker } from '../infrastructure/retry-ticker';
 import { S3MediaSource } from '../infrastructure/s3-media-source';
 import { TelegramMessageSender } from '../infrastructure/telegram-message-sender';
+import { deliveriesSource } from './assistant-source';
 import { DeliveriesController } from './deliveries.controller';
 import { NoticesController } from './notices.controller';
 
@@ -140,7 +142,12 @@ import { NoticesController } from './notices.controller';
         };
       },
     },
+    {
+      provide: DELIVERIES_SOURCE,
+      inject: [DELIVERY_LOG],
+      useFactory: deliveriesSource,
+    },
   ],
-  exports: [OCCURRENCE_SINK],
+  exports: [OCCURRENCE_SINK, DELIVERIES_SOURCE],
 })
 export class DeliveryModule {}

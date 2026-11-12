@@ -203,7 +203,7 @@ export const COLUMN_LABELS: Readonly<Record<ItemKind, string>> = {
   TEXT: 'Textos',
 };
 
-const COLUMN_LABELS_SINGULAR: Readonly<Record<ItemKind, string>> = {
+export const COLUMN_LABELS_SINGULAR: Readonly<Record<ItemKind, string>> = {
   AUDIO: 'audio',
   VIDEO: 'video',
   IMAGE: 'imagen',

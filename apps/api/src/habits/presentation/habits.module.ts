@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ENV, type ApiEnv } from '../../platform/config/env.module';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CLOCK, type Clock } from '../../shared/clock';
+import { HABIT_PLANS_SOURCE } from '../../shared/assistant-source';
 import { HABIT_VOTE_SINK } from '../../shared/habit-vote-sink';
 import { ID_GENERATOR, type IdGenerator } from '../../shared/identifiers';
 import { CastHabitVote } from '../application/cast-habit-vote';
@@ -46,6 +47,7 @@ import {
 } from '../infrastructure/prisma-directories';
 import { PrismaHabitPlanRepository } from '../infrastructure/prisma-habit.repository';
 import { TelegramPlanNotifier } from '../infrastructure/telegram-plan-notifier';
+import { habitPlansSource } from './assistant-source';
 import { HabitPlansController } from './habit-plans.controller';
 
 /**
@@ -238,7 +240,12 @@ import { HabitPlansController } from './habit-plans.controller';
         clock: Clock,
       ) => new CastHabitVote(plans, responses, calendar, clock),
     },
+    {
+      provide: HABIT_PLANS_SOURCE,
+      inject: [ReadHabitPlans],
+      useFactory: habitPlansSource,
+    },
   ],
-  exports: [HABIT_VOTE_SINK],
+  exports: [HABIT_VOTE_SINK, HABIT_PLANS_SOURCE],
 })
 export class HabitsModule {}
