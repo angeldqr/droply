@@ -9,7 +9,7 @@
 ## 2. Cierre
 
 - [x] 2.1 Typecheck, lint y test de `api`, y `openspec validate --all --strict`.
-- [ ] 2.2 `/code-review`.
+- [x] 2.2 `/code-review`.
 
 ## Workflow follow-up
 

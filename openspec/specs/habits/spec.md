@@ -122,15 +122,11 @@ registro de lo logrado.
 - **THEN** el sistema responde `habit_plan.not_cancelled`
 
 ### Requirement: Responder con los botones
-Cada envío de una biblioteca del plan SHALL llegar con tres botones: realizado (`DONE`), a medias
-(`HALF`) y no cumplido (`MISSED`). El sistema SHALL anotar una respuesta solo si se cumplen las tres
-condiciones:
-- el envío es de un plan `ACTIVE`;
-- el toque viene del chat de ese destinatario;
-- el día **del envío**, en la zona del plan, todavía no está cerrado.
-
-Una respuesta no se puede cambiar: el segundo toque no tiene efecto. Un toque desde un chat ajeno
-se ignora sin decir por qué.
+Cada envío del plan SHALL llegar con tres botones: `DONE`, `HALF` y `MISSED`. El sistema SHALL
+anotar una respuesta solo si el envío es de un plan `ACTIVE`, el toque viene del chat de ese
+destinatario y el día **del envío**, en la zona del plan, no está cerrado. Una respuesta no se puede
+cambiar. Un toque desde un chat ajeno se ignora sin decir por qué; al destinatario, el bot SHALL
+decirle por qué no cuenta.
 
 #### Scenario: Respuesta al día siguiente
 - **WHEN** un envío de las 23:00 se contesta a las 7:00 del día siguiente y su día aún no cerró
@@ -139,6 +135,14 @@ se ignora sin decir por qué.
 #### Scenario: Día ya cerrado
 - **WHEN** se toca un botón de un día ya cerrado
 - **THEN** la respuesta no se anota y el bot avisa que ese día ya cerró
+
+#### Scenario: Botón de un plan que ya no está en marcha
+- **WHEN** el destinatario toca, desde su chat, un botón de un plan terminado o anulado
+- **THEN** la respuesta no se anota y el bot avisa que ese mensaje es de un plan que ya no está en marcha
+
+#### Scenario: Botón de un plan cerrado desde un chat ajeno
+- **WHEN** alguien toca, desde un chat que no es el del destinatario, un botón de un plan terminado o anulado
+- **THEN** la respuesta no se anota y el bot da el aviso genérico, sin decir por qué
 
 ### Requirement: Porcentaje de un día
 Por cada hábito y día, el sistema SHALL calcular `earned / sent × 100` con un decimal, donde:
