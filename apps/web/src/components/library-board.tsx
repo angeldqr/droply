@@ -303,7 +303,8 @@ function StackedItem({
   };
 
   return (
-    <Item variant="outline" size="sm" className="bg-card items-start">
+    // El menú va en la esquina, encima, para que la miniatura use todo el ancho de la tarjeta.
+    <Item variant="outline" size="sm" className="bg-card relative items-start">
       {/*
         `min-w-0` porque esto es un hijo de flex, y sin eso no puede encogerse
         por debajo de su contenido: un nombre de archivo largo ensancha la
@@ -313,13 +314,13 @@ function StackedItem({
         {item.media ? (
           <MediaContent kind={item.kind} media={item.media} />
         ) : (
-          <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap break-words">
+          <ItemDescription className="text-foreground line-clamp-4 whitespace-pre-wrap break-words pr-7">
             {item.text}
           </ItemDescription>
         )}
       </ItemContent>
 
-      <ItemActions>
+      <ItemActions className="absolute right-1.5 top-1.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="size-7" aria-label="Opciones">
@@ -545,7 +546,7 @@ function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
 
 function FileName({ media }: { media: MediaView }) {
   return (
-    <ItemTitle className="w-full truncate" title={media.fileName}>
+    <ItemTitle className="w-full truncate pr-7" title={media.fileName}>
       {media.fileName}
     </ItemTitle>
   );

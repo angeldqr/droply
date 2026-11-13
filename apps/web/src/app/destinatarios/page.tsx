@@ -61,9 +61,7 @@ import {
 export default function RecipientsPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Destinatarios' }]}>
-        <Contents />
-      </AppShell>
+      <Contents />
     </RequireSession>
   );
 }
@@ -89,80 +87,81 @@ function Contents() {
   const [issued, setIssued] = useState<RecipientView | null>(null);
 
   return (
-    <div className="w-full pb-6 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-muted-foreground max-w-2xl">
-            A quién le llegan los envíos. Cada persona tiene que abrir su enlace y apretar Empezar
-            en Telegram: hasta entonces el bot no tiene permiso para escribirle.
-          </p>
+    <AppShell
+      crumbs={[{ label: 'Destinatarios' }]}
+      actions={
+        verified ? (
+          <NewRecipientDialog id="nuevo-destinatario-cabecera" onIssued={setIssued} />
+        ) : null
+      }
+    >
+      <div className="w-full pb-6 pt-2">
+        <p className="text-muted-foreground max-w-2xl">
+          A quién le llegan los envíos. Cada persona tiene que abrir su enlace y apretar Empezar en
+          Telegram: hasta entonces el bot no tiene permiso para escribirle.
+        </p>
+
+        {data && data.length > 0 ? (
+          <StatRow
+            className="mt-6"
+            stats={[
+              { label: 'Destinatarios', value: data.length },
+              {
+                label: 'Conectados',
+                value: data.filter((recipient) => recipient.status === 'VERIFIED').length,
+                accent: true,
+              },
+              {
+                label: 'Sin abrir su enlace',
+                value: data.filter((recipient) => recipient.status === 'PENDING').length,
+              },
+            ]}
+          />
+        ) : null}
+
+        {verified ? null : <VerifyFirst />}
+
+        <div className="mt-6">
+          {isPending ? (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((index) => (
+                <Skeleton key={index} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : error ? (
+            <Alert variant="destructive">
+              <AlertTitle>No pudimos traer tus destinatarios</AlertTitle>
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+          ) : data.length === 0 ? (
+            <Empty className="py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Send />
+                </EmptyMedia>
+                <EmptyTitle>Todavía no hay nadie</EmptyTitle>
+                <EmptyDescription>
+                  Agrega a la primera persona y mándale el enlace que te vamos a dar.
+                </EmptyDescription>
+              </EmptyHeader>
+              {verified ? (
+                <NewRecipientDialog id="nuevo-destinatario-vacio" onIssued={setIssued} />
+              ) : null}
+            </Empty>
+          ) : (
+            <MotionList as="ul" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {data.map((recipient, index) => (
+                <MotionItem as="li" key={recipient.id} index={index}>
+                  <RecipientRow recipient={recipient} onIssued={setIssued} />
+                </MotionItem>
+              ))}
+            </MotionList>
+          )}
         </div>
 
-        {verified ? (
-          <NewRecipientDialog id="nuevo-destinatario-cabecera" onIssued={setIssued} />
-        ) : null}
+        <RecipientLinkDialog recipient={issued} onOpenChange={() => setIssued(null)} />
       </div>
-
-      {data && data.length > 0 ? (
-        <StatRow
-          className="mt-6"
-          stats={[
-            { label: 'Destinatarios', value: data.length },
-            {
-              label: 'Conectados',
-              value: data.filter((recipient) => recipient.status === 'VERIFIED').length,
-              accent: true,
-            },
-            {
-              label: 'Sin abrir su enlace',
-              value: data.filter((recipient) => recipient.status === 'PENDING').length,
-            },
-          ]}
-        />
-      ) : null}
-
-      {verified ? null : <VerifyFirst />}
-
-      <div className="mt-6">
-        {isPending ? (
-          <div className="flex flex-col gap-2">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertTitle>No pudimos traer tus destinatarios</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
-          </Alert>
-        ) : data.length === 0 ? (
-          <Empty className="py-16">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Send />
-              </EmptyMedia>
-              <EmptyTitle>Todavía no hay nadie</EmptyTitle>
-              <EmptyDescription>
-                Agrega a la primera persona y mándale el enlace que te vamos a dar.
-              </EmptyDescription>
-            </EmptyHeader>
-            {verified ? (
-              <NewRecipientDialog id="nuevo-destinatario-vacio" onIssued={setIssued} />
-            ) : null}
-          </Empty>
-        ) : (
-          <MotionList as="ul" className="flex max-w-3xl flex-col gap-2">
-            {data.map((recipient, index) => (
-              <MotionItem as="li" key={recipient.id} index={index}>
-                <RecipientRow recipient={recipient} onIssued={setIssued} />
-              </MotionItem>
-            ))}
-          </MotionList>
-        )}
-      </div>
-
-      <RecipientLinkDialog recipient={issued} onOpenChange={() => setIssued(null)} />
-    </div>
+    </AppShell>
   );
 }
 
@@ -275,7 +274,7 @@ function RecipientRow({
 
   return (
     <>
-      <Item variant="outline" size="sm" className="bg-card">
+      <Item variant="outline" size="sm" className="bg-card h-full rounded-3xl">
         <ItemContent className="min-w-0">
           <ItemTitle className="truncate">{recipient.label}</ItemTitle>
           <ItemDescription>{describe(recipient)}</ItemDescription>

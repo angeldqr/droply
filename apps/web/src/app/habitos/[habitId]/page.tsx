@@ -21,11 +21,13 @@ import { HabitYear } from '@/components/habit-year';
 import {
   cuenta,
   dayKey,
+  dayInWords,
   daysAgo,
   goalLabel,
   HabitMark,
   SHOW_ALL_DAYS,
 } from '@/components/habit-mark';
+import { Panel, PanelBar, PanelFigure, PanelHeader } from '@/components/panel';
 import { RequireSession } from '@/components/require-session';
 import { ShowMore } from '@/components/show-more';
 import {
@@ -50,7 +52,6 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
 import { useDeleteEntry, useHabitEntries, useHabits, useResumeHabit } from '@/lib/journal';
@@ -121,159 +122,226 @@ function Contents({ habitId }: { habitId: string }) {
 
   return (
     <AppShell crumbs={[{ label: 'Mi bitácora', href: '/habitos' }, { label: name }]}>
-      <div className="flex w-full max-w-4xl flex-col gap-8 pb-6 pt-2">
-        <div className="flex flex-col gap-6">
-          <header className="flex items-center gap-4">
-            {habit ? (
-              <HabitMark id={habit.id} name={habit.name} className="size-14 text-2xl" />
-            ) : (
-              <Skeleton className="size-14 rounded-xl" />
+      {/*
+        Paneles a todo el ancho, como en Inicio: arriba cómo va hoy; debajo el
+        calendario, que se queda fijo, junto al diario, que es lo que se lee
+        bajando; y al final el historial largo, cuando ya hay historia.
+      */}
+      <div className="flex flex-col gap-2 pb-6 pt-2">
+        {habits.error ? (
+          <Alert variant="destructive">
+            <AlertTitle>No pudimos traer este hábito</AlertTitle>
+            <AlertDescription>{habits.error.message}</AlertDescription>
+          </Alert>
+        ) : habits.data && !habit ? (
+          <Alert>
+            <AlertTitle>Este hábito ya no existe</AlertTitle>
+            <AlertDescription>
+              Puede que lo hayas borrado. Vuelve a Mi bitácora para ver los que tienes.
+            </AlertDescription>
+          </Alert>
+        ) : habit && goal && progress ? (
+          <HabitHero
+            habit={habit}
+            progress={progress}
+            paused={openPause?.from ?? null}
+            counted={counted}
+            photoCount={photoCount}
+          />
+        ) : (
+          <Skeleton className="rounded-4xl h-44 w-full" />
+        )}
+
+        <div className="grid items-start gap-2 lg:grid-cols-3">
+          <div className="lg:sticky lg:top-24">
+            {/*
+              Solo con las anotaciones ya leídas: antes, o si fallan, el
+              calendario diría que no se cumplió ningún día, y no es cierto.
+            */}
+            {habit && goal && entries.data ? (
+              <HabitCalendar
+                days={perDay}
+                firstDay={new Date(oldest?.openedAt ?? habit.createdAt)}
+                goal={goal}
+                pauses={habit.pauses}
+              />
+            ) : entries.error ? null : (
+              <Skeleton className="rounded-4xl h-96 w-full" />
             )}
+          </div>
 
-            <div className="min-w-0">
-              <p className="text-muted-foreground text-sm">
-                {habit
-                  ? goalLabel(habit.dailyTarget, habit.activeDays)
-                  : 'Tu diario de este hábito'}
-              </p>
-              {counted > 0 ? (
-                <p className="text-muted-foreground text-xs">
-                  {`${cuenta(counted, 'anotación', 'anotaciones')} · ${cuenta(photoCount, 'foto', 'fotos')}`}
-                </p>
-              ) : null}
-            </div>
-          </header>
+          <Panel className="lg:col-span-2" aria-label="Tu diario">
+            <PanelHeader
+              title="Tu diario"
+              description="Lo que le contaste al bot, de lo más nuevo a lo más viejo."
+            />
 
-          {oldest && goal && habit ? (
-            showYear ? (
-              <Tabs defaultValue="mes" className="gap-3">
-                <TabsList className="self-start">
-                  <TabsTrigger value="mes">Este mes</TabsTrigger>
-                  <TabsTrigger value="ano">Todo</TabsTrigger>
-                </TabsList>
-
-                {/* El mes no necesita todo el ancho; el historial sí. */}
-                <TabsContent value="mes" className="max-w-sm">
-                  <HabitCalendar
-                    days={perDay}
-                    firstDay={new Date(oldest.openedAt)}
-                    goal={goal}
-                    pauses={habit.pauses}
-                  />
-                </TabsContent>
-
-                <TabsContent value="ano">
-                  <div className="bg-card border-border flex flex-col gap-5 rounded-2xl border p-4">
-                    <HabitYear
-                      days={perDay}
-                      goal={goal}
-                      pauses={habit.pauses}
-                      since={dayKey(new Date(habit.createdAt))}
-                    />
-                    <HabitTrend
-                      days={perDay}
-                      goal={goal}
-                      pauses={habit.pauses}
-                      since={dayKey(new Date(habit.createdAt))}
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
+            {entries.isPending ? (
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((index) => (
+                  <Skeleton key={index} className="h-32 w-full rounded-3xl" />
+                ))}
+              </div>
+            ) : entries.error ? (
+              <Alert variant="destructive">
+                <AlertTitle>No pudimos abrir esta bitácora</AlertTitle>
+                <AlertDescription>{entries.error.message}</AlertDescription>
+              </Alert>
+            ) : entries.data.length === 0 ? (
+              <Empty className="py-12">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <NotebookPen />
+                  </EmptyMedia>
+                  <EmptyTitle>Nada anotado todavía</EmptyTitle>
+                  <EmptyDescription>
+                    Escribe <code className="font-mono">{JOURNAL_COMMAND}</code> en el chat del bot,
+                    elige «{name}» y cuéntale qué hiciste. Puedes mandarle texto y fotos.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
-              <div className="max-w-sm">
-                <HabitCalendar
-                  days={perDay}
-                  firstDay={new Date(oldest.openedAt)}
-                  goal={goal}
-                  pauses={habit.pauses}
+              <div className="flex flex-col gap-8">
+                {days.shown.map((day) => (
+                  <section
+                    key={day.key}
+                    id={`dia-${day.key}`}
+                    aria-label={day.label}
+                    className="flex scroll-mt-28 flex-col gap-3"
+                  >
+                    {/* El día queda pegado arriba mientras se leen sus anotaciones. */}
+                    <h2 className="bg-card/90 sticky top-20 z-10 -mx-2 flex items-center gap-3 px-2 py-1 backdrop-blur">
+                      <span className="text-sm font-medium first-letter:uppercase">
+                        {day.label}
+                      </span>
+                      <span className="bg-border h-px flex-1" aria-hidden />
+                    </h2>
+
+                    <ol className="border-border ml-1.5 flex flex-col gap-4 border-l-2 pl-5">
+                      {day.entries.map((entry) => (
+                        <EntryCard
+                          key={entry.id}
+                          entry={entry}
+                          habitId={habitId}
+                          habits={habits.data ?? []}
+                        />
+                      ))}
+                    </ol>
+                  </section>
+                ))}
+                <ShowMore
+                  remaining={days.remaining}
+                  size={DAYS_PART}
+                  onMore={days.more}
+                  className="self-start"
                 />
               </div>
-            )
-          ) : null}
+            )}
+          </Panel>
         </div>
 
-        {habit && openPause ? <PausedNotice habitId={habit.id} since={openPause.from} /> : null}
-
-        {progress && habit ? (
-          <ProgressStrip
-            progress={progress}
-            target={habit.dailyTarget}
-            paused={openPause !== undefined}
-          />
+        {/* El largo plazo, cuando ya lo hay: con menos de tres semanas sería un panel en blanco. */}
+        {showYear && habit && goal ? (
+          <Panel>
+            <PanelHeader title="Todo tu historial" />
+            <div className="grid items-start gap-10 xl:grid-cols-[auto_minmax(0,1fr)] xl:gap-14">
+              <HabitYear
+                days={perDay}
+                goal={goal}
+                pauses={habit.pauses}
+                since={dayKey(new Date(habit.createdAt))}
+              />
+              <HabitTrend
+                days={perDay}
+                goal={goal}
+                pauses={habit.pauses}
+                since={dayKey(new Date(habit.createdAt))}
+              />
+            </div>
+          </Panel>
         ) : null}
-
-        {entries.isPending ? (
-          <div className="flex flex-col gap-3">
-            {[0, 1].map((index) => (
-              <Skeleton key={index} className="h-32 w-full" />
-            ))}
-          </div>
-        ) : entries.error ? (
-          <Alert variant="destructive">
-            <AlertTitle>No pudimos abrir esta bitácora</AlertTitle>
-            <AlertDescription>{entries.error.message}</AlertDescription>
-          </Alert>
-        ) : entries.data.length === 0 ? (
-          <Empty className="py-16">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <NotebookPen />
-              </EmptyMedia>
-              <EmptyTitle>Nada anotado todavía</EmptyTitle>
-              <EmptyDescription>
-                Escribe <code className="font-mono">{JOURNAL_COMMAND}</code> en el chat del bot,
-                elige «{name}» y cuéntale qué hiciste. Puedes mandarle texto y fotos.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {days.shown.map((day) => (
-              <section
-                key={day.key}
-                id={`dia-${day.key}`}
-                aria-label={day.label}
-                className="flex scroll-mt-28 flex-col gap-3"
-              >
-                <h2 className="bg-background/90 sticky top-14 z-10 -mx-1 flex items-center gap-3 px-1 py-1 backdrop-blur">
-                  <span className="font-display text-sm font-bold first-letter:uppercase">
-                    {day.label}
-                  </span>
-                  <span className="bg-border h-px flex-1" aria-hidden />
-                </h2>
-
-                <ol className="border-border ml-2 flex flex-col gap-4 border-l-2 pl-5">
-                  {day.entries.map((entry) => (
-                    <EntryCard
-                      key={entry.id}
-                      entry={entry}
-                      habitId={habitId}
-                      habits={habits.data ?? []}
-                    />
-                  ))}
-                </ol>
-              </section>
-            ))}
-            <ShowMore
-              remaining={days.remaining}
-              size={DAYS_PART}
-              onMore={days.more}
-              className="self-start"
-            />
-          </div>
-        )}
       </div>
     </AppShell>
   );
 }
 
-/** El hábito está en pausa: se dice arriba y se puede reanudar ahí mismo. */
+/**
+ * El panel negro de arriba: cómo va hoy, la racha y el último mes.
+ *
+ * Son las tres cifras que responden «¿lo estoy haciendo bien?». La de hoy va
+ * grande y con su barra, porque es la única que todavía se puede cambiar. Si el
+ * hábito está en pausa se dice acá mismo, con el botón para reanudarlo.
+ */
+function HabitHero({
+  habit,
+  progress,
+  paused,
+  counted,
+  photoCount,
+}: {
+  habit: HabitView;
+  progress: HabitProgress;
+  /** Desde qué día está en pausa, o `null` si no lo está. */
+  paused: string | null;
+  counted: number;
+  photoCount: number;
+}) {
+  const target = habit.dailyTarget;
+  const today = progress.todayDone
+    ? { value: '¡Cumplido!', hint: `${progress.todayCount} de ${target} veces hoy` }
+    : progress.todayApplies
+      ? { value: `${progress.todayCount} de ${target}`, hint: 'veces anotadas hoy' }
+      : { value: paused ? 'En pausa' : 'Día libre', hint: 'hoy no cuenta' };
+
+  return (
+    <Panel filled className="gap-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <HabitMark id={habit.id} name={habit.name} className="size-12 text-xl" />
+        <div className="min-w-0 flex-1">
+          <p className="text-primary-foreground/80">
+            {goalLabel(habit.dailyTarget, habit.activeDays)}
+          </p>
+          <p className="text-primary-foreground/50 text-sm">
+            {counted > 0
+              ? `${cuenta(counted, 'anotación', 'anotaciones')} · ${cuenta(photoCount, 'foto', 'fotos')}`
+              : 'Todavía sin anotaciones'}
+          </p>
+        </div>
+        {paused ? <PausedNotice habitId={habit.id} since={paused} /> : null}
+      </div>
+
+      <dl className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <PanelFigure label="Hoy" value={today.value} hint={today.hint} big>
+          {progress.todayApplies ? (
+            <PanelBar
+              value={(progress.todayCount / target) * 100}
+              label={`${progress.todayCount} de ${target} veces hoy`}
+            />
+          ) : null}
+        </PanelFigure>
+        <PanelFigure
+          label="Racha"
+          value={cuenta(progress.streak, 'día', 'días')}
+          hint={
+            progress.bestStreak > 0
+              ? `La mejor: ${cuenta(progress.bestStreak, 'día', 'días')}`
+              : 'Cumple hoy para empezarla'
+          }
+        />
+        <PanelFigure
+          label={`Últimos ${RATE_WINDOW_DAYS} días`}
+          value={progress.rate === null ? '—' : `${Math.round(progress.rate * 100)}%`}
+          hint={progress.rate === null ? 'Todavía no hay días para medir' : 'de la meta cumplida'}
+        />
+      </dl>
+    </Panel>
+  );
+}
+
+/** El hábito está en pausa: se dice en el panel negro y se puede reanudar ahí mismo. */
 function PausedNotice({ habitId, since }: { habitId: string; since: string }) {
   const resume = useResumeHabit(habitId);
-  const date = new Date(`${since}T12:00:00`).toLocaleDateString('es', {
-    day: 'numeric',
-    month: 'long',
-  });
+  const date = dayInWords(since);
 
   async function onResume(): Promise<void> {
     try {
@@ -285,93 +353,21 @@ function PausedNotice({ habitId, since }: { habitId: string; since: string }) {
   }
 
   return (
-    <Alert className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <AlertTitle>En pausa desde el {date}</AlertTitle>
-        <AlertDescription>
-          Estos días no cuentan como fallo ni cortan tu racha, y el bot no lo ofrece.
-        </AlertDescription>
-      </div>
-      <Button size="sm" onClick={() => void onResume()} disabled={resume.isPending}>
+    <div className="bg-primary-foreground/10 flex flex-wrap items-center gap-3 rounded-3xl py-2 pl-4 pr-2">
+      <p className="text-sm">
+        <span className="font-medium">En pausa desde el {date}.</span>{' '}
+        <span className="text-primary-foreground/60">No cuenta como fallo ni corta tu racha.</span>
+      </p>
+      <Button
+        size="sm"
+        className="bg-menta hover:bg-menta/85 text-sobre-menta"
+        onClick={() => void onResume()}
+        disabled={resume.isPending}
+      >
         {resume.isPending ? <Spinner /> : <Play />}
         Reanudar
       </Button>
-    </Alert>
-  );
-}
-
-/**
- * Las tres cifras que responden «¿lo estoy haciendo bien?»: cómo va hoy, cuántos
- * días seguidos van y qué tan parejo fue el último mes.
- */
-function ProgressStrip({
-  progress,
-  target,
-  paused,
-}: {
-  progress: HabitProgress;
-  target: number;
-  paused: boolean;
-}) {
-  const tiles = [
-    {
-      label: 'Hoy',
-      value: progress.todayDone
-        ? '¡Cumplido!'
-        : progress.todayApplies
-          ? `${progress.todayCount} de ${target}`
-          : paused
-            ? 'En pausa'
-            : 'Día libre',
-      hint: progress.todayDone
-        ? `${progress.todayCount} de ${target}`
-        : progress.todayApplies
-          ? 'veces anotadas'
-          : 'hoy no cuenta',
-      done: progress.todayDone,
-    },
-    {
-      label: 'Racha',
-      value: cuenta(progress.streak, 'día', 'días'),
-      hint:
-        progress.bestStreak > 0
-          ? `La mejor: ${cuenta(progress.bestStreak, 'día', 'días')}`
-          : 'Cumple hoy para empezarla',
-      done: false,
-    },
-    {
-      label: `Últimos ${RATE_WINDOW_DAYS} días`,
-      value: progress.rate === null ? '—' : `${Math.round(progress.rate * 100)} %`,
-      hint: progress.rate === null ? 'Todavía no hay días para medir' : 'de la meta cumplida',
-      done: false,
-    },
-  ];
-
-  return (
-    <dl className="grid grid-cols-3 gap-2 md:gap-3">
-      {tiles.map((tile) => (
-        <div
-          key={tile.label}
-          className={cn(
-            'bg-card border-border flex flex-col gap-0.5 rounded-2xl border p-3 md:p-4',
-            tile.done && 'border-logro/40 bg-logro/10',
-          )}
-        >
-          <dt className="text-muted-foreground text-[0.7rem] font-semibold uppercase tracking-wide">
-            {tile.label}
-          </dt>
-          <dd
-            className={cn(
-              'font-display text-lg font-bold tabular-nums md:text-2xl',
-              tile.done && 'text-logro',
-            )}
-          >
-            {tile.value}
-          </dd>
-          <dd className="text-muted-foreground text-xs">{tile.hint}</dd>
-        </div>
-      ))}
-    </dl>
+    </div>
   );
 }
 
@@ -404,12 +400,12 @@ function EntryCard({
       <span
         aria-hidden
         className={cn(
-          'ring-background absolute -left-[27px] top-5 size-3 rounded-full ring-4',
+          'ring-card absolute -left-[27px] top-5 size-3 rounded-full ring-4',
           open ? 'bg-logro motion-safe:animate-pulse' : 'bg-menta',
         )}
       />
 
-      <article className="bg-card border-border shadow-xs flex flex-col gap-3 rounded-2xl border p-4 md:p-5">
+      <article className="bg-muted/60 flex flex-col gap-3 rounded-3xl p-4 md:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm">
             <time className="font-semibold tabular-nums" dateTime={entry.openedAt}>
@@ -504,7 +500,7 @@ function PhotoMosaic({ photos }: { photos: readonly EntryPhotoView[] }) {
     <>
       <ul
         className={cn(
-          'grid gap-2',
+          'grid max-w-xl gap-2',
           photos.length === 1 ? 'grid-cols-1' : photos.length === 2 ? 'grid-cols-2' : 'grid-cols-3',
         )}
       >
@@ -524,7 +520,7 @@ function PhotoMosaic({ photos }: { photos: readonly EntryPhotoView[] }) {
               disabled={photo.url === null}
               className={cn(
                 'bg-muted focus-visible:ring-ring relative block w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2',
-                photos.length === 1 ? 'aspect-[4/3] max-h-96' : 'aspect-square',
+                photos.length === 1 ? 'aspect-[4/3] max-h-72' : 'aspect-square',
               )}
               aria-label={`Ver la foto ${index + 1} de ${photos.length}`}
             >

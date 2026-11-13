@@ -39,12 +39,12 @@ export function HabitWeekGrid({ habits }: { habits: readonly HabitView[] }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="overflow-x-auto pb-1">
-        <div className="min-w-fit">
+        <div className="w-full min-w-fit">
           <div className="flex items-end gap-1.5 pl-[9.875rem]" aria-hidden>
             {WEEKDAY_NAMES.map((name) => (
               <span
                 key={name.long}
-                className="text-muted-foreground w-12.5 text-center text-base font-medium uppercase"
+                className="text-muted-foreground min-w-10 flex-1 text-center text-base font-medium uppercase"
               >
                 {name.narrow}
               </span>
@@ -125,7 +125,7 @@ function WeekCell({ cell, label }: { cell: Cell; label: string }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={`w-12.5 grid h-10 shrink-0 place-items-center rounded-md font-mono text-base font-semibold tabular-nums ${tone}`}
+          className={`grid h-10 min-w-10 flex-1 place-items-center rounded-md font-mono text-base font-semibold tabular-nums ${tone}`}
           aria-label={label}
         >
           {cell.kind === 'score' || cell.kind === 'open'

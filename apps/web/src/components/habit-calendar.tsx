@@ -98,7 +98,7 @@ export function HabitCalendar({
   return (
     <section
       aria-label="Calendario de anotaciones"
-      className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4"
+      className="bg-card border-border rounded-4xl flex flex-col gap-4 border p-6"
     >
       <div className="flex items-center justify-between">
         <Button
@@ -112,7 +112,7 @@ export function HabitCalendar({
           <ChevronLeft />
         </Button>
 
-        <h2 className="font-display text-sm font-bold first-letter:uppercase" aria-live="polite">
+        <h2 className="text-lg first-letter:uppercase" aria-live="polite">
           {month.toLocaleDateString('es', { month: 'long', year: 'numeric' })}
         </h2>
 
@@ -150,7 +150,7 @@ export function HabitCalendar({
 
         {cells.map((cell) => {
           const base = cn(
-            'grid aspect-square place-items-center rounded-lg text-xs tabular-nums',
+            'grid h-10 place-items-center rounded-xl text-sm tabular-nums',
             cell.key === todayKey && 'ring-primary ring-offset-card ring-2 ring-offset-1',
           );
           const label = labelOf(cell.date, cell.count, goal, cell.applies, cell.paused);

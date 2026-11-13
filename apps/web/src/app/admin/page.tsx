@@ -38,12 +38,12 @@ import { cn } from '@/lib/utils';
 export default function AdminPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Administración' }]}>
-        <Contents />
-      </AppShell>
+      <Contents />
     </RequireSession>
   );
 }
+
+const CRUMBS = [{ label: 'Administración' }];
 
 function Contents() {
   const { user } = useSession();
@@ -58,76 +58,74 @@ function Contents() {
    */
   if (user && user.role !== 'ADMIN') {
     return (
-      <div className="w-full pb-6 pt-2">
-        <Alert variant="destructive">
-          <AlertTitle>Esta sección no es para tu cuenta</AlertTitle>
-          <AlertDescription>Solo quien administra Reconéctate puede entrar acá.</AlertDescription>
-        </Alert>
-      </div>
+      <AppShell crumbs={CRUMBS}>
+        <div className="w-full pb-6 pt-2">
+          <Alert variant="destructive">
+            <AlertTitle>Esta sección no es para tu cuenta</AlertTitle>
+            <AlertDescription>Solo quien administra Reconéctate puede entrar acá.</AlertDescription>
+          </Alert>
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="w-full pb-6 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-muted-foreground max-w-2xl">
-            Las cuentas del sistema y lo que tiene cada una. Se ve cuánto hay, no qué hay: ni los
-            textos ni los archivos de nadie se abren desde acá.
-          </p>
-        </div>
+    <AppShell crumbs={CRUMBS} actions={<NewAccountDialog />}>
+      <div className="w-full pb-6 pt-2">
+        <p className="text-muted-foreground max-w-2xl">
+          Las cuentas del sistema y lo que tiene cada una. Se ve cuánto hay, no qué hay: ni los
+          textos ni los archivos de nadie se abren desde acá.
+        </p>
 
-        <NewAccountDialog />
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div>
-          {accounts.isPending ? (
-            <div className="flex flex-col gap-2">
-              {[0, 1, 2].map((index) => (
-                <Skeleton key={index} className="h-20 w-full" />
-              ))}
-            </div>
-          ) : accounts.error ? (
-            <Alert variant="destructive">
-              <AlertTitle>No pudimos traer las cuentas</AlertTitle>
-              <AlertDescription>{accounts.error.message}</AlertDescription>
-            </Alert>
-          ) : (
-            <>
-              <p className="text-muted-foreground mb-3 font-mono text-xs tabular-nums">
-                {accounts.data.total} {accounts.data.total === 1 ? 'cuenta' : 'cuentas'}
-              </p>
-              <ul
-                className={cn(
-                  'flex flex-col gap-2 transition-opacity',
-                  accounts.isPlaceholderData && 'opacity-50',
-                )}
-              >
-                {accounts.data.items.map((account) => (
-                  <li key={account.id}>
-                    <AccountRow
-                      account={account}
-                      open={openId === account.id}
-                      onOpen={() => setOpenId(account.id === openId ? null : account.id)}
-                    />
-                  </li>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div>
+            {accounts.isPending ? (
+              <div className="flex flex-col gap-2">
+                {[0, 1, 2].map((index) => (
+                  <Skeleton key={index} className="h-20 w-full" />
                 ))}
-              </ul>
-              <Pager
-                label="Cuentas"
-                page={page}
-                pageSize={accounts.data.pageSize}
-                total={accounts.data.total}
-                onPage={setPage}
-              />
-            </>
-          )}
-        </div>
+              </div>
+            ) : accounts.error ? (
+              <Alert variant="destructive">
+                <AlertTitle>No pudimos traer las cuentas</AlertTitle>
+                <AlertDescription>{accounts.error.message}</AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-3 font-mono text-xs tabular-nums">
+                  {accounts.data.total} {accounts.data.total === 1 ? 'cuenta' : 'cuentas'}
+                </p>
+                <ul
+                  className={cn(
+                    'flex flex-col gap-2 transition-opacity',
+                    accounts.isPlaceholderData && 'opacity-50',
+                  )}
+                >
+                  {accounts.data.items.map((account) => (
+                    <li key={account.id}>
+                      <AccountRow
+                        account={account}
+                        open={openId === account.id}
+                        onOpen={() => setOpenId(account.id === openId ? null : account.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                <Pager
+                  label="Cuentas"
+                  page={page}
+                  pageSize={accounts.data.pageSize}
+                  total={accounts.data.total}
+                  onPage={setPage}
+                />
+              </>
+            )}
+          </div>
 
-        <AccountDetail userId={openId} />
+          <AccountDetail userId={openId} />
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
 

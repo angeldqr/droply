@@ -98,9 +98,7 @@ import {
 export default function SchedulesPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Horarios' }]}>
-        <Contents />
-      </AppShell>
+      <Contents />
     </RequireSession>
   );
 }
@@ -109,77 +107,76 @@ function Contents() {
   const { data, isPending, error } = useSchedules();
 
   return (
-    <div className="w-full pb-6 pt-2">
-      {/*
+    <AppShell
+      crumbs={[{ label: 'Horarios' }]}
+      actions={<NewScheduleDialog id="nuevo-horario-cabecera" />}
+    >
+      <div className="w-full pb-6 pt-2">
+        {/*
         Los avisos van antes que nada: quien entra acá porque no le llegó algo
         tiene que encontrar el porqué sin buscarlo.
       */}
-      <Notices />
+        <Notices />
 
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-muted-foreground max-w-2xl">
-            Cuándo sale cada envío y hacia quién. El bot toma un elemento de la biblioteca y lo
-            manda solo, a la hora que digas y en tu zona horaria.
-          </p>
+        <p className="text-muted-foreground max-w-2xl">
+          Cuándo sale cada envío y hacia quién. El bot toma un elemento de la biblioteca y lo manda
+          solo, a la hora que digas y en tu zona horaria.
+        </p>
+
+        {data && data.length > 0 ? (
+          <StatRow
+            className="mt-6"
+            stats={[
+              { label: 'Horarios', value: data.length },
+              {
+                label: 'Activos',
+                value: data.filter((schedule) => schedule.active).length,
+                accent: true,
+              },
+              { label: 'En pausa', value: data.filter((schedule) => !schedule.active).length },
+            ]}
+          />
+        ) : null}
+
+        <div className="mt-6">
+          {isPending ? (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((index) => (
+                <Skeleton key={index} className="h-20 w-full" />
+              ))}
+            </div>
+          ) : error ? (
+            <Alert variant="destructive">
+              <AlertTitle>No pudimos traer tus horarios</AlertTitle>
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+          ) : data.length === 0 ? (
+            <Empty className="py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <CalendarClock />
+                </EmptyMedia>
+                <EmptyTitle>Todavía no hay ninguno</EmptyTitle>
+                <EmptyDescription>
+                  Programa el primero y deja de acordarte de mandar las cosas a mano.
+                </EmptyDescription>
+              </EmptyHeader>
+              <NewScheduleDialog id="nuevo-horario-vacio" />
+            </Empty>
+          ) : (
+            <MotionList as="ul" className="flex max-w-4xl flex-col gap-2">
+              {data.map((schedule, index) => (
+                <MotionItem as="li" key={schedule.id} index={index}>
+                  <ScheduleRow schedule={schedule} />
+                </MotionItem>
+              ))}
+            </MotionList>
+          )}
         </div>
 
-        <NewScheduleDialog id="nuevo-horario-cabecera" />
+        <DeliveryHistory />
       </div>
-
-      {data && data.length > 0 ? (
-        <StatRow
-          className="mt-6"
-          stats={[
-            { label: 'Horarios', value: data.length },
-            {
-              label: 'Activos',
-              value: data.filter((schedule) => schedule.active).length,
-              accent: true,
-            },
-            { label: 'En pausa', value: data.filter((schedule) => !schedule.active).length },
-          ]}
-        />
-      ) : null}
-
-      <div className="mt-6">
-        {isPending ? (
-          <div className="flex flex-col gap-2">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="h-20 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertTitle>No pudimos traer tus horarios</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
-          </Alert>
-        ) : data.length === 0 ? (
-          <Empty className="py-16">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <CalendarClock />
-              </EmptyMedia>
-              <EmptyTitle>Todavía no hay ninguno</EmptyTitle>
-              <EmptyDescription>
-                Programa el primero y deja de acordarte de mandar las cosas a mano.
-              </EmptyDescription>
-            </EmptyHeader>
-            <NewScheduleDialog id="nuevo-horario-vacio" />
-          </Empty>
-        ) : (
-          <MotionList as="ul" className="flex max-w-4xl flex-col gap-2">
-            {data.map((schedule, index) => (
-              <MotionItem as="li" key={schedule.id} index={index}>
-                <ScheduleRow schedule={schedule} />
-              </MotionItem>
-            ))}
-          </MotionList>
-        )}
-      </div>
-
-      <DeliveryHistory />
-    </div>
+    </AppShell>
   );
 }
 

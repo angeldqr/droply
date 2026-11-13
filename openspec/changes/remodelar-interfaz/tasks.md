@@ -56,6 +56,9 @@
 - [x] 8.7 Mi cuenta: buscador de zona horaria con `command` y `popover`, y `stateful-button` al guardar. Se verifica buscando "Bogota" y guardando. Hecho: buscador sin tildes ni mayúsculas («bogotá» encuentra America / Bogota). `stateful-button` no se usó: la zona se guarda al elegirla y cambiar la contraseña cierra la sesión, así que no hay un «listo» que mostrar.
 - [x] 8.8 Admin: cifras y `card-spotlight` en las cuentas. Se verifica abriendo el detalle de una cuenta. Sin cambios: el panel ya pagina y muestra el total; un foco de luz en una lista de selección no aporta. Se deja como está.
 
+- [x] 8.9 Detalle de un hábito de Mi bitácora: panel negro con hoy, racha y últimos 30 días (y la pausa con su botón); calendario fijo a la izquierda junto al diario; historial del año y la tendencia en un panel abajo cuando ya hay tres semanas. Se verificó en el navegador: el calendario se queda fijo al bajar.
+- [x] 8.10 Coherencia entre pantallas: el botón «Nuevo …» va en la barra en Bibliotecas, Destinatarios, Horarios, Yo en 30 días, Mi bitácora y Admin; la fila de cifras usa una columna por cifra; la guía de Telegram de Mi bitácora queda en una línea cuando el chat ya está conectado; «Tu semana» y la cuadrícula del plan llenan su panel; Destinatarios en cuadrícula; el detalle de un plan con el mismo panel negro que un hábito, fechas en palabras y sus acciones en la barra; las miniaturas del tablero usan todo el ancho de la tarjeta. Se verificó en el navegador en escritorio; la ventana no se dejó achicar para ver el teléfono.
+
 ## 9. Paginación
 
 - [x] 9.1 Crear `packages/contracts/src/pagination.ts` con el esquema de consulta y la respuesta paginada, con su test de límites (página 0 y tamaño 500 se rechazan; los valores por defecto son 1 y 20).

@@ -14,7 +14,7 @@ import { useAccountChat, useLinkAccountChat, useUnlinkAccountChat } from '@/lib/
 /**
  * Cómo se usa la bitácora, y el paso para conectarla.
  *
- * Es la franja oscura de arriba de «Mi bitácora». A la izquierda, los tres
+ * Es el panel de arriba de «Mi bitácora». A la izquierda, los tres
  * pasos y el estado de la conexión; a la derecha, una conversación de ejemplo
  * armada con **los hábitos de quien mira**, para que se entienda qué va a ver en
  * el chat antes de abrirlo.
@@ -26,7 +26,7 @@ export function ConnectTelegramCard({ habitNames }: { habitNames: readonly strin
   const chat = useAccountChat();
 
   return (
-    <section className="bg-card text-card-foreground border-border grid gap-8 overflow-hidden rounded-2xl border p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:p-8">
+    <section className="bg-card text-card-foreground border-border rounded-4xl grid gap-8 overflow-hidden border p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:p-8">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <p className="text-logro text-xs font-bold uppercase tracking-[0.16em]">Desde Telegram</p>

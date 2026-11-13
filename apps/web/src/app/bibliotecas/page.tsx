@@ -43,9 +43,7 @@ import { useMorphDialog } from '@/lib/morph-dialog';
 export default function LibrariesPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Bibliotecas' }]}>
-        <Content />
-      </AppShell>
+      <Content />
     </RequireSession>
   );
 }
@@ -54,57 +52,56 @@ function Content() {
   const libraries = useLibraries();
 
   return (
-    <div className="w-full pb-6 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            Cada una es una colección. El bot toma de ahí lo que envía.
-          </p>
+    <AppShell
+      crumbs={[{ label: 'Bibliotecas' }]}
+      actions={<NewLibraryDialog id="nueva-biblioteca-cabecera" />}
+    >
+      <div className="w-full pb-6 pt-2">
+        <p className="text-muted-foreground">
+          Cada una es una colección. El bot toma de ahí lo que envía.
+        </p>
+
+        {libraries.data && libraries.data.length > 0 ? (
+          <StatRow
+            className="mt-6"
+            stats={[
+              { label: 'Bibliotecas', value: libraries.data.length },
+              ...COLUMN_ORDER.map((kind) => ({
+                label: COLUMN_LABELS[kind],
+                value: libraries.data.reduce((sum, library) => sum + library.counts[kind], 0),
+              })),
+            ]}
+          />
+        ) : null}
+
+        <div className="mt-6">
+          <ListState
+            query={libraries}
+            errorTitle="No pudimos traer tus bibliotecas"
+            skeleton={<SkeletonList className={GRID} itemClassName="h-40" />}
+            empty={
+              <EmptyState
+                icon={<LibraryBig />}
+                title="Todavía no hay ninguna"
+                description="Crea la primera y empieza a llenarla con lo que quieres que llegue."
+              >
+                <NewLibraryDialog id="nueva-biblioteca-vacio" />
+              </EmptyState>
+            }
+          >
+            {(data) => (
+              <MotionList className={GRID}>
+                {data.map((library, index) => (
+                  <MotionItem key={library.id} index={index}>
+                    <LibraryCard library={library} />
+                  </MotionItem>
+                ))}
+              </MotionList>
+            )}
+          </ListState>
         </div>
-
-        <NewLibraryDialog id="nueva-biblioteca-cabecera" />
       </div>
-
-      {libraries.data && libraries.data.length > 0 ? (
-        <StatRow
-          className="mt-6 lg:grid-cols-5"
-          stats={[
-            { label: 'Bibliotecas', value: libraries.data.length },
-            ...COLUMN_ORDER.map((kind) => ({
-              label: COLUMN_LABELS[kind],
-              value: libraries.data.reduce((sum, library) => sum + library.counts[kind], 0),
-            })),
-          ]}
-        />
-      ) : null}
-
-      <div className="mt-6">
-        <ListState
-          query={libraries}
-          errorTitle="No pudimos traer tus bibliotecas"
-          skeleton={<SkeletonList className={GRID} itemClassName="h-40" />}
-          empty={
-            <EmptyState
-              icon={<LibraryBig />}
-              title="Todavía no hay ninguna"
-              description="Crea la primera y empieza a llenarla con lo que quieres que llegue."
-            >
-              <NewLibraryDialog id="nueva-biblioteca-vacio" />
-            </EmptyState>
-          }
-        >
-          {(data) => (
-            <MotionList className={GRID}>
-              {data.map((library, index) => (
-                <MotionItem key={library.id} index={index}>
-                  <LibraryCard library={library} />
-                </MotionItem>
-              ))}
-            </MotionList>
-          )}
-        </ListState>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

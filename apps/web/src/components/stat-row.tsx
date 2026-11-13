@@ -1,6 +1,14 @@
 import { RollingNumber } from '@/components/rolling-number';
 import { cn } from '@/lib/utils';
 
+/** Una columna por cifra en pantallas anchas: con tres no queda una cuarta vacía. */
+const COLUMNS: Readonly<Record<number, string>> = {
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5',
+};
+
 export interface Stat {
   readonly label: string;
   readonly value: number;
@@ -15,7 +23,9 @@ export interface Stat {
  */
 export function StatRow({ stats, className }: { stats: readonly Stat[]; className?: string }) {
   return (
-    <dl className={cn('grid grid-cols-2 gap-2 lg:grid-cols-4', className)}>
+    <dl
+      className={cn('grid grid-cols-2 gap-2', COLUMNS[stats.length] ?? 'lg:grid-cols-4', className)}
+    >
       {stats.map((stat) => (
         <div
           key={stat.label}

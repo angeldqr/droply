@@ -13,16 +13,24 @@ import { useEffect, useRef } from 'react';
 import { cuenta, dayKey, jumpToDay, WEEKDAY_NAMES } from '@/components/habit-mark';
 import { cn } from '@/lib/utils';
 
+/** Lo que quiere decir cada tono, con los mismos de los cuadros. */
+const LEGEND = [
+  { tone: 'border-border border', label: 'Nada' },
+  { tone: 'bg-menta/35', label: 'A medias' },
+  { tone: 'bg-menta', label: 'Cumplido' },
+  { tone: 'bg-muted', label: 'No tocaba' },
+] as const;
+
 /** Un año cabe en 53 columnas de siete días. */
 const MAX_WEEKS = 53;
 
-/** El tono de un día, en la misma escala morada del calendario del mes. */
+/** El tono de un día, con su tinta, en la misma escala menta del calendario del mes. */
 function toneOf(score: number, applies: boolean): string {
-  if (!applies) return 'bg-muted';
-  if (score === 1) return 'bg-menta';
-  if (score > 0) return 'bg-menta/35';
+  if (!applies) return 'bg-muted text-muted-foreground/70';
+  if (score === 1) return 'bg-menta text-sobre-menta font-semibold';
+  if (score > 0) return 'bg-menta/35 text-foreground';
 
-  return 'border-border border';
+  return 'border-border text-muted-foreground border';
 }
 
 function labelOf(key: string, count: number, target: number, applies: boolean): string {
@@ -31,7 +39,7 @@ function labelOf(key: string, count: number, target: number, applies: boolean): 
     month: 'long',
   });
 
-  return applies ? `${día}: ${count} de ${target}` : `${día}: no contaba`;
+  return applies ? `${día}: ${count} de ${target} veces` : `${día}: ese día no tocaba`;
 }
 
 /** «sep», «oct»: el nombre corto, sin el punto que le pone el navegador. */
@@ -109,44 +117,59 @@ export function HabitYear({
 
   return (
     <section aria-label="Historial por semanas" className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-xs">
-        Cada columna es una semana; cada cuadrito, un día.
-      </p>
+      <div>
+        <h3 className="text-base font-medium">Día por día</h3>
+        <p className="text-muted-foreground text-sm">
+          Cada columna es una semana, de lunes a domingo, y cada cuadro lleva su número de día. Toca
+          un día con anotaciones para ir a ellas.
+        </p>
+      </div>
 
       <div className="flex gap-2">
         {/* Las iniciales de los días, para saber qué fila se está mirando. */}
-        <ul aria-hidden className="text-muted-foreground mt-5 flex flex-col gap-1 text-[0.6rem]">
+        <ul aria-hidden className="text-muted-foreground mt-6 flex flex-col gap-1.5 text-xs">
           {WEEKDAY_NAMES.map((day) => (
-            <li key={day.long} className="h-3 leading-3">
+            <li key={day.long} className="h-7 leading-7">
               {day.narrow}
             </li>
           ))}
         </ul>
 
-        <div ref={tira} className="flex gap-1 overflow-x-auto pb-1">
+        <div ref={tira} className="-m-1 flex gap-1.5 overflow-x-auto p-1">
           {weeks.map((week) => (
-            <div key={week.monday} className="flex shrink-0 flex-col gap-1">
+            <div key={week.monday} className="flex shrink-0 flex-col gap-1.5">
               {/* El mes cuelga de su columna: nunca hay dos a menos de cuatro. */}
-              <span aria-hidden className="relative h-4 w-3">
-                <span className="text-muted-foreground absolute left-0 top-0 whitespace-nowrap text-[0.65rem]">
+              <span aria-hidden className="h-4.5 relative w-7">
+                <span className="text-muted-foreground absolute left-0 top-0 whitespace-nowrap text-xs capitalize">
                   {week.month}
                 </span>
               </span>
 
               {week.days.map((cell) => {
                 const base = cn(
-                  'block size-3 rounded-[3px]',
+                  'grid size-7 place-items-center rounded-[0.4rem] font-mono text-[0.7rem] tabular-nums',
                   cell.outside ? 'invisible' : toneOf(cell.score, cell.applies),
-                  cell.key === today && 'ring-primary ring-1 ring-offset-1',
+                  cell.key === today && 'ring-foreground ring-2 ring-inset',
                 );
+                // El número del día dentro del cuadro: sin él no se sabe qué fecha es cuál.
+                const number = Number(cell.key.slice(8));
+                const label = labelOf(cell.key, cell.count, goal.dailyTarget, cell.applies);
 
                 if (cell.outside || cell.count === 0) {
-                  // Sin nada anotado no hay qué leer ni a dónde saltar: el
-                  // resumen de abajo dice lo mismo sin trescientas etiquetas.
-                  return <span key={cell.key} aria-hidden className={base} />;
+                  // Sin nada anotado no hay a dónde saltar: la fecha se ve al
+                  // pasar el cursor, y el resumen de abajo la cuenta sin
+                  // trescientas etiquetas para el lector de pantalla.
+                  return (
+                    <span
+                      key={cell.key}
+                      aria-hidden
+                      title={cell.outside ? undefined : label}
+                      className={base}
+                    >
+                      {cell.outside ? '' : number}
+                    </span>
+                  );
                 }
-
-                const label = labelOf(cell.key, cell.count, goal.dailyTarget, cell.applies);
 
                 return (
                   <button
@@ -157,9 +180,11 @@ export function HabitYear({
                     aria-label={label}
                     className={cn(
                       base,
-                      'focus-visible:ring-ring transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
+                      'focus-visible:ring-ring transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
                     )}
-                  />
+                  >
+                    {number}
+                  </button>
                 );
               })}
             </div>
@@ -167,7 +192,7 @@ export function HabitYear({
         </div>
       </div>
 
-      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm">
         <p>
           {met.length === 0
             ? 'Ningún día cumplido todavía'
@@ -175,15 +200,13 @@ export function HabitYear({
         </p>
 
         {/* La leyenda, con la misma escala: sin ella los tonos no dicen nada. */}
-        <p className="flex items-center gap-1.5">
-          <span className="border-border size-3 rounded-[3px] border" aria-hidden />
-          <span>Nada</span>
-          <span className="bg-menta/35 size-3 rounded-[3px]" aria-hidden />
-          <span>A medias</span>
-          <span className="bg-menta size-3 rounded-[3px]" aria-hidden />
-          <span>Cumplido</span>
-          <span className="bg-muted size-3 rounded-[3px]" aria-hidden />
-          <span>No tocaba</span>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {LEGEND.map((item) => (
+            <span key={item.label} className="flex items-center gap-1.5">
+              <span className={cn('size-4 rounded-[0.3rem]', item.tone)} aria-hidden />
+              {item.label}
+            </span>
+          ))}
         </p>
       </div>
     </section>

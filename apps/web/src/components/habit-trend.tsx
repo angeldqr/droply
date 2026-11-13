@@ -87,21 +87,38 @@ export function HabitTrend({
   if (medidas.length < 2) return null;
 
   return (
-    <figure className="flex flex-col gap-2">
-      <figcaption className="text-muted-foreground text-xs">
-        Cumplimiento por semana, de lunes a domingo
+    <figure className="flex flex-col gap-3">
+      <figcaption>
+        <h3 className="text-base font-medium">Semana a semana</h3>
+        <p className="text-muted-foreground text-sm">
+          Cuánto de la meta se cumplió cada semana, de lunes a domingo.
+        </p>
       </figcaption>
 
-      <ol className="flex h-28 items-end gap-1.5">
+      <ol className="flex h-52 items-end gap-2">
         {weeks.map((week, index) => {
           const pct = week.rate === null ? null : Math.round(week.rate * 100);
           const last = index === weeks.length - 1;
 
           return (
-            <li key={week.monday} className="flex h-full flex-1 flex-col justify-end gap-1">
+            <li
+              key={week.monday}
+              className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1.5"
+            >
+              {/* El porcentaje sobre su barra: se lee sin pasar el cursor. */}
+              <span
+                aria-hidden
+                className={cn(
+                  'text-center font-mono text-xs tabular-nums',
+                  last ? 'text-foreground font-medium' : 'text-muted-foreground',
+                )}
+              >
+                {/* Los ceros no se rotulan: una fila de «0%» tapa la semana que sí cuenta. */}
+                {pct === null || (pct === 0 && !last) ? '' : `${pct}%`}
+              </span>
               <span
                 className={cn(
-                  'w-full rounded-t-[4px]',
+                  'w-full rounded-t-[0.5rem]',
                   pct === null ? 'bg-muted' : last ? 'bg-menta' : 'bg-menta/45',
                 )}
                 style={{ height: `${pct === null ? 3 : Math.max(pct, 3)}%` }}
@@ -122,15 +139,27 @@ export function HabitTrend({
         })}
       </ol>
 
-      {/* Solo los extremos: un número bajo cada barra sería ilegible a este ancho. */}
-      <div className="text-muted-foreground flex justify-between text-[0.7rem]">
-        <span>{weeks[0]?.label}</span>
-        <span className="font-semibold">Esta semana: {porcentaje(weeks.at(-1)?.rate ?? null)}</span>
+      {/*
+        La fecha de cada semana bajo su barra, una sí y una no: todas juntas no
+        caben. La última siempre, que es esta semana.
+      */}
+      <div aria-hidden className="text-muted-foreground flex gap-2 text-xs">
+        {weeks.map((week, index) => {
+          const last = index === weeks.length - 1;
+
+          return (
+            <span
+              key={week.monday}
+              className={cn(
+                'min-w-0 flex-1 truncate text-center',
+                last && 'text-foreground font-medium',
+              )}
+            >
+              {last ? 'Esta' : (weeks.length - 1 - index) % 2 === 0 ? week.label : ''}
+            </span>
+          );
+        })}
       </div>
     </figure>
   );
-}
-
-function porcentaje(rate: number | null): string {
-  return rate === null ? '—' : `${Math.round(rate * 100)} %`;
 }

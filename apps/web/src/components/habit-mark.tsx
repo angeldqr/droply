@@ -58,6 +58,17 @@ export function daysAgo(iso: string, now = new Date()): number {
   return Math.round((startOfDay(now) - startOfDay(new Date(iso))) / DAY_MS);
 }
 
+/** «5 de septiembre» para un día `AAAA-MM-DD`, con el año solo si no es este. */
+export function dayInWords(day: string): string {
+  const date = new Date(`${day}T12:00:00`);
+
+  return date.toLocaleDateString('es', {
+    day: 'numeric',
+    month: 'long',
+    year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+  });
+}
+
 /** «hoy», «ayer», «hace 3 días»; pasado un mes, la fecha. */
 export function whenRelative(iso: string): string {
   const days = daysAgo(iso);

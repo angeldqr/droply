@@ -31,6 +31,7 @@ import { goalFrom, HabitGoalFields } from '@/components/habit-goal-fields';
 import { cuenta, goalLabel, HabitMark, WEEKDAY_NAMES, whenRelative } from '@/components/habit-mark';
 import { HabitWeekGrid } from '@/components/habit-week-grid';
 import { NewHabitDialog } from '@/components/new-habit-dialog';
+import { Panel, PanelHeader } from '@/components/panel';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -86,9 +87,7 @@ import { cn } from '@/lib/utils';
 export default function JournalPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Mi bitácora' }]}>
-        <Contents />
-      </AppShell>
+      <Contents />
     </RequireSession>
   );
 }
@@ -126,73 +125,71 @@ function Contents() {
   const { data, isPending, error } = useHabits();
 
   return (
-    <div className="flex flex-col gap-6 pb-6 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground text-sm">
-            Lo que vas haciendo, contado por ti desde el chat.
-          </p>
-        </div>
+    <AppShell
+      crumbs={[{ label: 'Mi bitácora' }]}
+      actions={data && data.length > 0 ? <NewHabitDialog id="nuevo-habito" /> : null}
+    >
+      <div className="flex flex-col gap-6 pb-6 pt-2">
+        <p className="text-muted-foreground text-sm">
+          Lo que vas haciendo, contado por ti desde el chat.
+        </p>
 
-        {data && data.length > 0 ? <NewHabitDialog id="nuevo-habito" /> : null}
-      </div>
+        <ConnectTelegramCard habitNames={(data ?? []).map((habit) => habit.name)} />
 
-      <ConnectTelegramCard habitNames={(data ?? []).map((habit) => habit.name)} />
+        {data && data.length > 0 ? (
+          <>
+            <DaySummary habits={data} />
+            <h2 className="-mb-2 mt-2 text-xl">Tus hábitos</h2>
+          </>
+        ) : null}
 
-      {data && data.length > 0 ? (
-        <>
-          <DaySummary habits={data} />
-          <h2 className="font-display -mb-2 text-lg font-semibold">Tus hábitos</h2>
-        </>
-      ) : null}
-
-      {isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((index) => (
-            <Skeleton key={index} className="h-28 w-full" />
-          ))}
-        </div>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertTitle>No pudimos traer tus hábitos</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
-      ) : data.length === 0 ? (
-        <Empty className="py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <NotebookPen />
-            </EmptyMedia>
-            <EmptyTitle>Todavía no hay ninguno</EmptyTitle>
-            <EmptyDescription>
-              Crea el primero —ejercicio, alimentación, lectura— y después escribe{' '}
-              <code className="font-mono">{JOURNAL_COMMAND}</code> en el chat del bot para ir
-              contando qué hiciste.
-            </EmptyDescription>
-          </EmptyHeader>
-          <NewHabitDialog id="nuevo-habito-vacio" />
-        </Empty>
-      ) : (
-        <>
-          <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {byToday(data).map((habit, index) => (
-              <MotionItem key={habit.id} index={index}>
-                <HabitCard habit={habit} />
-              </MotionItem>
+        {isPending ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((index) => (
+              <Skeleton key={index} className="h-28 w-full" />
             ))}
-          </MotionList>
+          </div>
+        ) : error ? (
+          <Alert variant="destructive">
+            <AlertTitle>No pudimos traer tus hábitos</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        ) : data.length === 0 ? (
+          <Empty className="py-16">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <NotebookPen />
+              </EmptyMedia>
+              <EmptyTitle>Todavía no hay ninguno</EmptyTitle>
+              <EmptyDescription>
+                Crea el primero —ejercicio, alimentación, lectura— y después escribe{' '}
+                <code className="font-mono">{JOURNAL_COMMAND}</code> en el chat del bot para ir
+                contando qué hiciste.
+              </EmptyDescription>
+            </EmptyHeader>
+            <NewHabitDialog id="nuevo-habito-vacio" />
+          </Empty>
+        ) : (
+          <>
+            <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {byToday(data).map((habit, index) => (
+                <MotionItem key={habit.id} index={index}>
+                  <HabitCard habit={habit} />
+                </MotionItem>
+              ))}
+            </MotionList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Tu semana</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <Panel>
+              <PanelHeader
+                title="Tu semana"
+                description="Cuánto de la meta cumpliste cada día, hábito por hábito."
+              />
               <HabitWeekGrid habits={data} />
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
+            </Panel>
+          </>
+        )}
+      </div>
+    </AppShell>
   );
 }
 
@@ -208,7 +205,7 @@ function DaySummary({ habits }: { habits: readonly HabitView[] }) {
     <section
       aria-label="Resumen de hoy"
       className={cn(
-        'flex flex-col gap-3 rounded-2xl border p-4 md:p-5',
+        'rounded-4xl flex flex-col gap-3 border px-6 py-5',
         allDone ? 'border-logro/30 bg-logro/10' : 'bg-card border-border',
       )}
     >

@@ -23,6 +23,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { dayInWords } from '@/components/habit-mark';
 import { useHabitPlans } from '@/lib/habits';
 import { useShown } from '@/lib/use-shown';
 import { cn } from '@/lib/utils';
@@ -30,9 +31,7 @@ import { cn } from '@/lib/utils';
 export default function HabitPlansPage() {
   return (
     <RequireSession>
-      <AppShell crumbs={[{ label: 'Yo en 30 días' }]}>
-        <Contents />
-      </AppShell>
+      <Contents />
     </RequireSession>
   );
 }
@@ -44,69 +43,68 @@ function Contents() {
   const done = (data ?? []).filter((plan) => plan.status !== 'ACTIVE');
 
   return (
-    <div className="flex flex-col gap-6 pb-6 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground text-sm">
-            Convierte tus bibliotecas en hábitos y mira cuánto se cumplen.
-          </p>
-        </div>
+    <AppShell
+      crumbs={[{ label: 'Yo en 30 días' }]}
+      actions={data && data.length > 0 ? <NewHabitPlanDialog id="nuevo-plan" plans={data} /> : null}
+    >
+      <div className="flex flex-col gap-6 pb-6 pt-2">
+        <p className="text-muted-foreground text-sm">
+          Convierte tus bibliotecas en hábitos y mira cuánto se cumplen.
+        </p>
 
-        {data && data.length > 0 ? <NewHabitPlanDialog id="nuevo-plan" plans={data} /> : null}
+        {data && data.length > 0 ? (
+          <StatRow
+            stats={[
+              { label: 'Planes', value: data.length },
+              { label: 'En marcha', value: running.length, accent: true },
+              { label: 'Terminados', value: done.length },
+            ]}
+          />
+        ) : null}
+
+        {isPending ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((index) => (
+              <Skeleton key={index} className="h-40 w-full" />
+            ))}
+          </div>
+        ) : error ? (
+          <Alert variant="destructive">
+            <AlertTitle>No pudimos traer tus planes</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        ) : data.length === 0 ? (
+          <Empty className="py-16">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Sparkles />
+              </EmptyMedia>
+              <EmptyTitle>Todavía no hay ningún plan</EmptyTitle>
+              <EmptyDescription>
+                Elige unas bibliotecas y un plazo. Cada envío llegará con tres botones —realizado, a
+                medias, no cumplido— y al final sale un informe con lo que se consiguió.
+              </EmptyDescription>
+            </EmptyHeader>
+            <NewHabitPlanDialog id="nuevo-plan-vacio" plans={data} />
+          </Empty>
+        ) : (
+          <Tabs defaultValue={running.length > 0 ? 'en-marcha' : 'terminados'}>
+            <TabsList>
+              <TabsTrigger value="en-marcha">En marcha ({running.length})</TabsTrigger>
+              <TabsTrigger value="terminados">Terminados ({done.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="en-marcha" className="mt-4">
+              <PlanList plans={running} empty="No tienes ningún plan en marcha." />
+            </TabsContent>
+
+            <TabsContent value="terminados" className="mt-4">
+              <PlanList plans={done} empty="Todavía no has terminado ninguno." />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
-
-      {data && data.length > 0 ? (
-        <StatRow
-          stats={[
-            { label: 'Planes', value: data.length },
-            { label: 'En marcha', value: running.length, accent: true },
-            { label: 'Terminados', value: done.length },
-          ]}
-        />
-      ) : null}
-
-      {isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((index) => (
-            <Skeleton key={index} className="h-40 w-full" />
-          ))}
-        </div>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertTitle>No pudimos traer tus planes</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
-      ) : data.length === 0 ? (
-        <Empty className="py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Sparkles />
-            </EmptyMedia>
-            <EmptyTitle>Todavía no hay ningún plan</EmptyTitle>
-            <EmptyDescription>
-              Elige unas bibliotecas y un plazo. Cada envío llegará con tres botones —realizado, a
-              medias, no cumplido— y al final sale un informe con lo que se consiguió.
-            </EmptyDescription>
-          </EmptyHeader>
-          <NewHabitPlanDialog id="nuevo-plan-vacio" plans={data} />
-        </Empty>
-      ) : (
-        <Tabs defaultValue={running.length > 0 ? 'en-marcha' : 'terminados'}>
-          <TabsList>
-            <TabsTrigger value="en-marcha">En marcha ({running.length})</TabsTrigger>
-            <TabsTrigger value="terminados">Terminados ({done.length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="en-marcha" className="mt-4">
-            <PlanList plans={running} empty="No tienes ningún plan en marcha." />
-          </TabsContent>
-
-          <TabsContent value="terminados" className="mt-4">
-            <PlanList plans={done} empty="Todavía no has terminado ninguno." />
-          </TabsContent>
-        </Tabs>
-      )}
-    </div>
+    </AppShell>
   );
 }
 
@@ -158,7 +156,7 @@ function PlanCard({ plan }: { plan: HabitPlanSummary }) {
         <p className="text-muted-foreground font-mono text-xs">
           {running
             ? `Día ${plan.dayNumber} de ${plan.durationDays}`
-            : `${plan.durationDays} días · terminó el ${plan.endOn}`}
+            : `${plan.durationDays} días · hasta el ${dayInWords(plan.endOn)}`}
         </p>
 
         <div className="flex items-center gap-3">

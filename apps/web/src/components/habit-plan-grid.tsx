@@ -1,7 +1,6 @@
 'use client';
 
 import type { HabitDayView, HabitProgressView } from '@reconectate/contracts';
-import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -31,7 +30,7 @@ export function HabitPlanGrid({
         en el teléfono y el resto de la pantalla se saldría con ella.
       */}
       <div className="overflow-x-auto pb-1">
-        <div className="min-w-fit">
+        <div className="w-full min-w-fit">
           <DayRuler durationDays={durationDays} />
 
           <div className="mt-1 flex flex-col gap-1">
@@ -50,11 +49,11 @@ export function HabitPlanGrid({
 /** La regleta de arriba. Solo se numeran los múltiplos de cinco y el uno. */
 function DayRuler({ durationDays }: { durationDays: number }) {
   return (
-    <div className="flex items-end gap-1 pl-[9.5rem]">
+    <div className="flex items-end gap-1 pl-[9.5rem] pr-[4.25rem]">
       {Array.from({ length: durationDays }, (_unused, index) => index + 1).map((number) => (
         <span
           key={number}
-          className="text-muted-foreground w-7 text-center font-mono text-[10px] tabular-nums"
+          className="text-muted-foreground min-w-7 flex-1 text-center font-mono text-[10px] tabular-nums"
           aria-hidden
         >
           {number === 1 || number % 5 === 0 ? number : ''}
@@ -105,7 +104,7 @@ function DayCell({
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={`grid size-7 shrink-0 place-items-center rounded font-mono text-xs font-semibold tabular-nums ${toneOf(day)}`}
+          className={`grid h-7 min-w-7 flex-1 place-items-center rounded-md font-mono text-xs font-semibold tabular-nums ${toneOf(day)}`}
           aria-label={describe(label, number, day)}
         >
           {pending ? '' : Math.round(day.percent ?? 0)}
@@ -243,18 +242,6 @@ export function HabitPlanConsistency({ habits }: { habits: readonly HabitProgres
       </p>
 
       <Legend empty={null} />
-    </div>
-  );
-}
-
-/** La barra del plan entero, que es el promedio de sus hábitos. */
-export function PlanProgress({ percent }: { percent: number | null }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Progress value={percent ?? 0} className="h-2 flex-1" />
-      <span className="w-20 whitespace-nowrap text-right font-mono text-sm tabular-nums">
-        {percent === null ? 'Sin datos' : `${percent}%`}
-      </span>
     </div>
   );
 }
