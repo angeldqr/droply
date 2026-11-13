@@ -13,8 +13,8 @@ import type { DayCalendar, HabitPlanRepository, ResponseStore } from '../domain/
  * llama:
  *
  * 1. Que el envío sea de un plan **vivo**. Un plan anulado o terminado deja
- *    botones dando vueltas en el chat de la gente: siguen ahí y hay que
- *    ignorarlos.
+ *    botones dando vueltas en el chat de la gente: siguen ahí y no cuentan. Al
+ *    destinatario se le dice por qué; a cualquier otro, no.
  * 2. Que el toque venga del chat de ese destinatario. El `callback_data` viaja
  *    por un canal público y lleva un identificador adivinable; sin esta
  *    comprobación, cualquiera que hablara con el bot podría votar por otro.
@@ -31,7 +31,11 @@ export class CastHabitVote implements HabitVoteSink {
   async cast(vote: HabitVote): Promise<HabitVoteOutcome> {
     const found = await this.plans.findActiveForDelivery(vote.deliveryId);
 
-    if (!found) return 'IGNORED';
+    if (!found) {
+      const chat = await this.plans.recipientChatOfDelivery(vote.deliveryId);
+
+      return chat !== null && chat === vote.chatId ? 'ENDED' : 'IGNORED';
+    }
 
     // El chat es la única prueba de quién está votando: el bot no tiene sesión.
     if (found.chatId === null || found.chatId !== vote.chatId) return 'IGNORED';

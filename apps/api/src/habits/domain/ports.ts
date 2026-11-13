@@ -57,6 +57,11 @@ export interface HabitPlanRepository {
     day: CivilDay;
     rows: readonly ScoredDay[];
   }): Promise<boolean>;
+  /**
+   * El chat del destinatario de un envío, haya plan vivo o no. `null` si el
+   * envío no existe o el destinatario todavía no abrió su enlace.
+   */
+  recipientChatOfDelivery(deliveryId: string): Promise<string | null>;
   /** El plan vivo al que pertenece un envío, si es que pertenece a alguno. */
   findActiveForDelivery(deliveryId: string): Promise<{
     plan: HabitPlan;

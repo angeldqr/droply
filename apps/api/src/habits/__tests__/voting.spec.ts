@@ -123,7 +123,7 @@ describe('votar', () => {
     expect(world.responses.rows.size).toBe(0);
   });
 
-  it('un plan anulado deja de contar los toques que le quedan en el chat', async () => {
+  it('al destinatario le dice que el botón es de un plan que ya no está en marcha', async () => {
     const plan = await unPlan(world);
 
     unEnvio(world, plan, { deliveryId: 'envio-1', libraryId: EJERCICIO, at: AHORA });
@@ -132,6 +132,22 @@ describe('votar', () => {
     const resultado = await world.vote.cast({
       deliveryId: 'envio-1',
       chatId: '555',
+      answer: 'DONE',
+    });
+
+    expect(resultado).toBe('ENDED');
+    expect(world.responses.rows.size).toBe(0);
+  });
+
+  it('a un chat ajeno no le dice por qué, aunque el plan ya no esté en marcha', async () => {
+    const plan = await unPlan(world);
+
+    unEnvio(world, plan, { deliveryId: 'envio-1', libraryId: EJERCICIO, at: AHORA });
+    await world.cancel.execute(ANA, plan.id);
+
+    const resultado = await world.vote.cast({
+      deliveryId: 'envio-1',
+      chatId: '999',
       answer: 'DONE',
     });
 

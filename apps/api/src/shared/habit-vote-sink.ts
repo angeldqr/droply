@@ -21,9 +21,10 @@ export interface HabitVote {
  * - `RECORDED`: anotado, y ya no se puede cambiar.
  * - `ALREADY`: ese envío ya se había votado.
  * - `CLOSED`: el día ya cerró su cuenta, así que llega tarde.
- * - `IGNORED`: no es de un plan vivo, o el chat no es el del destinatario.
+ * - `ENDED`: lo toca el destinatario, pero el envío ya no es de un plan vivo.
+ * - `IGNORED`: el chat no es el del destinatario, o el envío no existe.
  */
-export type HabitVoteOutcome = 'RECORDED' | 'ALREADY' | 'CLOSED' | 'IGNORED';
+export type HabitVoteOutcome = 'RECORDED' | 'ALREADY' | 'CLOSED' | 'ENDED' | 'IGNORED';
 
 export interface HabitVoteSink {
   cast(vote: HabitVote): Promise<HabitVoteOutcome>;

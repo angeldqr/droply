@@ -6,15 +6,17 @@ import type { CallbackResponder } from '../domain/ports';
 /**
  * Lo que se ve arriba del chat al apretar un botón.
  *
- * Cuatro casos y cuatro frases, porque el silencio en un botón se lee como que
- * la aplicación está rota. `IGNORED` no dice por qué: cubre tanto un plan que
- * ya no existe como un toque desde un chat que no es el del destinatario, y
- * distinguirlos dejaría probar identificadores a ciegas.
+ * Una frase por caso, porque el silencio en un botón se lee como que la
+ * aplicación está rota. `ENDED` sí dice por qué: solo sale cuando toca el
+ * propio destinatario, que guarda en su chat los botones de planes viejos.
+ * `IGNORED` no lo dice: cubre un toque desde un chat ajeno o sobre un envío
+ * inventado, y distinguirlos dejaría probar identificadores a ciegas.
  */
 const REPLIES: Readonly<Record<HabitVoteOutcome, string>> = {
   RECORDED: 'Anotado.',
   ALREADY: 'Ya habías respondido a este.',
   CLOSED: 'Ese día ya cerró.',
+  ENDED: 'Ese mensaje es de un plan que ya no está en marcha.',
   IGNORED: 'Este ya no se puede responder.',
 };
 

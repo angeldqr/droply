@@ -229,6 +229,18 @@ export class PrismaHabitPlanRepository implements HabitPlanRepository {
     });
   }
 
+  async recipientChatOfDelivery(deliveryId: string): Promise<string | null> {
+    const delivery = await this.prisma.deliveryAttempt.findUnique({
+      where: { id: deliveryId },
+      select: {
+        schedule: { select: { recipient: { select: { externalId: true, verifiedAt: true } } } },
+      },
+    });
+    const recipient = delivery?.schedule.recipient;
+
+    return recipient && recipient.verifiedAt !== null ? recipient.externalId : null;
+  }
+
   async findActiveForDelivery(deliveryId: string): Promise<{
     plan: HabitPlan;
     libraryId: string;

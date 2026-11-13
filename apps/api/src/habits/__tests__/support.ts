@@ -180,6 +180,10 @@ export class FakePlans implements HabitPlanRepository {
     return Promise.resolve(true);
   }
 
+  recipientChatOfDelivery(deliveryId: string): Promise<string | null> {
+    return Promise.resolve(this.deliveries.get(deliveryId)?.chatId ?? null);
+  }
+
   findActiveForDelivery(deliveryId: string): Promise<{
     plan: HabitPlan;
     libraryId: string;
