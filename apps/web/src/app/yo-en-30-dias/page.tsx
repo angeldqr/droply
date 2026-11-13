@@ -2,6 +2,7 @@
 
 import { HABIT_PLAN_STATUS_LABELS, type HabitPlanSummary } from '@reconectate/contracts';
 import { Sparkles } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { NewHabitPlanDialog } from '@/components/new-habit-plan-dialog';
@@ -10,7 +11,8 @@ import { ShowMore } from '@/components/show-more';
 import { StatRow } from '@/components/stat-row';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardSpotlight } from '@/components/ui/card-spotlight';
+import { MovingBorder } from '@/components/ui/moving-border';
 import {
   Empty,
   EmptyDescription,
@@ -23,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHabitPlans } from '@/lib/habits';
 import { useShown } from '@/lib/use-shown';
+import { cn } from '@/lib/utils';
 
 export default function HabitPlansPage() {
   return (
@@ -134,24 +137,26 @@ function PlanList({ plans, empty }: { plans: readonly HabitPlanSummary[]; empty:
 
 function PlanCard({ plan }: { plan: HabitPlanSummary }) {
   const habits = plan.libraryIds.length;
+  const running = plan.status === 'ACTIVE';
 
-  return (
-    <Card className="relative transition-shadow hover:shadow-md">
-      <CardHeader>
+  const card = (
+    // Un foco de luz que sigue al cursor: dice cuál se va a abrir sin mover nada.
+    <CardSpotlight className="flex h-full flex-col gap-4">
+      <div className="relative flex flex-col gap-1">
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="min-w-0 truncate">{plan.name}</CardTitle>
-          <Badge variant={plan.status === 'ACTIVE' ? 'default' : 'secondary'}>
+          <h3 className="min-w-0 truncate text-lg">{plan.name}</h3>
+          <Badge variant={running ? 'default' : 'secondary'}>
             {HABIT_PLAN_STATUS_LABELS[plan.status]}
           </Badge>
         </div>
         <p className="text-muted-foreground text-sm">
           Para {plan.recipientLabel} · {habits} {habits === 1 ? 'hábito' : 'hábitos'}
         </p>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex flex-col gap-3">
+      <div className="relative mt-auto flex flex-col gap-3">
         <p className="text-muted-foreground font-mono text-xs">
-          {plan.status === 'ACTIVE'
+          {running
             ? `Día ${plan.dayNumber} de ${plan.durationDays}`
             : `${plan.durationDays} días · terminó el ${plan.endOn}`}
         </p>
@@ -162,7 +167,7 @@ function PlanCard({ plan }: { plan: HabitPlanSummary }) {
             {plan.percent === null ? '—' : `${plan.percent}%`}
           </span>
         </div>
-      </CardContent>
+      </div>
 
       {/*
         La capa cubre la tarjeta entera en vez de envolverla: así el enlace no
@@ -171,11 +176,41 @@ function PlanCard({ plan }: { plan: HabitPlanSummary }) {
       */}
       <Link
         href={`/yo-en-30-dias/${encodeURIComponent(plan.id)}`}
-        className="focus-visible:ring-ring absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2"
         aria-label={`Abrir ${plan.name}`}
       >
         <span className="sr-only">Abrir {plan.name}</span>
       </Link>
-    </Card>
+    </CardSpotlight>
+  );
+
+  return running ? <RunningFrame>{card}</RunningFrame> : card;
+}
+
+/**
+ * El marco del plan en marcha: un brillo menta que recorre el borde.
+ *
+ * Es lo único que se mueve solo en la pantalla, y por eso marca el plan que
+ * está vivo. Con «reducir movimiento» queda un borde menta quieto.
+ */
+function RunningFrame({ children }: { children: React.ReactNode }) {
+  const still = useReducedMotion();
+
+  return (
+    <div
+      className={cn(
+        'relative h-full overflow-hidden rounded-[calc(var(--radius-4xl)+2px)] p-[2px]',
+        still && 'bg-menta',
+      )}
+    >
+      {still ? null : (
+        <div className="absolute inset-0">
+          <MovingBorder duration={5000} rx="12%" ry="12%">
+            <div className="size-32 bg-[radial-gradient(var(--color-menta)_40%,transparent_65%)]" />
+          </MovingBorder>
+        </div>
+      )}
+      <div className="relative h-full">{children}</div>
+    </div>
   );
 }

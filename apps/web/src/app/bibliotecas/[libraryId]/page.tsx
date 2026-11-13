@@ -72,30 +72,32 @@ function Board({ libraryId }: { libraryId: string }) {
   const total = COLUMN_ORDER.reduce((sum, kind) => sum + data.counts[kind], 0);
 
   return (
-    <AppShell crumbs={crumbs}>
+    <AppShell
+      crumbs={crumbs}
+      // Lo que se hace con la biblioteca entera va junto a su nombre, en la barra.
+      actions={
+        <>
+          {COLUMN_ORDER.filter((kind) => data.counts[kind] > 0).map((kind) => (
+            // En el teléfono no caben en la barra; las columnas ya dicen cuántos hay.
+            <Badge
+              key={kind}
+              variant="secondary"
+              className={`hidden sm:inline-flex ${COLUMN_TINT[kind]}`}
+            >
+              {countLabel(kind, data.counts[kind])}
+            </Badge>
+          ))}
+          <LibraryRecipientsDialog library={data} />
+          <LibraryActions library={data} onDeleted={() => router.push('/bibliotecas')} />
+        </>
+      }
+    >
       <div className="w-full pb-6 pt-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <LibraryActions library={data} onDeleted={() => router.push('/bibliotecas')} />
-            </div>
-            {data.description ? (
-              <p className="text-muted-foreground mt-2 max-w-2xl break-words">{data.description}</p>
-            ) : null}
-          </div>
+        {data.description ? (
+          <p className="text-muted-foreground max-w-2xl break-words">{data.description}</p>
+        ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <LibraryRecipientsDialog library={data} />
-
-            {COLUMN_ORDER.filter((kind) => data.counts[kind] > 0).map((kind) => (
-              <Badge key={kind} variant="secondary" className={COLUMN_TINT[kind]}>
-                {countLabel(kind, data.counts[kind])}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-muted-foreground mt-6 text-sm">
+        <p className="text-muted-foreground mt-2 text-sm">
           {total === 0
             ? 'Todavía está vacía. Agrega lo primero desde el signo de más.'
             : `${total} ${total === 1 ? 'elemento' : 'elementos'}. Cada uno sale las veces al día que le pidas.`}

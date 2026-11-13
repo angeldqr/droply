@@ -2,6 +2,7 @@
 
 import type { RecipientView } from '@reconectate/contracts';
 import { Check, Copy } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { EncryptedText } from '@/components/ui/encrypted-text';
 
 /**
  * El enlace que hay que hacerle llegar al destinatario.
@@ -35,6 +36,7 @@ export function RecipientLinkDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const still = useReducedMotion();
 
   async function copy() {
     if (!recipient?.linkUrl) return;
@@ -60,14 +62,36 @@ export function RecipientLinkDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <InputGroup>
-          <InputGroupInput readOnly value={recipient?.linkUrl ?? ''} aria-label="Enlace" />
-          <InputGroupAddon align="inline-end">
-            <Button variant="ghost" size="icon-sm" onClick={() => void copy()} aria-label="Copiar">
-              {copied ? <Check /> : <Copy />}
-            </Button>
-          </InputGroupAddon>
-        </InputGroup>
+        {/*
+          El enlace se revela letra por letra al abrirse: es un código que solo
+          existe en este momento, y así se lee como tal. Un clic, o llegar con
+          Tab, lo selecciona entero, por si el portapapeles no deja copiarlo con
+          el botón.
+        */}
+        <div className="bg-muted flex items-center gap-2 rounded-2xl py-2 pl-4 pr-2">
+          <code
+            tabIndex={0}
+            aria-label="Enlace"
+            onFocus={(event) => window.getSelection()?.selectAllChildren(event.currentTarget)}
+            className="focus-visible:outline-ring min-w-0 flex-1 select-all break-all rounded-md font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            {recipient?.linkUrl ? (
+              still ? (
+                recipient.linkUrl
+              ) : (
+                <EncryptedText
+                  text={recipient.linkUrl}
+                  revealDelayMs={15}
+                  flipDelayMs={40}
+                  encryptedClassName="text-muted-foreground"
+                />
+              )
+            ) : null}
+          </code>
+          <Button variant="ghost" size="icon-sm" onClick={() => void copy()} aria-label="Copiar">
+            {copied ? <Check /> : <Copy />}
+          </Button>
+        </div>
 
         <p className="text-muted-foreground text-sm">
           Vence en un día, y reemplaza a cualquier otro enlace que hayas mandado antes para{' '}

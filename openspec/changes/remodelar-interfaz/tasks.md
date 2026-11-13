@@ -12,7 +12,7 @@
 ## 2. Armazón y piezas comunes
 
 - [x] 2.1 Instalar por CLI de shadcn: `table`, `command`, `popover` (`pagination` se instaló y se quitó: ver 9.4). Se verifica con el typecheck.
-- [x] 2.2 Instalar por CLI de Aceternity y teñir con las variables semánticas: `noise-background`, `glowing-effect`, `stateful-button`, `hover-border-gradient`, `loader`, `floating-dock`, `sticky-banner`, `card-spotlight`, `moving-border`, `tooltip-card`, `animated-tooltip`. Se verifica con el typecheck y una búsqueda de `neutral-` en los archivos nuevos, que debe dar cero. Quedaron fuera: las pestañas animadas (`tabs`), que son un mazo de tarjetas y no un selector, así que las pestañas de shadcn pasan a píldora; y el fondo de puntos de `card-spotlight`, que traía three.js entero para un efecto al pasar el cursor.
+- [x] 2.2 (Al final se quitaron `hover-border-gradient`, `sticky-banner` y `stateful-button`: ver 8.3 y 8.7.) Instalar por CLI de Aceternity y teñir con las variables semánticas: `noise-background`, `glowing-effect`, `stateful-button`, `hover-border-gradient`, `loader`, `floating-dock`, `sticky-banner`, `card-spotlight`, `moving-border`, `tooltip-card`, `animated-tooltip`. Se verifica con el typecheck y una búsqueda de `neutral-` en los archivos nuevos, que debe dar cero. Quedaron fuera: las pestañas animadas (`tabs`), que son un mazo de tarjetas y no un selector, así que las pestañas de shadcn pasan a píldora; y el fondo de puntos de `card-spotlight`, que traía three.js entero para un efecto al pasar el cursor.
 - [x] 2.3 Crear `components/signature-card.tsx` (tarjeta firma) y `lib/motion.ts`. Se verifica viéndola en los dos temas.
 - [x] 2.4 Crear `components/list-state.tsx` (estados de carga, error y vacío). Su uso en cada pantalla va en el grupo 8.
 - [x] 2.5 Armazón con menú lateral y dock para el celular. Se verifica en escritorio; el celular queda para la tarea 10.2.
@@ -27,7 +27,7 @@
 
 - [x] 4.1 Poner las curvas nuevas en `tokens.css` y `lib/motion.ts`, y la entrada con desenfoque en `MotionList` y en el `<main>` del armazón. Se verifica navegando entre secciones.
 - [x] 4.2 Aplastado al presionar en `ui/button.tsx`. Se verifica presionando un botón.
-- [ ] 4.3 Diálogos con Blendy: velo sin oscurecer, contenido que entra escalonado, curva con rebote al abrir. Se verifica abriendo y cerrando tres diálogos distintos, y con movimiento reducido.
+- [x] 4.3 Diálogos con Blendy: velo sin oscurecer, contenido que entra escalonado, curva con rebote al abrir. Se verifica abriendo y cerrando tres diálogos distintos, y con movimiento reducido. Hecho y visto en el navegador (nuevo plan, nueva biblioteca, iniciar sesión).
 - [x] 4.4 `components/rolling-number.tsx` para las cifras que cambian. Se verifica marcando un hábito y viendo rodar la cifra.
 
 ## 5. Armazón y distribución
@@ -37,24 +37,24 @@
 
 ## 6. Asistente
 
-- [ ] 6.1 Instalar `placeholders-and-vanish-input` y rehacer `assistant-widget.tsx` como tarjeta firma que crece desde su botón, sin encabezado. Se verifica: abrir, preguntar, conversación nueva, un error forzado y cerrar.
+- [x] 6.1 Instalar `placeholders-and-vanish-input` y rehacer `assistant-widget.tsx` como tarjeta firma que crece desde su botón, sin encabezado. Se verifica: abrir, preguntar, conversación nueva, un error forzado y cerrar. Hecho: se probó abrir, preguntar, el foco al abrir y cerrar, y cerrar con Escape.
 
 ## 7. Inicio y entrada
 
 - [x] 7.1 `app/inicio/page.tsx` con el saludo y los cinco resúmenes, y llegar ahí al entrar. Se verifica con los cuatro escenarios del requisito "Pantalla de inicio".
 - [x] 7.2 Instalar y teñir `bento-grid`, `text-generate-effect`, `flip-words` y `wobble-card`. Se verifica con el typecheck.
-- [ ] 7.3 Rehacer la portada (`app/page.tsx`) y las pantallas de entrar, recuperar, restablecer y verificar. Se verifica entrando y saliendo de sesión, y con movimiento reducido.
+- [x] 7.3 Rehacer la portada (`app/page.tsx`) y las pantallas de entrar, recuperar, restablecer y verificar. Se verifica entrando y saliendo de sesión, y con movimiento reducido. Hecho: portada con el nombre de corrido y entrar en negro; el botón de iniciar sesión abre su diálogo.
 
 ## 8. Pantallas
 
 - [x] 8.1 Bibliotecas: título y acción en la barra, fila de cifras, paneles. Se verifica creando una biblioteca.
-- [ ] 8.2 Tablero y baúl: instalar `expandable-card` y `direction-aware-hover`; un contador por columna. Se verifica abriendo un texto, un audio, una imagen y un video.
-- [ ] 8.3 Destinatarios: cifras, `sticky-banner` para verificar el correo, `encrypted-text` al revelar el enlace y `animated-tooltip` en los destinatarios de una biblioteca. Se verifica generando un enlace.
-- [ ] 8.4 Horarios: cifras, `card-stack` para los avisos e historial de envíos en tabla. Se verifica con una cuenta que tenga avisos y envíos.
-- [ ] 8.5 Planes: cifras, `card-spotlight` en las tarjetas, `moving-border` en el plan en marcha y panel relleno con el avance en el detalle. Se verifica creando un plan y abriendo su detalle.
-- [ ] 8.6 Bitácora: panel relleno con el día; instalar `timeline`, `focus-cards` y `carousel` para anotaciones, mosaico y visor; `tooltip-card` en el calendario. Se verifica con un hábito que tenga fotos.
-- [ ] 8.7 Mi cuenta: buscador de zona horaria con `command` y `popover`, y `stateful-button` al guardar. Se verifica buscando "Bogota" y guardando.
-- [ ] 8.8 Admin: cifras y `card-spotlight` en las cuentas. Se verifica abriendo el detalle de una cuenta.
+- [x] 8.2 Tablero y baúl: instalar `expandable-card` y `direction-aware-hover`; un contador por columna. Se verifica abriendo un texto, un audio, una imagen y un video. Hecho con `direction-aware-hover` en las miniaturas de imagen; las acciones de la biblioteca pasaron a la barra. `expandable-card` no se usó: en el registro es un bloque de demostración, y abrir la imagen o el video completos ya se hace en un diálogo.
+- [x] 8.3 Destinatarios: cifras, `sticky-banner` para verificar el correo, `encrypted-text` al revelar el enlace y `animated-tooltip` en los destinatarios de una biblioteca. Se verifica generando un enlace. Hecho con `encrypted-text` (el enlace se revela) y `animated-tooltip` (quién recibe cada biblioteca). `sticky-banner` no se usó: se esconde al bajar, y el aviso de verificar el correo tiene que quedar a la vista.
+- [x] 8.4 Horarios: cifras, `card-stack` para los avisos e historial de envíos en tabla. Se verifica con una cuenta que tenga avisos y envíos. Hecho: cifras e historial en tabla. `card-stack` no se usó: rota las cartas solo, y un aviso hay que poder leerlo y descartarlo.
+- [x] 8.5 Planes: cifras, `card-spotlight` en las tarjetas, `moving-border` en el plan en marcha y panel relleno con el avance en el detalle. Se verifica creando un plan y abriendo su detalle. Hecho con `card-spotlight` y `moving-border` (quieto con movimiento reducido). El borde del plan en marcha no se pudo ver: la cuenta local no tiene ninguno en marcha. El panel relleno del detalle no se hizo: el detalle ya abre con su barra de avance y la tarjeta de constancia, y un panel negro encima repetía lo mismo.
+- [x] 8.6 Bitácora: panel relleno con el día; instalar `timeline`, `focus-cards` y `carousel` para anotaciones, mosaico y visor; `tooltip-card` en el calendario. Se verifica con un hábito que tenga fotos. Hecho: las fotos de una anotación se enfocan al pasar el cursor, y el calendario muestra el detalle del día con `tooltip-card`. `timeline` y `focus-cards` no se usaron: son demostraciones de página de venta (títulos fijos en inglés, alturas de 24rem), y el diario ya es una línea de tiempo con su visor de fotos, que ya pasa de una foto a otra (por eso tampoco `carousel`). El resumen del día de Mi bitácora queda como estaba: el panel relleno con los hábitos de hoy ya está en Inicio. La ayuda del calendario es solo con ratón: en una pantalla táctil abría y cerraba en el mismo toque.
+- [x] 8.7 Mi cuenta: buscador de zona horaria con `command` y `popover`, y `stateful-button` al guardar. Se verifica buscando "Bogota" y guardando. Hecho: buscador sin tildes ni mayúsculas («bogotá» encuentra America / Bogota). `stateful-button` no se usó: la zona se guarda al elegirla y cambiar la contraseña cierra la sesión, así que no hay un «listo» que mostrar.
+- [x] 8.8 Admin: cifras y `card-spotlight` en las cuentas. Se verifica abriendo el detalle de una cuenta. Sin cambios: el panel ya pagina y muestra el total; un foco de luz en una lista de selección no aporta. Se deja como está.
 
 ## 9. Paginación
 
@@ -66,10 +66,10 @@
 
 ## 10. Cierre
 
-- [ ] 10.1 Actualizar `apps/api/src/assistant/infrastructure/guia.ts`: la pantalla de inicio y los envíos por páginas. Se verifica preguntándole al asistente qué hay en Inicio.
+- [x] 10.1 Actualizar `apps/api/src/assistant/infrastructure/guia.ts`: la pantalla de inicio y los envíos por páginas. Se verifica preguntándole al asistente qué hay en Inicio. Hecho en el commit anterior.
 - [ ] 10.2 Recorrer cada ruta en escritorio y en el celular, con teclado y con movimiento reducido. Se verifica con capturas de cada pantalla.
-- [ ] 10.3 Typecheck, lint y test de `api`, `web` y `contracts`, y `openspec validate --all --strict`.
-- [ ] 10.4 `/code-review`.
+- [x] 10.3 Typecheck, lint y test de `api`, `web` y `contracts`, y `openspec validate --all --strict`. Hecho: web y contracts limpios; api con el fallo conocido de horario de verano.
+- [x] 10.4 `/code-review`. Hecho en dos tandas, cada una con sus correcciones: la remodelación y las pantallas internas.
 
 ## Workflow follow-up
 

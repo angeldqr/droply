@@ -3,7 +3,6 @@
 import {
   CHANNEL_LABELS,
   RECIPIENT_LABEL_MAX_LENGTH,
-  type RecipientStatus,
   type RecipientView,
 } from '@reconectate/contracts';
 import { Link2, MailCheck, Plus, Send, Trash2 } from 'lucide-react';
@@ -55,6 +54,7 @@ import {
   useCreateRecipient,
   useDeleteRecipient,
   useRecipients,
+  RECIPIENT_STATUS,
   useRelinkRecipient,
 } from '@/lib/recipients';
 
@@ -172,14 +172,6 @@ function Contents() {
  * el día que entre BLOCKED —cuando el envío descubra que bloquearon al bot— se
  * agrega una línea acá y no se busca por el archivo.
  */
-const STATUS: Readonly<
-  Record<RecipientStatus, { badge: string; variant: 'secondary' | 'outline' | 'destructive' }>
-> = {
-  PENDING: { badge: 'Pendiente', variant: 'outline' },
-  VERIFIED: { badge: 'Vinculado', variant: 'secondary' },
-  BLOCKED: { badge: 'Te bloqueó', variant: 'destructive' },
-};
-
 /**
  * Qué dice la fila debajo del nombre.
  *
@@ -290,7 +282,9 @@ function RecipientRow({
         </ItemContent>
 
         <ItemActions>
-          <Badge variant={STATUS[recipient.status].variant}>{STATUS[recipient.status].badge}</Badge>
+          <Badge variant={RECIPIENT_STATUS[recipient.status].variant}>
+            {RECIPIENT_STATUS[recipient.status].badge}
+          </Badge>
 
           {recipient.status === 'PENDING' ? (
             <Button

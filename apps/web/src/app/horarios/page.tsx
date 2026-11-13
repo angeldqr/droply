@@ -71,6 +71,14 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
 import { useLibraries, useLibraryRecipients } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
@@ -208,32 +216,48 @@ function DeliveryHistory() {
       </PanelHeader>
 
       {/* Mientras llega otra página se ve la anterior, apagada. */}
-      <ul
-        className={cn(
-          'flex flex-col gap-1 transition-opacity',
-          deliveries.isPlaceholderData && 'opacity-50',
-        )}
-      >
-        {deliveries.data.items.map((delivery) => (
-          <li
-            key={delivery.id}
-            className="border-border flex flex-wrap items-center gap-3 border-b py-2 text-sm last:border-b-0"
-          >
-            <Badge variant={delivery.status === 'SENT' ? 'secondary' : 'outline'}>
-              {DELIVERY_STATUS_LABELS[delivery.status]}
-            </Badge>
-            <span className="min-w-0 flex-1 truncate">
-              {delivery.libraryName} → {delivery.recipientLabel}
-            </span>
-            {delivery.error ? (
-              <span className="text-muted-foreground truncate">{delivery.error}</span>
-            ) : null}
-            <span className="text-muted-foreground tabular-nums">
-              {WHEN.format(new Date(delivery.occurredAt))}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <Table className={cn('transition-opacity', deliveries.isPlaceholderData && 'opacity-50')}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Cuándo</TableHead>
+            <TableHead>Biblioteca</TableHead>
+            <TableHead>Para</TableHead>
+            <TableHead>Resultado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {deliveries.data.items.map((delivery) => (
+            <TableRow key={delivery.id}>
+              <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
+                {WHEN.format(new Date(delivery.occurredAt))}
+              </TableCell>
+              {/* En una celda `max-width` no corta: el recorte va en un bloque adentro. */}
+              <TableCell>
+                <div className="max-w-48 truncate">{delivery.libraryName}</div>
+              </TableCell>
+              <TableCell>
+                <div className="max-w-40 truncate">{delivery.recipientLabel}</div>
+              </TableCell>
+              <TableCell>
+                <span className="flex items-center gap-2">
+                  <Badge variant={delivery.status === 'SENT' ? 'secondary' : 'outline'}>
+                    {DELIVERY_STATUS_LABELS[delivery.status]}
+                  </Badge>
+                  {/* El motivo de una falla, entero al pasar el cursor: en la celda no cabe. */}
+                  {delivery.error ? (
+                    <span
+                      className="text-muted-foreground max-w-56 truncate text-xs"
+                      title={delivery.error}
+                    >
+                      {delivery.error}
+                    </span>
+                  ) : null}
+                </span>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <Pager
         label="Historial de envíos"

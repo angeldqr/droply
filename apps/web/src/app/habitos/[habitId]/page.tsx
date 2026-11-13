@@ -495,6 +495,8 @@ const MOSAIC_MAX = 6;
  */
 function PhotoMosaic({ photos }: { photos: readonly EntryPhotoView[] }) {
   const [shown, setShown] = useState<number | null>(null);
+  // La foto bajo el cursor queda nítida y las demás se apagan un poco.
+  const [hovered, setHovered] = useState<number | null>(null);
   const visible = photos.slice(0, MOSAIC_MAX);
   const hidden = photos.length - visible.length;
 
@@ -507,7 +509,15 @@ function PhotoMosaic({ photos }: { photos: readonly EntryPhotoView[] }) {
         )}
       >
         {visible.map((photo, index) => (
-          <li key={photo.id}>
+          <li
+            key={photo.id}
+            onMouseEnter={() => setHovered(index)}
+            onMouseLeave={() => setHovered(null)}
+            className={cn(
+              'transition-[filter,transform] duration-300 ease-out motion-reduce:transition-none',
+              hovered !== null && hovered !== index && 'scale-[0.98] blur-[2px]',
+            )}
+          >
             <button
               type="button"
               onClick={() => setShown(index)}

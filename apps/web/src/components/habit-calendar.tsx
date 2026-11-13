@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { dayKey, jumpToDay, WEEKDAY_NAMES } from '@/components/habit-mark';
 import { Button } from '@/components/ui/button';
+import { Tooltip as CursorTooltip } from '@/components/ui/tooltip-card';
 import { cn } from '@/lib/utils';
 
 function monthStart(date: Date): Date {
@@ -155,22 +156,29 @@ export function HabitCalendar({
           const label = labelOf(cell.date, cell.count, goal, cell.applies, cell.paused);
 
           return cell.count > 0 ? (
-            <button
+            // El detalle del día sigue al cursor; el lector de pantalla lo lee del botón.
+            <CursorTooltip
               key={cell.key}
-              type="button"
-              onClick={() => jumpToDay(cell.key)}
-              aria-label={label}
-              className={cn(
-                base,
-                // Anotar en un día libre se ve, pero sin la escala de la meta.
-                cell.applies
-                  ? toneOf(cell.score)
-                  : 'border-logro/50 text-foreground border-2 border-dashed font-semibold',
-                'focus-visible:ring-ring transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
-              )}
+              content={<span aria-hidden>{label}</span>}
+              containerClassName="block"
             >
-              {cell.date.getDate()}
-            </button>
+              <button
+                type="button"
+                onClick={() => jumpToDay(cell.key)}
+                aria-label={label}
+                className={cn(
+                  base,
+                  'w-full',
+                  // Anotar en un día libre se ve, pero sin la escala de la meta.
+                  cell.applies
+                    ? toneOf(cell.score)
+                    : 'border-logro/50 text-foreground border-2 border-dashed font-semibold',
+                  'focus-visible:ring-ring transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
+                )}
+              >
+                {cell.date.getDate()}
+              </button>
+            </CursorTooltip>
           ) : (
             // Un `span` no lleva `aria-label` que se lea: el texto va oculto a la vista.
             <span

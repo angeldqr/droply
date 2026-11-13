@@ -1,9 +1,10 @@
 'use client';
 
 import { PASSWORD_MIN_LENGTH, type AuthenticatedUser } from '@reconectate/contracts';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { RequireSession } from '@/components/require-session';
@@ -14,12 +15,13 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -71,7 +73,7 @@ function Account() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-6">
+    <div className="w-full max-w-2xl pb-6 pt-2">
       <Item variant="outline" size="sm" className="bg-card mb-6 items-start">
         <ItemContent className="min-w-0">
           <ItemTitle className="truncate">{user?.displayName}</ItemTitle>
@@ -146,6 +148,19 @@ function timezones(current: string): string[] {
   return all.includes(current) ? all : [current, ...all];
 }
 
+/** Para comparar sin que importen las tildes ni las mayúsculas: «Bogotá» encuentra «Bogota». */
+function foldForSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+/** «America/Bogota» → «America / Bogota», que es como se lee y como se busca. */
+function zoneLabel(zone: string): string {
+  return zone.replaceAll('_', ' ').replaceAll('/', ' / ');
+}
+
 /**
  * La zona de la cuenta decide a qué hora termina el día en la bitácora y en
  * `/hoy`. Se guarda al elegirla: no hay nada más que confirmar.
@@ -154,10 +169,16 @@ function TimezoneCard() {
   const { user, updateUser } = useSession();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const zones = useMemo(() => timezones(user?.timezone ?? ''), [user?.timezone]);
 
   if (!user) return null;
 
   async function change(timezone: string) {
+    setOpen(false);
+
+    if (timezone === user?.timezone) return;
+
     setBusy(true);
 
     try {
@@ -186,22 +207,52 @@ function TimezoneCard() {
       <CardContent>
         <Field>
           <FieldLabel htmlFor="timezone">Dónde vives</FieldLabel>
-          <Select
-            value={user.timezone}
-            onValueChange={(value) => void change(value)}
-            disabled={busy}
-          >
-            <SelectTrigger id="timezone" className="w-full sm:w-80">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {timezones(user.timezone).map((zone) => (
-                <SelectItem key={zone} value={zone}>
-                  {zone.replaceAll('_', ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/*
+            Un buscador y no una lista: son unas cuatrocientas zonas, y nadie
+            baja hasta la B de Bogotá a punta de rueda del ratón.
+          */}
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                id="timezone"
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                disabled={busy}
+                className="h-10 w-full justify-between font-normal sm:w-80"
+              >
+                <span className="truncate">{zoneLabel(user.timezone)}</span>
+                {busy ? <Spinner /> : <ChevronsUpDown className="text-muted-foreground" />}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+              {/*
+                Solo las zonas que contienen lo escrito, sin tildes ni mayúsculas.
+                El filtro de serie es aproximado: con «madr» mostraba Denver.
+              */}
+              <Command
+                filter={(value, search) =>
+                  foldForSearch(value).includes(foldForSearch(search)) ? 1 : 0
+                }
+              >
+                <CommandInput placeholder="Busca tu ciudad, por ejemplo Bogotá" />
+                <CommandList>
+                  <CommandEmpty>Ninguna zona se llama así.</CommandEmpty>
+                  {zones.map((zone) => (
+                    <CommandItem
+                      key={zone}
+                      // Con el nombre crudo al lado encuentra también «America/Bogota» pegado.
+                      value={`${zoneLabel(zone)} ${zone}`}
+                      onSelect={() => void change(zone)}
+                    >
+                      <Check className={zone === user.timezone ? 'opacity-100' : 'opacity-0'} />
+                      {zoneLabel(zone)}
+                    </CommandItem>
+                  ))}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </Field>
       </CardContent>
     </Card>

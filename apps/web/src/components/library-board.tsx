@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { AddTextDialog } from '@/components/add-text-dialog';
 import { EditTextDialog } from '@/components/edit-text-dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { DirectionAwareHover } from '@/components/ui/direction-aware-hover';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -479,25 +480,25 @@ function MediaContent({ kind, media }: { kind: ItemKind; media: MediaView }) {
               <AspectRatio ratio={16 / 9} className="bg-muted overflow-hidden rounded-sm">
                 {kind === 'IMAGE' ? (
                   /*
-                   * `<img>` a propósito, no `next/image`. El optimizador
-                   * descarga la imagen desde el servidor y deja el resultado en
-                   * su caché de disco, donde sobreviviría a la firma que la
-                   * protege: el bucket es privado y la URL caduca justamente
-                   * para que el archivo no quede accesible.
+                   * `<img>` a propósito, no `next/image`: el optimizador dejaría
+                   * la imagen en su caché de disco, donde sobreviviría a la
+                   * firma que la protege. La imagen se corre un poco hacia el
+                   * lado por donde entra el cursor y deja ver «Ver completa».
                    *
                    * ponytail: se muestra el original encogido y no una
                    * miniatura de verdad; generarlas pide un proceso aparte con
                    * sharp, y hasta que una biblioteca grande se sienta lenta no
                    * compensa.
                    */
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={media.url}
+                  <DirectionAwareHover
+                    imageUrl={media.url}
                     alt={media.fileName}
-                    loading="lazy"
                     onError={() => setFailed(true)}
-                    className="size-full object-cover"
-                  />
+                    className="size-full"
+                    childrenClassName="text-sm font-medium"
+                  >
+                    Ver completa
+                  </DirectionAwareHover>
                 ) : (
                   /*
                    * Sin controles y silenciado en la tarjeta: acá solo hace

@@ -99,43 +99,6 @@ export const Tooltip = ({
     updateMousePosition(mouseX, mouseY);
   };
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = touch.clientX - rect.left;
-    const mouseY = touch.clientY - rect.top;
-    updateMousePosition(mouseX, mouseY);
-    setIsVisible(true);
-  };
-
-  const handleTouchEnd = () => {
-    // Delay hiding to allow for tap interaction
-    setTimeout(() => {
-      setIsVisible(false);
-      setMouse({ x: 0, y: 0 });
-      setPosition({ x: 0, y: 0 });
-    }, 2000);
-  };
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Toggle visibility on click for mobile devices
-    if (window.matchMedia('(hover: none)').matches) {
-      e.preventDefault();
-      if (isVisible) {
-        setIsVisible(false);
-        setMouse({ x: 0, y: 0 });
-        setPosition({ x: 0, y: 0 });
-      } else {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        updateMousePosition(mouseX, mouseY);
-        setIsVisible(true);
-      }
-    }
-  };
-
   // Update position when tooltip becomes visible or content changes
   useEffect(() => {
     if (isVisible && contentRef.current) {
@@ -151,10 +114,11 @@ export const Tooltip = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onClick={handleClick}
     >
+      {/*
+        Solo con ratón: en una pantalla táctil, tocar abría y cerraba la ayuda
+        en el mismo gesto. Ahí el toque hace lo suyo y nada más.
+      */}
       {children}
       <AnimatePresence>
         {isVisible && (

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
+import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,7 +24,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
 import { useLibraryRecipients, useSetLibraryRecipients } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
-import { useRecipients } from '@/lib/recipients';
+import { RECIPIENT_STATUS, useRecipients } from '@/lib/recipients';
 
 /**
  * A quién se le puede enviar lo de esta biblioteca.
@@ -91,8 +92,22 @@ export function LibraryRecipientsDialog({ library }: { library: LibrarySummary }
     }
   }
 
+  // Quiénes reciben hoy esta biblioteca, como avatares con su nombre al pasar el cursor.
+  const receiving = (recipients.data ?? [])
+    .filter((recipient) => (chosen.data ?? []).includes(recipient.id))
+    .map((recipient) => ({
+      id: recipient.id,
+      name: recipient.label,
+      designation: RECIPIENT_STATUS[recipient.status].badge,
+    }));
+
   return (
     <Dialog open={dialog.open} onOpenChange={dialog.onOpenChange}>
+      {receiving.length > 0 ? (
+        <div className="flex items-center pr-2">
+          <AnimatedTooltip items={receiving} />
+        </div>
+      ) : null}
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" {...dialog.fromProps}>
           {/* Blendy necesita que el contenido cuelgue de un solo elemento. */}

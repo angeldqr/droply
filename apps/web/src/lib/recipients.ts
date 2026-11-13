@@ -1,6 +1,6 @@
 'use client';
 
-import type { CreateRecipientInput, RecipientView } from '@reconectate/contracts';
+import type { CreateRecipientInput, RecipientStatus, RecipientView } from '@reconectate/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 
@@ -64,3 +64,12 @@ export function useDeleteRecipient() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: listKey }),
   });
 }
+
+/** Cómo se nombra el estado de un destinatario: en su insignia y en su avatar. */
+export const RECIPIENT_STATUS: Readonly<
+  Record<RecipientStatus, { badge: string; variant: 'secondary' | 'outline' | 'destructive' }>
+> = {
+  PENDING: { badge: 'Pendiente', variant: 'outline' },
+  VERIFIED: { badge: 'Vinculado', variant: 'secondary' },
+  BLOCKED: { badge: 'Te bloqueó', variant: 'destructive' },
+};
