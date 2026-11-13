@@ -137,14 +137,14 @@ export function bandOf(percent: number): Band {
 }
 
 export const BAND_TONE: Record<Band, string> = {
-  logro: 'bg-logro-600 text-white',
+  logro: 'bg-logro text-sobre',
   // Tinta y no blanco sobre el ámbar: en blanco quedaba en 2,9:1, ilegible.
-  medias: 'bg-medias-500 text-ciruela-900',
-  alerta: 'bg-alerta-500 text-white',
+  medias: 'bg-ambar text-sobre',
+  alerta: 'bg-coral text-sobre',
 };
 
 function toneOf(day: HabitDayView | undefined): string {
-  if (!day || day.percent === null) return 'bg-lavanda-200/60 text-transparent';
+  if (!day || day.percent === null) return 'bg-muted text-transparent';
 
   return BAND_TONE[bandOf(day.percent)];
 }
@@ -158,10 +158,10 @@ function describe(label: string, number: number, day: HabitDayView | undefined):
 export function Legend({ empty = 'Sin envíos ese día' }: { empty?: string | null }) {
   return (
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-      <Swatch className="bg-logro-600">80% o más</Swatch>
-      <Swatch className="bg-medias-500">Entre 50 y 79%</Swatch>
-      <Swatch className="bg-alerta-500">Menos de 50%</Swatch>
-      {empty ? <Swatch className="bg-lavanda-200">{empty}</Swatch> : null}
+      <Swatch className="bg-logro">80% o más</Swatch>
+      <Swatch className="bg-ambar">Entre 50 y 79%</Swatch>
+      <Swatch className="bg-coral">Menos de 50%</Swatch>
+      {empty ? <Swatch className="bg-muted">{empty}</Swatch> : null}
     </div>
   );
 }

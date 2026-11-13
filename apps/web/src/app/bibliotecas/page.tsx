@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  COLUMN_LABELS,
   COLUMN_ORDER,
   countLabel,
   LIBRARY_DESCRIPTION_MAX_LENGTH,
@@ -12,11 +13,12 @@ import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
+import { EmptyState, ListState, SkeletonList } from '@/components/list-state';
 import { MotionItem, MotionList } from '@/components/motion-list';
 import { LibraryActions } from '@/components/library-actions';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { RequireSession } from '@/components/require-session';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { StatRow } from '@/components/stat-row';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,16 +30,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
@@ -56,14 +51,13 @@ export default function LibrariesPage() {
 }
 
 function Content() {
-  const { data, isPending, error } = useLibraries();
+  const libraries = useLibraries();
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+    <div className="w-full pb-6 pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl">Tus bibliotecas</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground">
             Cada una es una colección. El bot toma de ahí lo que envía.
           </p>
         </div>
@@ -71,44 +65,51 @@ function Content() {
         <NewLibraryDialog id="nueva-biblioteca-cabecera" />
       </div>
 
-      <div className="mt-10">
-        {isPending ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="h-36 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertTitle>No pudimos traer tus bibliotecas</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
-          </Alert>
-        ) : data.length === 0 ? (
-          <Empty className="border-border border">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <LibraryBig />
-              </EmptyMedia>
-              <EmptyTitle>Todavía no hay ninguna</EmptyTitle>
-              <EmptyDescription>
-                Crea la primera y empieza a llenarla con lo que quieres que llegue.
-              </EmptyDescription>
-            </EmptyHeader>
-            <NewLibraryDialog id="nueva-biblioteca-vacio" />
-          </Empty>
-        ) : (
-          <MotionList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((library, index) => (
-              <MotionItem key={library.id} index={index}>
-                <LibraryCard library={library} />
-              </MotionItem>
-            ))}
-          </MotionList>
-        )}
+      {libraries.data && libraries.data.length > 0 ? (
+        <StatRow
+          className="mt-6 lg:grid-cols-5"
+          stats={[
+            { label: 'Bibliotecas', value: libraries.data.length },
+            ...COLUMN_ORDER.map((kind) => ({
+              label: COLUMN_LABELS[kind],
+              value: libraries.data.reduce((sum, library) => sum + library.counts[kind], 0),
+            })),
+          ]}
+        />
+      ) : null}
+
+      <div className="mt-6">
+        <ListState
+          query={libraries}
+          errorTitle="No pudimos traer tus bibliotecas"
+          skeleton={<SkeletonList className={GRID} itemClassName="h-40" />}
+          empty={
+            <EmptyState
+              icon={<LibraryBig />}
+              title="Todavía no hay ninguna"
+              description="Crea la primera y empieza a llenarla con lo que quieres que llegue."
+            >
+              <NewLibraryDialog id="nueva-biblioteca-vacio" />
+            </EmptyState>
+          }
+        >
+          {(data) => (
+            <MotionList className={GRID}>
+              {data.map((library, index) => (
+                <MotionItem key={library.id} index={index}>
+                  <LibraryCard library={library} />
+                </MotionItem>
+              ))}
+            </MotionList>
+          )}
+        </ListState>
       </div>
     </div>
   );
 }
+
+/** La misma grilla para la lista y para sus bloques de carga: nada salta al llegar. */
+const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
 function LibraryCard({ library }: { library: LibrarySummary }) {
   const filled = COLUMN_ORDER.filter((kind) => library.counts[kind] > 0);
@@ -122,7 +123,15 @@ function LibraryCard({ library }: { library: LibrarySummary }) {
    * menú, que va por encima, se queda con sus propios clics.
    */
   return (
-    <Card className="border-border hover:border-foreground/40 relative h-full border transition-colors">
+    <Card className="border-border relative h-full border">
+      {/* Un borde que sigue al cursor: dice cuál tarjeta se va a abrir sin moverla. */}
+      <GlowingEffect
+        disabled={false}
+        spread={36}
+        proximity={48}
+        inactiveZone={0.2}
+        borderWidth={2}
+      />
       <CardHeader className="pr-12">
         <CardTitle className="text-2xl">{library.name}</CardTitle>
         <CardDescription className="line-clamp-2">
@@ -145,7 +154,7 @@ function LibraryCard({ library }: { library: LibrarySummary }) {
       <Link
         href={`/bibliotecas/${library.id}`}
         aria-label={`Abrir ${library.name}`}
-        className="focus-visible:outline-ring absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="focus-visible:outline-ring absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2"
       />
 
       <div className="absolute right-2 top-2 z-10">

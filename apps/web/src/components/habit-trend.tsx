@@ -102,7 +102,7 @@ export function HabitTrend({
               <span
                 className={cn(
                   'w-full rounded-t-[4px]',
-                  pct === null ? 'bg-muted' : last ? 'bg-morado-400' : 'bg-morado-700',
+                  pct === null ? 'bg-muted' : last ? 'bg-menta' : 'bg-menta/45',
                 )}
                 style={{ height: `${pct === null ? 3 : Math.max(pct, 3)}%` }}
                 title={

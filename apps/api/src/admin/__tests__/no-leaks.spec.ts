@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PrismaService } from '../../platform/prisma/prisma.service';
 import type { UserId } from '../../shared/identifiers';
+import { REQUIRED_ROLE } from '../../platform/http/roles.decorator';
 import { PrismaAccountDirectory } from '../infrastructure/prisma-account.directory';
+import { AdminController } from '../presentation/admin.controller';
 
 const CREATED_AT = new Date('2026-08-01T10:00:00.000Z');
 
@@ -42,12 +44,19 @@ const ROW = {
   ],
 };
 
-function directory() {
+/** Un Prisma de mentira que respeta `skip` y `take`, que es lo que hace la paginación. */
+function directory(rows: (typeof ROW)[] = [ROW]) {
   const prisma = {
     user: {
-      findMany: () => Promise.resolve([ROW]),
+      findMany: (args: { skip?: number; take?: number }) => {
+        const skip = args.skip ?? 0;
+
+        return Promise.resolve(rows.slice(skip, skip + (args.take ?? rows.length)));
+      },
+      count: () => Promise.resolve(rows.length),
       findUnique: () => Promise.resolve(ROW),
     },
+    $transaction: (operations: Promise<unknown>[]) => Promise.all(operations),
   } as unknown as PrismaService;
 
   return new PrismaAccountDirectory(prisma);
@@ -86,12 +95,34 @@ describe('el panel de administración solo muestra metadatos', () => {
   });
 
   it('el listado tampoco trae nada de más', async () => {
-    const [summary] = await directory().list();
+    const {
+      items: [summary],
+    } = await directory().list(1, 20);
 
     if (!summary) throw new Error('el listado salió vacío');
 
     expect(JSON.stringify(summary)).not.toContain('argon2');
     expect(summary.libraryCount).toBe(1);
     expect(summary.vaultItemCount).toBe(7);
+  });
+});
+
+describe('las cuentas del panel por páginas', () => {
+  const thirty = Array.from({ length: 30 }, (_, index) => ({ ...ROW, id: `cuenta-${index + 1}` }));
+
+  it('con más cuentas que una página, la primera trae 20 y la segunda el resto', async () => {
+    const first = await directory(thirty).list(1, 20);
+    const second = await directory(thirty).list(2, 20);
+
+    expect(first.items).toHaveLength(20);
+    expect(first.total).toBe(30);
+    expect(second.items.map((account) => account.id)).toEqual(
+      thirty.slice(20).map((account) => account.id),
+    );
+  });
+
+  it('la ruta sigue cerrada a quien no administra', () => {
+    // El guardia de roles lee esta marca de la clase: sin ella, la ruta quedaría abierta.
+    expect(Reflect.getMetadata(REQUIRED_ROLE, AdminController)).toBe('ADMIN');
   });
 });

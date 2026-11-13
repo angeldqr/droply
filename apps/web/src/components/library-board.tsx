@@ -36,7 +36,9 @@ import { VaultPickerDialog } from '@/components/vault-picker-dialog';
 import { ApiError } from '@/lib/api';
 import { COLUMN_TINT } from '@/lib/columns';
 import { useMoveItem, useRemoveItem, useSetTimesPerDay } from '@/lib/libraries';
+import { ShowMore } from '@/components/show-more';
 import { useMorphDialog } from '@/lib/morph-dialog';
+import { useShown } from '@/lib/use-shown';
 
 /**
  * El tablero del boceto: cuatro columnas separadas por líneas de tinta, cada
@@ -111,6 +113,9 @@ const COLUMN_BORDERS = [
   'border-t sm:border-l lg:border-t-0',
 ] as const;
 
+/** De a cuántos elementos se muestra una columna: una biblioteca no tiene tope. */
+const COLUMN_PART = 30;
+
 function Column({
   libraryId,
   kind,
@@ -129,6 +134,9 @@ function Column({
   className: string;
 }) {
   const picker = useMorphDialog(`baul-${kind.toLowerCase()}`);
+  // Se dibujan de a treinta. El contador del encabezado y los vecinos de cada
+  // elemento (para subirlo o bajarlo) siguen saliendo de `items`, la lista entera.
+  const { shown, remaining, more } = useShown(items, COLUMN_PART);
 
   return (
     <section
@@ -155,7 +163,7 @@ function Column({
           </p>
         ) : null}
 
-        {items.map((item, index) => (
+        {shown.map((item, index) => (
           <StackedItem
             key={item.id}
             libraryId={libraryId}
@@ -164,6 +172,8 @@ function Column({
             nextId={items[index + 1]?.id}
           />
         ))}
+
+        <ShowMore remaining={remaining} size={COLUMN_PART} onMore={more} />
 
         {/*
           El botón queda al final de la pila y baja solo a medida que se agregan

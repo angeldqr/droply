@@ -1,3 +1,4 @@
+import { offsetOf, type Page } from '../../shared/page';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -324,27 +325,31 @@ export class PrismaDeliveryLog implements DeliveryLog {
       where: { schedule: { ownerId } },
       orderBy: { occurredAt: 'desc' },
       take: limit,
-      select: {
-        id: true,
-        scheduleId: true,
-        status: true,
-        error: true,
-        occurredAt: true,
-        schedule: {
-          select: { library: { select: { name: true } }, recipient: { select: { label: true } } },
-        },
-      },
+      select: RECORD_COLUMNS,
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      scheduleId: row.scheduleId,
-      libraryName: row.schedule.library.name,
-      recipientLabel: row.schedule.recipient.label,
-      status: row.status,
-      error: row.error,
-      occurredAt: row.occurredAt,
-    }));
+    return rows.map(toRecord);
+  }
+
+  async page(ownerId: string, page: number, pageSize: number): Promise<Page<DeliveryRecord>> {
+    const where = { schedule: { ownerId } };
+
+    // En una transacción: si entra un envío entre las dos consultas, el total
+    // y la página dejarían de corresponderse.
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.deliveryAttempt.findMany({
+        where,
+        // El `id` desempata dos envíos del mismo instante: sin él, una fila
+        // podría salir en dos páginas y otra en ninguna.
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+        skip: offsetOf(page, pageSize),
+        take: pageSize,
+        select: RECORD_COLUMNS,
+      }),
+      this.prisma.deliveryAttempt.count({ where }),
+    ]);
+
+    return { items: rows.map(toRecord), total };
   }
 }
 
@@ -384,4 +389,35 @@ export class PrismaNotices implements NoticeWriter, NoticeReader {
       data: { readAt: new Date() },
     });
   }
+}
+
+/** Las columnas de un envío que ve su dueño. */
+const RECORD_COLUMNS = {
+  id: true,
+  scheduleId: true,
+  status: true,
+  error: true,
+  occurredAt: true,
+  schedule: {
+    select: { library: { select: { name: true } }, recipient: { select: { label: true } } },
+  },
+} as const;
+
+function toRecord(row: {
+  id: string;
+  scheduleId: string;
+  status: DeliveryRecord['status'];
+  error: string | null;
+  occurredAt: Date;
+  schedule: { library: { name: string }; recipient: { label: string } };
+}): DeliveryRecord {
+  return {
+    id: row.id,
+    scheduleId: row.scheduleId,
+    libraryName: row.schedule.library.name,
+    recipientLabel: row.schedule.recipient.label,
+    status: row.status,
+    error: row.error,
+    occurredAt: row.occurredAt,
+  };
 }

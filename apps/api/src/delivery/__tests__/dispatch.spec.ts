@@ -185,6 +185,10 @@ class FakeLog implements DeliveryLog {
     return Promise.resolve([]);
   }
 
+  page(): Promise<{ items: never[]; total: number }> {
+    return Promise.resolve({ items: [], total: 0 });
+  }
+
   /** La única fila que los tests usan, porque casi todos despachan una. */
   only(): Row {
     const [row] = [...this.rows.values()];

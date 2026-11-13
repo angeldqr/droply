@@ -1,6 +1,13 @@
 import { Controller, Get, Inject, Param } from '@nestjs/common';
-import type { AccountDetailView, AccountSummaryView } from '@reconectate/contracts';
+import {
+  pageQuerySchema,
+  type AccountDetailView,
+  type AccountSummaryView,
+  type Paged,
+  type PageQuery,
+} from '@reconectate/contracts';
 import { Roles } from '../../platform/http/roles.decorator';
+import { ZodQuery } from '../../platform/http/zod-query.decorator';
 import { UserId } from '../../shared/identifiers';
 import { InvalidInputError, NotFoundError } from '../../shared/domain-error';
 import { ACCOUNT_DIRECTORY, type AccountDirectory } from '../domain/ports';
@@ -17,10 +24,15 @@ export class AdminController {
   constructor(@Inject(ACCOUNT_DIRECTORY) private readonly accounts: AccountDirectory) {}
 
   @Get('accounts')
-  async list(): Promise<AccountSummaryView[]> {
-    const rows = await this.accounts.list();
+  async list(@ZodQuery(pageQuerySchema) query: PageQuery): Promise<Paged<AccountSummaryView>> {
+    const { items, total } = await this.accounts.list(query.page, query.pageSize);
 
-    return rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
+    return {
+      items: items.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
   }
 
   @Get('accounts/:userId')

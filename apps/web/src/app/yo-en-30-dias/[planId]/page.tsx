@@ -49,7 +49,7 @@ function Contents({ planId }: { planId: string }) {
     <AppShell
       crumbs={[{ label: 'Yo en 30 días', href: '/yo-en-30-dias' }, { label: data?.name ?? 'Plan' }]}
     >
-      <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div className="flex flex-col gap-6 pb-6 pt-2">
         {isPending ? (
           <Skeleton className="h-72 w-full" />
         ) : error ? (
@@ -71,7 +71,6 @@ function Plan({ plan }: { plan: HabitPlanDetail }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display truncate text-2xl font-semibold">{plan.name}</h1>
             <Badge variant={plan.status === 'ACTIVE' ? 'default' : 'secondary'}>
               {HABIT_PLAN_STATUS_LABELS[plan.status]}
             </Badge>

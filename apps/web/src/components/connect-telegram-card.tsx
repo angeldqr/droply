@@ -26,16 +26,14 @@ export function ConnectTelegramCard({ habitNames }: { habitNames: readonly strin
   const chat = useAccountChat();
 
   return (
-    <section className="bg-ciruela-900 text-papel-50 grid gap-8 overflow-hidden rounded-2xl p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:p-8">
+    <section className="bg-card text-card-foreground border-border grid gap-8 overflow-hidden rounded-2xl border p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:p-8">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <p className="text-morado-400 text-xs font-bold uppercase tracking-[0.16em]">
-            Desde Telegram
-          </p>
+          <p className="text-logro text-xs font-bold uppercase tracking-[0.16em]">Desde Telegram</p>
           <h2 className="font-display text-2xl font-bold leading-tight md:text-3xl">
             Cuéntale al bot qué hiciste
           </h2>
-          <p className="text-papel-50/70 max-w-prose text-sm">
+          <p className="text-foreground/70 max-w-prose text-sm">
             Nada de recordatorios: tú escribes cuando quieras y aquí queda guardado.
           </p>
         </div>
@@ -43,7 +41,7 @@ export function ConnectTelegramCard({ habitNames }: { habitNames: readonly strin
         <ol className="flex flex-col gap-3 text-sm">
           <Step n={1}>
             Escribe{' '}
-            <code className="bg-papel-50/10 rounded px-1.5 py-0.5 font-mono">
+            <code className="bg-foreground/10 rounded px-1.5 py-0.5 font-mono">
               {JOURNAL_COMMAND}
             </code>{' '}
             en el chat.
@@ -53,7 +51,7 @@ export function ConnectTelegramCard({ habitNames }: { habitNames: readonly strin
         </ol>
 
         {chat.isPending ? (
-          <Skeleton className="bg-papel-50/10 h-10 w-56" />
+          <Skeleton className="bg-foreground/10 h-10 w-56" />
         ) : chat.data?.linked ? (
           <Linked />
         ) : (
@@ -69,7 +67,7 @@ export function ConnectTelegramCard({ habitNames }: { habitNames: readonly strin
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex items-center gap-3">
-      <span className="border-papel-50/25 grid size-7 shrink-0 place-items-center rounded-full border text-xs font-bold">
+      <span className="border-foreground/25 grid size-7 shrink-0 place-items-center rounded-full border text-xs font-bold">
         {n}
       </span>
       <span>{children}</span>
@@ -91,15 +89,15 @@ function Linked() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="bg-logro-600/25 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold">
-        <span className="bg-logro-600 size-2 rounded-full" aria-hidden />
+      <span className="bg-logro/20 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold">
+        <span className="bg-logro size-2 rounded-full" aria-hidden />
         Tu Telegram está conectado
       </span>
 
       <Button
         variant="ghost"
         size="sm"
-        className="text-papel-50/70 hover:bg-papel-50/10 hover:text-papel-50"
+        className="text-foreground/70 hover:bg-foreground/10 hover:text-foreground"
         onClick={() => void disconnect()}
         disabled={unlink.isPending}
       >
@@ -143,14 +141,14 @@ function Connect() {
   if (!url) {
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-papel-50/70 text-sm">
+        <p className="text-foreground/70 text-sm">
           Primero conecta tu Telegram, una sola vez, para que el bot sepa que eres tú.
         </p>
         <div>
           <Button
             onClick={() => void ask()}
             disabled={link.isPending}
-            className="bg-papel text-ciruela-900 hover:bg-lavanda-200"
+            className="bg-foreground text-background hover:bg-foreground/85"
           >
             {link.isPending ? <Spinner /> : <Send />}
             Conectar mi Telegram
@@ -163,7 +161,7 @@ function Connect() {
   return (
     <div className="flex max-w-md flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        <Button asChild className="bg-papel text-ciruela-900 hover:bg-lavanda-200">
+        <Button asChild className="bg-foreground text-background hover:bg-foreground/85">
           <a href={url} target="_blank" rel="noreferrer">
             <Send />
             Abrir en Telegram
@@ -171,7 +169,7 @@ function Connect() {
         </Button>
       </div>
 
-      <InputGroup className="bg-papel text-ciruela-900">
+      <InputGroup className="bg-background text-foreground">
         <InputGroupInput readOnly value={url} aria-label="Tu enlace para conectar Telegram" />
         <InputGroupAddon align="inline-end">
           <Button type="button" size="sm" variant="ghost" onClick={() => void copy()}>
@@ -181,7 +179,7 @@ function Connect() {
         </InputGroupAddon>
       </InputGroup>
 
-      <p className="text-papel-50/60 text-xs">
+      <p className="text-foreground/60 text-xs">
         Si Telegram está en otro dispositivo, copia el enlace y ábrelo allí. Aprieta Empezar. Vence
         en un día.
       </p>
@@ -202,7 +200,7 @@ function ChatPreview({ habitNames }: { habitNames: readonly string[] }) {
   return (
     <div
       aria-hidden
-      className="bg-papel-50/[0.06] border-papel-50/10 flex flex-col gap-2 self-center rounded-2xl border p-4 text-sm"
+      className="bg-foreground/[0.06] border-foreground/10 flex flex-col gap-2 self-center rounded-2xl border p-4 text-sm"
     >
       <Bubble mine>{JOURNAL_COMMAND}</Bubble>
 
@@ -214,8 +212,8 @@ function ChatPreview({ habitNames }: { habitNames: readonly string[] }) {
               key={`${name}-${index}`}
               className={
                 index === 0
-                  ? 'bg-morado-400 text-ciruela-900 rounded-lg px-3 py-1 text-center font-semibold'
-                  : 'bg-papel-50/10 rounded-lg px-3 py-1 text-center'
+                  ? 'bg-menta text-sobre-menta rounded-lg px-3 py-1 text-center font-semibold'
+                  : 'bg-foreground/10 rounded-lg px-3 py-1 text-center'
               }
             >
               {index + 1} · {name}
@@ -227,7 +225,7 @@ function ChatPreview({ habitNames }: { habitNames: readonly string[] }) {
       <Bubble mine>Hoy lo hice mejor que ayer 💪</Bubble>
 
       <Bubble mine>
-        <span className="bg-papel-50/15 grid h-16 w-28 place-items-center rounded-lg">
+        <span className="bg-foreground/15 grid h-16 w-28 place-items-center rounded-lg">
           <ImageIcon className="size-5 opacity-70" />
         </span>
       </Bubble>
@@ -242,8 +240,8 @@ function Bubble({ mine = false, children }: { mine?: boolean; children: React.Re
     <div
       className={
         mine
-          ? 'bg-morado-700 max-w-[85%] self-end rounded-2xl rounded-br-md px-3 py-2'
-          : 'bg-papel-50/10 flex max-w-[85%] flex-col self-start rounded-2xl rounded-bl-md px-3 py-2'
+          ? 'bg-menta text-sobre-menta max-w-[85%] self-end rounded-2xl rounded-br-md px-3 py-2'
+          : 'bg-foreground/10 flex max-w-[85%] flex-col self-start rounded-2xl rounded-bl-md px-3 py-2'
       }
     >
       {children}

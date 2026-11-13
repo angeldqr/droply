@@ -1,26 +1,26 @@
 import type { Metadata, Viewport } from 'next';
-import { Nunito, Quicksand } from 'next/font/google';
+import { DM_Mono, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 
 /*
- * Dos redondeadas que se complementan sin competir.
+ * Una sola familia para todo.
  *
- * Quicksand es geométrica y de terminaciones circulares: funciona en títulos
- * grandes y ahí se le nota el carácter. En cuerpo pequeño pierde legibilidad,
- * así que todo lo demás va en Nunito, que es redondeada pero con formas más
- * abiertas y aguanta bien los 14 y 16 píxeles de la interfaz.
+ * DM Sans hace de título y de cuerpo: en grande, con peso 500 y apretada, tiene
+ * carácter; en 14 y 16 píxeles se lee sin esfuerzo. DM Mono es su pareja de
+ * ancho fijo y va en cifras, fechas y horas, para que las columnas de números
+ * no bailen.
  */
-const display = Quicksand({
+const sans = DM_Sans({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-quicksand',
+  variable: '--font-dm-sans',
   display: 'swap',
 });
 
-const sans = Nunito({
+const mono = DM_Mono({
   subsets: ['latin'],
-  variable: '--font-nunito',
+  weight: ['400', '500'],
+  variable: '--font-dm-mono',
   display: 'swap',
 });
 
@@ -30,12 +30,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#f4effa',
+  themeColor: '#eef8ec',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${display.variable} ${sans.variable}`}>
+    <html lang="es" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh antialiased">
         <Providers>{children}</Providers>
       </body>

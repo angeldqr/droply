@@ -121,7 +121,7 @@ export function NewHabitPlanDialog({
         </Button>
       </DialogTrigger>
 
-      <MorphDialogContent toProps={dialog.toProps}>
+      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-3xl">
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Nuevo plan de hábitos</DialogTitle>
@@ -131,7 +131,12 @@ export function NewHabitPlanDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="py-6">
+          {/*
+            Dos columnas en pantallas anchas: a la izquierda cómo es el plan, a
+            la derecha qué hábitos lleva. En una sola, el diálogo no cabía en
+            la pantalla.
+          */}
+          <FieldGroup className="items-start py-6 sm:grid sm:grid-cols-2 sm:gap-x-8">
             <Field>
               <FieldLabel htmlFor="name">Nombre</FieldLabel>
               <Input
@@ -200,7 +205,7 @@ export function NewHabitPlanDialog({
               </FieldDescription>
             </Field>
 
-            <Field>
+            <Field className="sm:col-start-2 sm:row-span-3 sm:row-start-1">
               <FieldLabel>Hábitos</FieldLabel>
 
               <ScrollArea className="border-border max-h-56 rounded-lg border">
@@ -241,7 +246,7 @@ export function NewHabitPlanDialog({
               </FieldDescription>
             </Field>
 
-            <Alert>
+            <Alert className="sm:col-start-2">
               <AlertTitle>Esto no se puede cambiar después</AlertTitle>
               <AlertDescription>
                 Ni las bibliotecas, ni la duración, ni los avisos. Si te equivocas, anula el plan y

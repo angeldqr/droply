@@ -19,8 +19,8 @@ const MAX_WEEKS = 53;
 /** El tono de un día, en la misma escala morada del calendario del mes. */
 function toneOf(score: number, applies: boolean): string {
   if (!applies) return 'bg-muted';
-  if (score === 1) return 'bg-morado-700';
-  if (score > 0) return 'bg-lavanda-300';
+  if (score === 1) return 'bg-menta';
+  if (score > 0) return 'bg-menta/35';
 
   return 'border-border border';
 }
@@ -178,9 +178,9 @@ export function HabitYear({
         <p className="flex items-center gap-1.5">
           <span className="border-border size-3 rounded-[3px] border" aria-hidden />
           <span>Nada</span>
-          <span className="bg-lavanda-300 size-3 rounded-[3px]" aria-hidden />
+          <span className="bg-menta/35 size-3 rounded-[3px]" aria-hidden />
           <span>A medias</span>
-          <span className="bg-morado-700 size-3 rounded-[3px]" aria-hidden />
+          <span className="bg-menta size-3 rounded-[3px]" aria-hidden />
           <span>Cumplido</span>
           <span className="bg-muted size-3 rounded-[3px]" aria-hidden />
           <span>No tocaba</span>

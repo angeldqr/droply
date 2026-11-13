@@ -126,10 +126,9 @@ function Contents() {
   const { data, isPending, error } = useHabits();
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-col gap-6 pb-6 pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Mi bitácora</h1>
           <p className="text-muted-foreground text-sm">
             Lo que vas haciendo, contado por ti desde el chat.
           </p>
@@ -159,7 +158,7 @@ function Contents() {
           <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       ) : data.length === 0 ? (
-        <Empty className="border-border border">
+        <Empty className="py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <NotebookPen />
@@ -210,7 +209,7 @@ function DaySummary({ habits }: { habits: readonly HabitView[] }) {
       aria-label="Resumen de hoy"
       className={cn(
         'flex flex-col gap-3 rounded-2xl border p-4 md:p-5',
-        allDone ? 'border-logro-600/30 bg-logro-600/10' : 'bg-card border-border',
+        allDone ? 'border-logro/30 bg-logro/10' : 'bg-card border-border',
       )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -234,7 +233,7 @@ function DaySummary({ habits }: { habits: readonly HabitView[] }) {
         <Progress
           value={(done / due) * 100}
           aria-label={`${done} de ${due} hábitos cumplidos hoy`}
-          className={cn('h-2', allDone && '[&>[data-slot=progress-indicator]]:bg-logro-600')}
+          className={cn('h-2', allDone && '[&>[data-slot=progress-indicator]]:bg-logro')}
         />
       ) : null}
     </section>
@@ -311,7 +310,7 @@ function HabitCard({ habit }: { habit: HabitView }) {
           </span>
           <ArrowRight
             aria-hidden
-            className="text-muted-foreground group-hover:text-primary size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+            className="text-muted-foreground group-hover:text-logro size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
           />
         </div>
       </CardContent>
@@ -343,8 +342,8 @@ function StreakChip({ streak, celebrate }: { streak: number; celebrate: boolean 
       className={cn(
         'shrink-0 gap-0.5 font-bold tabular-nums',
         celebrate
-          ? 'bg-logro-600 text-papel motion-safe:animate-in motion-safe:zoom-in-90 motion-safe:fade-in motion-safe:duration-300'
-          : 'bg-lavanda-200 text-ciruela-900',
+          ? 'bg-logro text-sobre motion-safe:animate-in motion-safe:zoom-in-90 motion-safe:fade-in motion-safe:duration-300'
+          : 'bg-muted text-foreground',
       )}
     >
       <Flame aria-hidden />
@@ -434,7 +433,7 @@ function TodayRing({
               strokeDashoffset={RING_LENGTH * (1 - score)}
               className={cn(
                 'transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none',
-                done ? 'stroke-logro-600' : applies ? 'stroke-primary' : 'stroke-lavanda-300',
+                done ? 'stroke-logro' : applies ? 'stroke-foreground' : 'stroke-muted',
               )}
             />
           ) : null}
@@ -443,7 +442,7 @@ function TodayRing({
         {done ? (
           // Entra con un salto corto la vez que se pinta: confirma que se cumplió.
           <Check
-            className="text-logro-600 motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:fade-in size-5 motion-safe:duration-200"
+            className="text-logro motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:fade-in size-5 motion-safe:duration-200"
             aria-hidden
           />
         ) : (
@@ -460,9 +459,7 @@ function TodayRing({
 
       <div className="text-sm leading-tight">
         <p className="font-semibold">Hoy</p>
-        <p
-          className={cn('text-xs', done ? 'text-logro-600 font-semibold' : 'text-muted-foreground')}
-        >
+        <p className={cn('text-xs', done ? 'text-logro font-semibold' : 'text-muted-foreground')}>
           {done
             ? 'Cumplido'
             : !applies
@@ -496,9 +493,9 @@ function WeekStrip({ habit }: { habit: HabitView }) {
               className={cn(
                 'size-3.5 rounded-full',
                 score === 1 && applies
-                  ? 'bg-morado-700'
+                  ? 'bg-menta'
                   : score > 0
-                    ? 'bg-lavanda-300'
+                    ? 'bg-menta/35'
                     : applies
                       ? 'border-border border-2'
                       : 'border-border border border-dashed',

@@ -35,10 +35,11 @@ GUÍA DE RECONÉCTATE
 Reconéctate envía contenido por Telegram a las personas que elijas, en los horarios que elijas, y mide hábitos.
 
 Menú:
+- Inicio: la pantalla a la que se llega al entrar. Resume el día: cuántos hábitos de la bitácora llevas hechos hoy, tu plan en marcha, los envíos que salen hoy, los últimos envíos y los avisos sin leer.
 - Bibliotecas: colecciones de audios, videos, imágenes y textos. Un texto se puede editar. Cada elemento puede salir varias veces al día.
 - Baúl: lo que guardas sin enviar, para copiarlo luego a cualquier biblioteca. El baúl no se envía ni entra en planes.
 - Destinatarios: a quién le llegan los envíos. Al agregar uno, la aplicación da un enlace; esa persona lo abre y aprieta Empezar en Telegram. Hasta entonces el bot no puede escribirle. Hace falta confirmar el correo de la cuenta para agregar destinatarios.
-- Horarios: qué biblioteca, a quién, qué días y en qué franja de horas. En cada envío el bot toma un elemento de la biblioteca. Se puede limitar a un tipo de contenido, firmar con otro nombre, fijar un archivo a una hora exacta y pausar un horario.
+- Horarios: qué biblioteca, a quién, qué días y en qué franja de horas. En cada envío el bot toma un elemento de la biblioteca. Se puede limitar a un tipo de contenido, firmar con otro nombre, fijar un archivo a una hora exacta y pausar un horario. Abajo está el historial de envíos completo, por páginas, con el resultado de cada uno.
 - Yo en 30 días: los planes de hábitos.
 - Mi bitácora: hábitos personales que el usuario registra él mismo escribiéndole al bot.
 - Tu cuenta: nombre, zona horaria (marca cuándo empieza y termina cada día) y contraseña.

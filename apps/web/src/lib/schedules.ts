@@ -1,16 +1,18 @@
 'use client';
 
-import type {
-  CreateScheduleInput,
-  DayPlanEntryView,
-  DeliveryRecordView,
-  FixedItemView,
-  NoticeView,
-  ScheduleView,
-  SetFixedItemsInput,
-  UpdateScheduleInput,
+import {
+  PAGE_SIZE_DEFAULT,
+  type CreateScheduleInput,
+  type DayPlanEntryView,
+  type DeliveryRecordView,
+  type FixedItemView,
+  type NoticeView,
+  type Paged,
+  type ScheduleView,
+  type SetFixedItemsInput,
+  type UpdateScheduleInput,
 } from '@reconectate/contracts';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 
 const listKey = ['schedules'] as const;
@@ -23,16 +25,19 @@ export function useSchedules() {
 }
 
 /**
- * Lo último que salió, con su resultado.
+ * Una página del historial de envíos, del más reciente al más viejo.
  *
  * Se recarga sola cada minuto: los envíos ocurren sin que nadie esté mirando la
  * pantalla, así que no hay ninguna acción a la que colgar la invalidación.
+ * Mientras llega la página siguiente se sigue viendo la anterior, para que la
+ * lista no parpadee en blanco al pasar de una a otra.
  */
-export function useDeliveries() {
+export function useDeliveries(page = 1, pageSize = PAGE_SIZE_DEFAULT) {
   return useQuery({
-    queryKey: ['deliveries'],
-    queryFn: () => api<DeliveryRecordView[]>('/deliveries'),
+    queryKey: ['deliveries', page, pageSize],
+    queryFn: () => api<Paged<DeliveryRecordView>>(`/deliveries?page=${page}&pageSize=${pageSize}`),
     refetchInterval: 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 

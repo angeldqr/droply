@@ -116,10 +116,10 @@ function WeekCell({ cell, label }: { cell: Cell; label: string }) {
     cell.kind === 'score'
       ? BAND_TONE[bandOf(cell.percent)]
       : cell.kind === 'open'
-        ? 'border-morado-400 text-foreground border border-dashed'
+        ? 'border-logro text-foreground border border-dashed'
         : cell.kind === 'free'
-          ? 'bg-lavanda-200 text-muted-foreground text-sm font-normal'
-          : 'bg-lavanda-200/30';
+          ? 'bg-muted text-muted-foreground text-sm font-normal'
+          : 'bg-muted/50';
 
   return (
     <Tooltip>

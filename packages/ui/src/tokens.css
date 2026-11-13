@@ -1,74 +1,93 @@
 /*
  * Paleta de Reconéctate.
  *
- * Cinco tonos de una misma familia morada, del papel casi blanco a la ciruela
- * casi negra. La ciruela hace de tinta y de panel lateral; el morado, que
- * aguanta texto blanco con holgura, es la acción principal.
+ * Un solo tema, claro: fondo verde muy pálido, paneles blancos y tinta negra.
+ * El negro es también el botón principal. La menta es el acento —la entrada
+ * abierta del menú, lo cumplido, el asistente— y nunca texto: sobre este fondo
+ * no se lee, así que para texto de acento se usa `logro`.
  *
- * Las cuatro columnas se reparten la escala de claridad, con un paso intermedio
- * mezclado a mano porque la paleta original trae cinco tonos y hacen falta
- * cuatro escalones parejos.
+ * Cada token se llama por lo que hace (fondo, tinta) o por su matiz (menta,
+ * coral).
  */
 
+:root {
+  color-scheme: light;
+
+  --fondo: #eef8ec;
+  --tarjeta: #ffffff;
+  --tinta: #0b0f0d;
+  --apagado: #5f6b64;
+  --relieve: #e1efdf;
+  --relieve-fuerte: #d3e8d2;
+
+  /*
+   * Los colores de estado van oscuros: se usan como texto y como relleno con
+   * blanco encima.
+   */
+  --logro: #14854d;
+  --ambar: #b87a12;
+  --coral: #c8324a;
+  --violeta: #7a3fd0;
+  /* El texto que va encima de un relleno de estado. */
+  --sobre: #ffffff;
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-tarjeta: var(--tarjeta);
+  --color-tinta: var(--tinta);
+  --color-apagado: var(--apagado);
+  --color-relieve: var(--relieve);
+  --color-relieve-fuerte: var(--relieve-fuerte);
+
+  /* Cumplido, a medias y no cumplido. El número va siempre dentro de la casilla. */
+  --color-logro: var(--logro);
+  --color-ambar: var(--ambar);
+  --color-coral: var(--coral);
+  --color-violeta: var(--violeta);
+  --color-sobre: var(--sobre);
+}
+
 @theme {
-  /* Ciruela: la tinta y el panel lateral. El tono más oscuro de la familia. */
-  --color-ciruela-900: #2f184b;
-
-  /* Morado: la acción principal. Aguanta texto blanco con holgura. */
-  --color-morado-700: #532b88;
-  --color-morado-400: #9b72cf;
-
-  /* Lavanda: las superficies templadas y los tonos intermedios. */
-  --color-lavanda-300: #c8b1e4;
-  /*
-   * Un paso intermedio que la paleta no trae, mezclado entre el papel y la
-   * lavanda. Hace falta para que las cuatro columnas tengan cuatro escalones
-   * distintos en vez de tres y un salto.
-   */
-  --color-lavanda-200: #e4d9f2;
-
-  /* Papel: el fondo de la aplicación. */
-  --color-papel-50: #f4effa;
-  --color-papel: #ffffff;
-
-  --color-alerta-500: #b8324a;
+  /* El acento y el degradado del asistente. Siempre llevan `sobre-menta` encima. */
+  --color-menta: #3df58a;
+  --color-aguamarina: #7fead2;
+  /* Las otras dos manchas del degradado del asistente. */
+  --color-menta-clara: #e1ffee;
+  --color-celeste: #78dcff;
+  /* La tinta sobre la menta y sobre las columnas, que son rellenos claros. */
+  --color-sobre-menta: #000000;
 
   /*
-   * Los tres colores de la rejilla de hábitos: cumplido, a medias y no
-   * cumplido.
-   *
-   * Van desaturados y oscuros a propósito. Un verde y un ámbar de semáforo
-   * junto a esta familia morada gritan y se llevan la mirada de la aplicación
-   * entera; estos dos comparten la profundidad de la ciruela y solo se separan
-   * por el matiz, así que la rejilla se lee de un vistazo sin volverse el
-   * centro de la pantalla. El rojo es el mismo de las alertas: no hacía falta
-   * un segundo rojo que casi coincidiera.
-   *
-   * Y el color nunca va solo: cada casilla lleva su número dentro. Es lo que
-   * hace que la rejilla siga sirviendo para quien no distingue el verde del
-   * rojo, que es una de cada doce personas.
+   * La noche: el negro de la portada y de las pantallas de entrar. Son las
+   * únicas oscuras, y por eso tienen su propia tinta en vez de un segundo tema.
    */
-  --color-logro-600: #2f7d5b;
-  --color-medias-500: #c98a2b;
+  --color-noche: #000000;
+  --color-noche-tarjeta: #101012;
+  --color-noche-tinta: #e4e2e5;
+  --color-noche-apagado: #7e8088;
 
   /*
-   * Una columna por color, repartidas en la escala de claridad de la familia.
-   * Con una paleta de un solo morado, la luz distingue mejor que el matiz.
+   * Una columna por matiz, siempre con tinta negra: son rellenos claros sobre
+   * los que el negro pasa de 9:1.
    */
-  --color-columna-texto: var(--color-lavanda-200);
-  --color-columna-audio: var(--color-lavanda-300);
-  /*
-   * Un paso más claro que `morado-400`: con ese, la tinta ciruela de las
-   * etiquetas quedaba en 4,3:1 y no llegaba al mínimo de lectura (4,5:1). Así
-   * queda en 5:1 y sigue entre Audio y Videos en la escala.
-   */
-  --color-columna-imagen: #a47ed5;
-  --color-columna-video: var(--color-morado-700);
+  --color-columna-texto: #7fead2;
+  --color-columna-audio: #3df58a;
+  --color-columna-imagen: #f5b544;
+  --color-columna-video: #b07cf0;
 
   /* Las dos primeras variables las inyecta next/font en el <html>. */
-  --font-display: var(--font-quicksand), ui-rounded, 'Segoe UI', sans-serif;
-  --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --font-display: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+
+  /*
+   * Las curvas de toda la aplicación. La de salida frena al final; la de rebote
+   * se pasa un poco y vuelve, y va en lo que aparece o se presiona.
+   */
+  --ease-salida: cubic-bezier(0.38, 0.49, 0, 1);
+  --ease-rebote: cubic-bezier(0.37, 1.42, 0.37, 1);
+  --duracion: 300ms;
 }
 
 /*
@@ -77,10 +96,6 @@
  * `globals.css`, que es donde viven las variables semánticas de shadcn.
  */
 @layer base {
-  :root {
-    color-scheme: light;
-  }
-
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
@@ -88,21 +103,21 @@
 
   body {
     font-family: var(--font-sans);
-    font-feature-settings: 'cv05', 'ss01';
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    /* Quicksand en 400 se ve endeble en tamaños grandes; 600 le da cuerpo. */
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    /* DM Sans en 500 y apretada: en tamaños grandes el título se lee como un bloque. */
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1;
   }
 
   ::selection {
-    background-color: var(--color-lavanda-300);
-    color: var(--color-ciruela-900);
+    background-color: var(--color-menta);
+    color: #000000;
   }
 }
 

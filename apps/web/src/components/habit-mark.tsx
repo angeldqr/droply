@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
  * posición—, así que reordenar o borrar otro no le cambia el color a nadie.
  */
 const TONES = [
-  'bg-lavanda-200 text-ciruela-900',
-  'bg-lavanda-300 text-ciruela-900',
-  'bg-morado-400 text-ciruela-900',
-  'bg-morado-700 text-papel',
+  'bg-columna-texto text-sobre-menta',
+  'bg-columna-audio text-sobre-menta',
+  'bg-columna-imagen text-sobre-menta',
+  'bg-columna-video text-sobre-menta',
 ];
 
 function toneOf(id: string): string {
@@ -19,7 +19,7 @@ function toneOf(id: string): string {
 
   for (const char of id) sum += char.charCodeAt(0);
 
-  return TONES[sum % TONES.length] ?? 'bg-lavanda-200 text-ciruela-900';
+  return TONES[sum % TONES.length] ?? 'bg-columna-texto text-sobre-menta';
 }
 
 /** La inicial del hábito en su tono: lo que lo hace reconocible de un vistazo. */
@@ -69,13 +69,31 @@ export function whenRelative(iso: string): string {
   return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(-days, 'day');
 }
 
-/** Baja el diario hasta ese día. Lo usan el calendario del mes y el del año. */
+/** El aviso de que hace falta el diario entero en pantalla. Lo escucha el detalle del hábito. */
+export const SHOW_ALL_DAYS = 'diario:mostrar-todo';
+
+/**
+ * Baja el diario hasta ese día. Lo usan el calendario del mes y el del año.
+ *
+ * El diario se dibuja por partes, así que el día puede no estar todavía: se
+ * pide mostrarlo entero y se salta cuando React ya lo dibujó.
+ */
 export function jumpToDay(key: string): void {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const jump = () =>
+    document
+      .getElementById(`dia-${key}`)
+      ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
 
-  document
-    .getElementById(`dia-${key}`)
-    ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  if (document.getElementById(`dia-${key}`)) {
+    jump();
+
+    return;
+  }
+
+  window.dispatchEvent(new Event(SHOW_ALL_DAYS));
+  // Dos cuadros: uno para que React dibuje y otro para que el navegador lo acomode.
+  requestAnimationFrame(() => requestAnimationFrame(jump));
 }
 
 /** «1 anotación», «3 anotaciones». */

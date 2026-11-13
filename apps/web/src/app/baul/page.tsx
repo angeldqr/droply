@@ -33,7 +33,7 @@ function Contents() {
 
   if (isPending) {
     return (
-      <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      <div className="w-full pb-6 pt-2">
         <Skeleton className="h-9 w-64" />
         <Skeleton className="mt-4 h-4 w-96" />
         <Skeleton className="mt-8 h-[28rem] w-full" />
@@ -43,7 +43,7 @@ function Contents() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      <div className="w-full pb-6 pt-2">
         <Alert variant="destructive">
           <AlertTitle>No pudimos abrir tu baúl</AlertTitle>
           <AlertDescription>{error.message}</AlertDescription>
@@ -55,11 +55,10 @@ function Contents() {
   const total = COLUMN_ORDER.reduce((sum, kind) => sum + data.counts[kind], 0);
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+    <div className="w-full pb-6 pt-2">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-4xl">Baúl</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="text-muted-foreground max-w-2xl">
             Lo que guardas acá no se envía: queda a mano para meterlo en cualquier biblioteca sin
             volver a subirlo desde tu equipo.
           </p>

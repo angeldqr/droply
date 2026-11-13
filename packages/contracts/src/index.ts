@@ -7,5 +7,6 @@ export * from './habits.js';
 export * from './journal.js';
 export * from './habit-progress.js';
 export * from './assistant.js';
+export * from './pagination.js';
 export * from './env/schema.js';
 export * from './env/load.js';

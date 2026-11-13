@@ -3,6 +3,7 @@
 import {
   Archive,
   CalendarClock,
+  House,
   LibraryBig,
   LogOut,
   NotebookPen,
@@ -35,7 +36,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sidebar, SidebarBody, useSidebar } from '@/components/ui/sidebar';
+import { FloatingDock } from '@/components/ui/floating-dock';
+import { DesktopSidebar, Sidebar, useSidebar } from '@/components/ui/sidebar';
 import { useSession } from '@/lib/session';
 
 /** Un escalón del rastro. El último no lleva enlace: ya estás ahí. */
@@ -49,57 +51,83 @@ export interface Crumb {
  *
  * El panel lateral va fijo y abierto, con un botón para recogerlo a un carril
  * de iconos; recogido, se abre solo al pasar el ratón por encima. La elección
- * se recuerda en el navegador. En móvil es un cajón que entra desde la
- * izquierda.
+ * se recuerda en el navegador. En el teléfono no hay panel: arriba queda la
+ * marca con el menú de la cuenta, y abajo un dock con las secciones.
  *
- * Va oscuro contra una aplicación clara, y es la decisión más visible de la
- * paleta: la ciruela ancla la pantalla por la izquierda y hace que el contenido
- * —tarjetas blancas sobre papel lavanda— se lea como lo que importa.
+ * Es una tarjeta más sobre el fondo: se despega por su relieve y no por un
+ * color propio, así el acento menta queda para la página abierta.
  */
-export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: React.ReactNode }) {
+export function AppShell({
+  crumbs,
+  actions,
+  children,
+}: {
+  crumbs: Crumb[];
+  /** Los botones de la pantalla. Van en la barra, a la derecha del título. */
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   // El estado vive acá y no dentro del panel para que el resto de la pantalla
   // pueda reaccionar a la apertura si alguna vez hace falta.
   const [open, setOpen] = useState(false);
+  const parents = crumbs.slice(0, -1);
+  const title = crumbs.at(-1)?.label ?? '';
 
   return (
     <div className="flex min-h-dvh w-full flex-col md:flex-row">
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody
-          brand={<MobileBrand />}
-          className="bg-sidebar text-sidebar-foreground md:justify-between md:gap-8"
-        >
+        <DesktopSidebar className="bg-sidebar text-sidebar-foreground justify-between gap-8">
           <ReconectateNav />
-        </SidebarBody>
+        </DesktopSidebar>
       </Sidebar>
+
+      <div className="bg-background flex h-14 w-full items-center justify-between px-4 md:hidden">
+        <MobileBrand />
+        <UserMenu compact />
+      </div>
 
       {/*
         Cada pantalla monta su propio armazón, así que esto corre en cada cambio
-        de página: un fundido corto del contenido, sin mover el menú.
+        de página: un fundido corto del contenido, sin mover el menú. En el
+        teléfono el dock flota sobre el final de la página: se le deja su hueco.
       */}
-      <main className="animate-aparecer flex min-w-0 flex-1 flex-col">
-        <header className="bg-background/70 sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-4 backdrop-blur-sm md:px-6">
-          <Breadcrumb>
-            <BreadcrumbList>
-              {crumbs.map((crumb, index) => (
-                <Fragment key={crumb.label}>
-                  {index > 0 ? <BreadcrumbSeparator /> : null}
-                  <BreadcrumbItem className="min-w-0">
-                    {crumb.href ? (
-                      <BreadcrumbLink asChild>
-                        <Link href={crumb.href}>{crumb.label}</Link>
-                      </BreadcrumbLink>
-                    ) : (
-                      <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
-                    )}
-                  </BreadcrumbItem>
-                </Fragment>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
+      <main className="animate-aparecer flex min-w-0 flex-1 flex-col pb-24 md:pb-2">
+        {/*
+          El título de la pantalla vive en la barra y no debajo: así el contenido
+          empieza arriba y las acciones quedan siempre a la vista al desplazarse.
+        */}
+        <header className="bg-background/80 sticky top-0 z-30 flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 backdrop-blur-md md:pl-2 md:pr-4">
+          <div className="min-w-0 flex-1">
+            {parents.length > 0 ? (
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {parents.map((crumb, index) => (
+                    <Fragment key={crumb.label}>
+                      {index > 0 ? <BreadcrumbSeparator /> : null}
+                      <BreadcrumbItem>
+                        {crumb.href ? (
+                          <BreadcrumbLink asChild>
+                            <Link href={crumb.href}>{crumb.label}</Link>
+                          </BreadcrumbLink>
+                        ) : (
+                          <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                        )}
+                      </BreadcrumbItem>
+                    </Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            ) : null}
+            <h1 className="truncate text-2xl leading-tight">{title}</h1>
+          </div>
+
+          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
 
-        {children}
+        <div className="flex flex-1 flex-col px-4 md:pl-2 md:pr-4">{children}</div>
       </main>
+
+      <MobileDock />
     </div>
   );
 }
@@ -110,6 +138,10 @@ export function AppShell({ crumbs, children }: { crumbs: Crumb[]; children: Reac
  * parecer que "Destinatarios" es otra caja de contenido.
  */
 const SECTIONS = [
+  {
+    label: 'Hoy',
+    items: [{ href: '/inicio', label: 'Inicio', icon: House }],
+  },
   {
     label: 'Tu contenido',
     items: [
@@ -153,10 +185,16 @@ const ADMIN_SECTION = {
   items: [{ href: '/admin', label: 'Administración', icon: ShieldCheck }],
 } as const;
 
+/** Las secciones que ve esta cuenta: las de todos y, si administra, la del sistema. */
+function useGroups() {
+  const { user } = useSession();
+
+  return [...SECTIONS, ...(user?.role === 'ADMIN' ? [ADMIN_SECTION] : [])];
+}
+
 function ReconectateNav() {
-  const { user, signOut } = useSession();
   const pathname = usePathname();
-  const groups = [...SECTIONS, ...(user?.role === 'ADMIN' ? [ADMIN_SECTION] : [])];
+  const groups = useGroups();
 
   return (
     <>
@@ -183,41 +221,91 @@ function ReconectateNav() {
         ))}
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-lg p-2 text-left outline-none transition-colors focus-visible:ring-2"
-          >
-            <Avatar className="size-7 shrink-0">
-              <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
-                {initialsOf(user?.displayName ?? '')}
-              </AvatarFallback>
-            </Avatar>
+      <UserMenu />
+    </>
+  );
+}
+
+/**
+ * La navegación del teléfono: un dock fijo abajo con una entrada por sección.
+ *
+ * Reemplaza al cajón de pantalla completa: cambiar de sección es un toque y no
+ * dos. Los grupos del panel no caben acá; el orden de los iconos los conserva.
+ */
+function MobileDock() {
+  const pathname = usePathname();
+  const items = useGroups().flatMap((group) =>
+    group.items.map((item) => ({
+      title: item.label,
+      href: item.href,
+      icon: <item.icon className="size-full" />,
+      active: pathname.startsWith(item.href),
+    })),
+  );
+
+  return (
+    <nav
+      aria-label="Secciones"
+      className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center md:hidden"
+    >
+      <FloatingDock
+        items={items}
+        desktopClassName="pointer-events-auto flex h-14 items-center gap-2 px-2 pb-0"
+        mobileClassName="hidden"
+      />
+    </nav>
+  );
+}
+
+/**
+ * El menú de la cuenta. En el panel lleva el nombre al lado; en la barra del
+ * teléfono (`compact`) es solo el avatar y se abre hacia abajo.
+ */
+function UserMenu({ compact = false }: { compact?: boolean }) {
+  const { user, signOut } = useSession();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={compact ? 'Tu cuenta' : undefined}
+          className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-full p-1.5 text-left outline-none transition-colors focus-visible:ring-2"
+        >
+          <Avatar className="size-7 shrink-0">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
+              {initialsOf(user?.displayName ?? '')}
+            </AvatarFallback>
+          </Avatar>
+          {compact ? null : (
             <Reveal className="grid min-w-0 leading-tight">
               <span className="truncate text-sm">{user?.displayName}</span>
               <span className="truncate text-xs opacity-70">{user?.email}</span>
             </Reveal>
-          </button>
-        </DropdownMenuTrigger>
+          )}
+        </button>
+      </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="top" align="start" className="w-56">
-          <DropdownMenuLabel className="font-normal">
-            <span className="block truncate">{user?.displayName}</span>
-            <span className="text-muted-foreground block truncate text-xs">{user?.email}</span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/cuenta">
-              <UserCog /> Tu cuenta
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void signOut()}>
-            <LogOut /> Cerrar sesión
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+      <DropdownMenuContent
+        side={compact ? 'bottom' : 'top'}
+        align={compact ? 'end' : 'start'}
+        className="w-56"
+      >
+        <DropdownMenuLabel className="font-normal">
+          <span className="block truncate">{user?.displayName}</span>
+          <span className="text-muted-foreground block truncate text-xs">{user?.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/cuenta">
+            <UserCog /> Tu cuenta
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void signOut()}>
+          <LogOut /> Cerrar sesión
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -285,25 +373,34 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`group/nav focus-visible:ring-sidebar-ring relative flex items-center gap-3 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 ${
-        active ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/60'
+      aria-current={active ? 'page' : undefined}
+      className={`group/nav focus-visible:ring-sidebar-ring relative flex items-center gap-3 rounded-full px-2 py-2 outline-none transition-colors focus-visible:ring-2 ${
+        active ? 'font-medium' : 'hover:bg-sidebar-accent'
       }`}
     >
       {/*
-        La marca de la página abierta es una barra a la izquierda y no un fondo
-        sólido: con el panel plegado a iconos, un fondo entero tapa el icono y
-        una barra sigue leyéndose. `layoutId` hace que la barra se deslice de
-        una entrada a otra al navegar, en vez de aparecer y desaparecer.
+        La marca de la página abierta es una píldora menta detrás de la entrada.
+        Va rebajada para que el icono se siga leyendo con el panel plegado.
+        `layoutId` hace que se deslice de una entrada a otra al navegar, en vez
+        de aparecer y desaparecer.
       */}
       {active ? (
         <motion.span
           layoutId="nav-activa"
-          className="bg-sidebar-primary absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full"
+          transition={{ type: 'spring', duration: 0.45, bounce: 0.2 }}
+          className="bg-menta/45 absolute inset-0 rounded-full"
         />
       ) : null}
 
-      <span className="shrink-0 transition-transform group-hover/nav:translate-x-0.5">{icon}</span>
-      <Reveal className="text-sm">{label}</Reveal>
+      {/* El icono de la página abierta va más grueso: es lo que queda con el panel plegado. */}
+      <span
+        className={`relative shrink-0 transition-transform group-hover/nav:translate-x-0.5 ${
+          active ? '[&_svg]:stroke-[2.5]' : ''
+        }`}
+      >
+        {icon}
+      </span>
+      <Reveal className="relative text-sm">{label}</Reveal>
     </Link>
   );
 }
@@ -334,7 +431,7 @@ function PinButton() {
 function Wordmark() {
   return (
     <Link
-      href="/bibliotecas"
+      href="/inicio"
       className="focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-lg px-1 py-1 outline-none focus-visible:ring-2"
     >
       {/*
@@ -345,7 +442,7 @@ function Wordmark() {
         aria-hidden
         className="bg-sidebar-primary size-7 shrink-0 rounded-full rounded-tl-sm shadow-sm"
       />
-      <Reveal className="font-display text-lg font-semibold">Reconéctate</Reveal>
+      <Reveal className="font-display text-lg font-medium tracking-tight">Reconéctate</Reveal>
     </Link>
   );
 }
@@ -357,14 +454,14 @@ function Wordmark() {
 function MobileBrand() {
   return (
     <Link
-      href="/bibliotecas"
+      href="/inicio"
       className="focus-visible:ring-sidebar-ring flex items-center gap-2 rounded-lg outline-none focus-visible:ring-2"
     >
       <span
         aria-hidden
         className="bg-sidebar-primary size-6 shrink-0 rounded-full rounded-tl-sm shadow-sm"
       />
-      <span className="font-display text-base font-semibold">Reconéctate</span>
+      <span className="font-display text-base font-medium tracking-tight">Reconéctate</span>
     </Link>
   );
 }

@@ -3,18 +3,21 @@
 import type {
   AccountDetailView,
   AccountSummaryView,
+  Paged,
   RegisterInput,
   TemporaryPasswordView,
 } from '@reconectate/contracts';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 
 const listKey = ['admin', 'accounts'] as const;
 
-export function useAccounts() {
+/** Una página de cuentas. La clave empieza por `listKey`, así las invalidaciones la alcanzan. */
+export function useAccounts(page = 1) {
   return useQuery({
-    queryKey: listKey,
-    queryFn: () => api<AccountSummaryView[]>('/admin/accounts'),
+    queryKey: [...listKey, 'page', page],
+    queryFn: () => api<Paged<AccountSummaryView>>(`/admin/accounts?page=${page}`),
+    placeholderData: keepPreviousData,
   });
 }
 

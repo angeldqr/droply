@@ -183,7 +183,7 @@ export const DesktopSidebar = ({
         initial={false}
         className={cn(
           'absolute inset-y-0 left-0 z-40 flex h-full w-[300px] flex-col overflow-hidden px-4 py-4',
-          open && !pinned && 'shadow-ciruela-900/30 shadow-2xl',
+          open && !pinned && 'shadow-2xl shadow-black/40',
           className,
         )}
         animate={{ width: animate ? (expanded ? '300px' : '60px') : '300px' }}
@@ -295,7 +295,7 @@ export const SidebarLink = ({ link, className, ...props }: { link: Links; classN
           display: animate ? (open ? 'inline-block' : 'none') : 'inline-block',
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="!m-0 inline-block whitespace-pre !p-0 text-sm text-neutral-700 transition duration-150 group-hover/sidebar:translate-x-1 dark:text-neutral-200"
+        className="text-sidebar-foreground !m-0 inline-block whitespace-pre !p-0 text-sm transition duration-150 group-hover/sidebar:translate-x-1"
       >
         {link.label}
       </motion.span>

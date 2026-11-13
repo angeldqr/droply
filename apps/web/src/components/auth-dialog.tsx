@@ -32,16 +32,22 @@ export function AuthDialog({ modo }: { modo: 'entrar' }) {
   return (
     <Dialog open={dialog.open} onOpenChange={dialog.onOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg" {...dialog.fromProps}>
+        {/* Va en blanco: vive en la portada, que es negra, y ahí el botón principal no se vería. */}
+        <Button
+          size="lg"
+          className="bg-noche-tinta hover:bg-noche-tinta/85 text-noche h-11 px-6 text-base"
+          {...dialog.fromProps}
+        >
           {/* Blendy necesita que el contenido cuelgue de un solo elemento. */}
-          <span>Entrar</span>
+          <span>Iniciar sesión</span>
         </Button>
       </DialogTrigger>
 
       <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-md">
-        <div>
-          <DialogHeader className="sr-only">
-            <DialogTitle>Entrar</DialogTitle>
+        <div className="flex flex-col gap-6">
+          <DialogHeader>
+            <span aria-hidden className="bg-menta mb-3 size-10 rounded-full rounded-tl-md" />
+            <DialogTitle className="text-2xl">Iniciar sesión</DialogTitle>
             <DialogDescription>Entra con tu cuenta de Reconéctate.</DialogDescription>
           </DialogHeader>
 
@@ -50,7 +56,7 @@ export function AuthDialog({ modo }: { modo: 'entrar' }) {
               // Cerrar antes de navegar deja el botón como estaba: mientras el
               // diálogo está abierto, Blendy lo mantiene invisible.
               dialog.close();
-              router.push('/bibliotecas');
+              router.push('/inicio');
             }}
           />
         </div>

@@ -42,7 +42,7 @@ function Board({ libraryId }: { libraryId: string }) {
   if (isPending) {
     return (
       <AppShell crumbs={crumbs}>
-        <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+        <div className="w-full pb-6 pt-2">
           <Skeleton className="h-9 w-64" />
           <Skeleton className="mt-4 h-4 w-96" />
           <Skeleton className="mt-8 h-[28rem] w-full" />
@@ -54,7 +54,7 @@ function Board({ libraryId }: { libraryId: string }) {
   if (error) {
     return (
       <AppShell crumbs={crumbs}>
-        <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+        <div className="w-full pb-6 pt-2">
           <Alert variant="destructive">
             <AlertTitle>No pudimos abrir esta biblioteca</AlertTitle>
             <AlertDescription>
@@ -73,11 +73,10 @@ function Board({ libraryId }: { libraryId: string }) {
 
   return (
     <AppShell crumbs={crumbs}>
-      <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      <div className="w-full pb-6 pt-2">
         <div className="flex flex-wrap items-baseline justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="min-w-0 break-words text-4xl">{data.name}</h1>
               <LibraryActions library={data} onDeleted={() => router.push('/bibliotecas')} />
             </div>
             {data.description ? (

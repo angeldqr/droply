@@ -21,11 +21,11 @@ function addMonths(date: Date, step: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + step, 1);
 }
 
-/** Cumplido en el morado fuerte de la app; a medias, en el claro. */
+/** Cumplido en la menta de la app; a medias, en la misma menta rebajada. */
 function toneOf(score: number): string {
   return score === 1
-    ? 'bg-morado-700 text-papel font-bold'
-    : 'bg-lavanda-300 text-ciruela-900 font-semibold';
+    ? 'bg-menta font-bold text-sobre-menta'
+    : 'bg-menta/30 text-foreground font-semibold';
 }
 
 function labelOf(
@@ -165,7 +165,7 @@ export function HabitCalendar({
                 // Anotar en un día libre se ve, pero sin la escala de la meta.
                 cell.applies
                   ? toneOf(cell.score)
-                  : 'border-lavanda-300 text-ciruela-900 border-2 border-dashed font-semibold',
+                  : 'border-logro/50 text-foreground border-2 border-dashed font-semibold',
                 'focus-visible:ring-ring transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100',
               )}
             >

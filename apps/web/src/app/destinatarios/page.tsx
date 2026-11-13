@@ -14,6 +14,7 @@ import { MotionItem, MotionList } from '@/components/motion-list';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { RecipientLinkDialog } from '@/components/recipient-link-dialog';
 import { RequireSession } from '@/components/require-session';
+import { StatRow } from '@/components/stat-row';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -88,11 +89,10 @@ function Contents() {
   const [issued, setIssued] = useState<RecipientView | null>(null);
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+    <div className="w-full pb-6 pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-4xl">Destinatarios</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="text-muted-foreground max-w-2xl">
             A quién le llegan los envíos. Cada persona tiene que abrir su enlace y apretar Empezar
             en Telegram: hasta entonces el bot no tiene permiso para escribirle.
           </p>
@@ -103,9 +103,27 @@ function Contents() {
         ) : null}
       </div>
 
+      {data && data.length > 0 ? (
+        <StatRow
+          className="mt-6"
+          stats={[
+            { label: 'Destinatarios', value: data.length },
+            {
+              label: 'Conectados',
+              value: data.filter((recipient) => recipient.status === 'VERIFIED').length,
+              accent: true,
+            },
+            {
+              label: 'Sin abrir su enlace',
+              value: data.filter((recipient) => recipient.status === 'PENDING').length,
+            },
+          ]}
+        />
+      ) : null}
+
       {verified ? null : <VerifyFirst />}
 
-      <div className="mt-10">
+      <div className="mt-6">
         {isPending ? (
           <div className="flex flex-col gap-2">
             {[0, 1, 2].map((index) => (
@@ -118,7 +136,7 @@ function Contents() {
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         ) : data.length === 0 ? (
-          <Empty className="border-border border">
+          <Empty className="py-16">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Send />
@@ -322,7 +340,7 @@ function RecipientRow({
             <AlertDialogAction
               onClick={() => void onDelete()}
               disabled={remove.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-sobre"
             >
               {remove.isPending ? <Spinner /> : null}
               Quitar

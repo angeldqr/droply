@@ -231,7 +231,7 @@ function VaultCard({
     <li>
       <label
         className={`border-border bg-card flex h-full cursor-pointer flex-col gap-2 rounded-lg border p-2 transition-colors ${
-          checked ? 'border-primary bg-accent/40' : 'hover:border-primary/40 hover:bg-accent/20'
+          checked ? 'border-logro bg-accent/40' : 'hover:border-logro/40 hover:bg-accent/20'
         } ${disabled && !checked ? 'pointer-events-none opacity-50' : ''}`}
       >
         <div className="flex items-start gap-2">

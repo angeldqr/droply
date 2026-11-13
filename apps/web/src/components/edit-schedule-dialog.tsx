@@ -68,7 +68,7 @@ export function WeekdayPicker({
       {WEEKDAYS.map((day) => (
         <label
           key={day}
-          className="border-border hover:bg-muted has-[[data-state=checked]]:border-primary flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors"
+          className="border-border hover:bg-muted has-[[data-state=checked]]:border-logro flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors"
           title={WEEKDAY_LABELS[day]}
         >
           <Checkbox
@@ -140,7 +140,7 @@ export function EditScheduleDialog({ schedule }: { schedule: ScheduleView }) {
         </Button>
       </DialogTrigger>
 
-      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-lg">
+      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-2xl">
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Editar horario</DialogTitle>

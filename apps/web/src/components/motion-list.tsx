@@ -2,9 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react';
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
-
-/** Salida firme: arranca rápido y frena al final, que es lo que se siente como respuesta. */
-const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+import { EASE_OUT } from '@/lib/motion';
 
 /** Si la lista acaba de aparecer: solo entonces las tarjetas entran escalonadas. */
 const FirstRender = createContext(false);
@@ -63,14 +61,20 @@ export function MotionItem({
     <Component
       layout
       className={className}
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: 8, filter: 'blur(8px)' }}
       animate={{
         opacity: 1,
         y: 0,
+        filter: 'blur(0px)',
         // Escalonado corto y con tope: con veinte tarjetas, la última no espera un segundo.
-        transition: { duration: 0.2, ease: EASE_OUT, delay: first ? Math.min(index, 8) * 0.04 : 0 },
+        transition: { duration: 0.4, ease: EASE_OUT, delay: first ? Math.min(index, 8) * 0.05 : 0 },
       }}
-      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: EASE_OUT } }}
+      exit={{
+        opacity: 0,
+        scale: 0.96,
+        filter: 'blur(8px)',
+        transition: { duration: 0.2, ease: EASE_OUT },
+      }}
       transition={{ layout: { type: 'spring', duration: 0.3, bounce: 0 } }}
     >
       {children}

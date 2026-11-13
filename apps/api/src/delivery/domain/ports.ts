@@ -1,3 +1,4 @@
+import type { Page } from '../../shared/page';
 import type { ChatAction } from '../../shared/habit-vote';
 import type { DeliveryStatus, ItemKind } from './vocabulary';
 
@@ -189,6 +190,14 @@ export interface DeliveryLog {
   countSentSince(ownerId: string, since: Date): Promise<number>;
 
   recent(ownerId: string, limit: number): Promise<DeliveryRecord[]>;
+
+  /**
+   * Una página del historial, del más reciente al más viejo, con el total.
+   *
+   * `recent` se queda para quien solo quiere lo último (el asistente); esta es
+   * la de la pantalla, que tiene que poder llegar hasta el primer envío.
+   */
+  page(ownerId: string, page: number, pageSize: number): Promise<Page<DeliveryRecord>>;
 }
 
 /** Lo que la pantalla muestra de un aviso. */

@@ -1,9 +1,9 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MotionConfig } from 'motion/react';
+import { MotionConfig, MotionGlobalConfig } from 'motion/react';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AssistantWidget } from '@/components/assistant-widget';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -29,6 +29,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+
+  /*
+   * `reducedMotion="user"` de más abajo solo quita lo que se desplaza o se
+   * estira: los fundidos y los desenfoques siguen animándose. Con «reducir
+   * movimiento» se saltan todas las animaciones de `motion`, que es lo que la
+   * regla de CSS ya hace con las demás: el contenido aparece en su sitio.
+   */
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => {
+      MotionGlobalConfig.skipAnimations = preference.matches;
+    };
+
+    apply();
+    preference.addEventListener('change', apply);
+
+    return () => preference.removeEventListener('change', apply);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

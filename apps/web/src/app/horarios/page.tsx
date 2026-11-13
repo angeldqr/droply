@@ -26,7 +26,10 @@ import {
   WeekdayPicker,
 } from '@/components/edit-schedule-dialog';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
+import { Pager } from '@/components/pager';
+import { Panel, PanelHeader } from '@/components/panel';
 import { RequireSession } from '@/components/require-session';
+import { StatRow } from '@/components/stat-row';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +76,7 @@ import { useLibraries, useLibraryRecipients } from '@/lib/libraries';
 import { useMorphDialog } from '@/lib/morph-dialog';
 import { useRecipients } from '@/lib/recipients';
 import { useSession } from '@/lib/session';
+import { cn } from '@/lib/utils';
 import {
   browserTimezone,
   useCreateSchedule,
@@ -97,7 +101,7 @@ function Contents() {
   const { data, isPending, error } = useSchedules();
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+    <div className="w-full pb-6 pt-2">
       {/*
         Los avisos van antes que nada: quien entra acá porque no le llegó algo
         tiene que encontrar el porqué sin buscarlo.
@@ -106,8 +110,7 @@ function Contents() {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-4xl">Horarios</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="text-muted-foreground max-w-2xl">
             Cuándo sale cada envío y hacia quién. El bot toma un elemento de la biblioteca y lo
             manda solo, a la hora que digas y en tu zona horaria.
           </p>
@@ -116,7 +119,22 @@ function Contents() {
         <NewScheduleDialog id="nuevo-horario-cabecera" />
       </div>
 
-      <div className="mt-10">
+      {data && data.length > 0 ? (
+        <StatRow
+          className="mt-6"
+          stats={[
+            { label: 'Horarios', value: data.length },
+            {
+              label: 'Activos',
+              value: data.filter((schedule) => schedule.active).length,
+              accent: true,
+            },
+            { label: 'En pausa', value: data.filter((schedule) => !schedule.active).length },
+          ]}
+        />
+      ) : null}
+
+      <div className="mt-6">
         {isPending ? (
           <div className="flex flex-col gap-2">
             {[0, 1, 2].map((index) => (
@@ -129,7 +147,7 @@ function Contents() {
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         ) : data.length === 0 ? (
-          <Empty className="border-border border">
+          <Empty className="py-16">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <CalendarClock />
@@ -166,16 +184,37 @@ function Contents() {
  * dueño, en vez de descubrirlo semanas después.
  */
 function DeliveryHistory() {
-  const deliveries = useDeliveries();
+  const [page, setPage] = useState(1);
+  const deliveries = useDeliveries(page);
 
-  if (deliveries.isPending || (deliveries.data?.length ?? 0) === 0) return null;
+  if (deliveries.error) {
+    return (
+      <Alert variant="destructive" className="mt-2 max-w-4xl">
+        <AlertTitle>No pudimos traer el historial de envíos</AlertTitle>
+        <AlertDescription>{deliveries.error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Sin envíos todavía no hay historial que mostrar: la sección aparece con el primero.
+  if (!deliveries.data || deliveries.data.total === 0) return null;
 
   return (
-    <section className="mt-12 max-w-4xl">
-      <h2 className="text-2xl">Últimos envíos</h2>
+    <Panel className="mt-2 max-w-4xl">
+      <PanelHeader title="Historial de envíos">
+        <span className="text-muted-foreground font-mono text-xs tabular-nums">
+          {deliveries.data.total} en total
+        </span>
+      </PanelHeader>
 
-      <ul className="mt-4 flex flex-col gap-1">
-        {deliveries.data?.map((delivery) => (
+      {/* Mientras llega otra página se ve la anterior, apagada. */}
+      <ul
+        className={cn(
+          'flex flex-col gap-1 transition-opacity',
+          deliveries.isPlaceholderData && 'opacity-50',
+        )}
+      >
+        {deliveries.data.items.map((delivery) => (
           <li
             key={delivery.id}
             className="border-border flex flex-wrap items-center gap-3 border-b py-2 text-sm last:border-b-0"
@@ -195,7 +234,15 @@ function DeliveryHistory() {
           </li>
         ))}
       </ul>
-    </section>
+
+      <Pager
+        label="Historial de envíos"
+        page={page}
+        pageSize={deliveries.data.pageSize}
+        total={deliveries.data.total}
+        onPage={setPage}
+      />
+    </Panel>
   );
 }
 
@@ -285,7 +332,7 @@ function ScheduleRow({ schedule }: { schedule: ScheduleView }) {
                 })
               }
               disabled={remove.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-sobre"
             >
               {remove.isPending ? <Spinner /> : null}
               Borrar
@@ -401,7 +448,7 @@ function NewScheduleDialog({ id }: { id: string }) {
         </Button>
       </DialogTrigger>
 
-      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-lg">
+      <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-2xl">
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Nuevo horario</DialogTitle>

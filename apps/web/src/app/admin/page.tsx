@@ -10,6 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
+import { Pager } from '@/components/pager';
 import { RequireSession } from '@/components/require-session';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import { useAccount, useAccounts, useCreateAccount } from '@/lib/admin';
 import { ApiError } from '@/lib/api';
 import { useMorphDialog } from '@/lib/morph-dialog';
 import { useSession } from '@/lib/session';
+import { cn } from '@/lib/utils';
 
 export default function AdminPage() {
   return (
@@ -45,7 +47,8 @@ export default function AdminPage() {
 
 function Contents() {
   const { user } = useSession();
-  const accounts = useAccounts();
+  const [page, setPage] = useState(1);
+  const accounts = useAccounts(page);
   const [openId, setOpenId] = useState<string | null>(null);
 
   /*
@@ -55,7 +58,7 @@ function Contents() {
    */
   if (user && user.role !== 'ADMIN') {
     return (
-      <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+      <div className="w-full pb-6 pt-2">
         <Alert variant="destructive">
           <AlertTitle>Esta sección no es para tu cuenta</AlertTitle>
           <AlertDescription>Solo quien administra Reconéctate puede entrar acá.</AlertDescription>
@@ -65,11 +68,10 @@ function Contents() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] px-6 py-8 md:px-10">
+    <div className="w-full pb-6 pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-4xl">Administración</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="text-muted-foreground max-w-2xl">
             Las cuentas del sistema y lo que tiene cada una. Se ve cuánto hay, no qué hay: ni los
             textos ni los archivos de nadie se abren desde acá.
           </p>
@@ -78,7 +80,7 @@ function Contents() {
         <NewAccountDialog />
       </div>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           {accounts.isPending ? (
             <div className="flex flex-col gap-2">
@@ -92,17 +94,34 @@ function Contents() {
               <AlertDescription>{accounts.error.message}</AlertDescription>
             </Alert>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {accounts.data.map((account) => (
-                <li key={account.id}>
-                  <AccountRow
-                    account={account}
-                    open={openId === account.id}
-                    onOpen={() => setOpenId(account.id === openId ? null : account.id)}
-                  />
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="text-muted-foreground mb-3 font-mono text-xs tabular-nums">
+                {accounts.data.total} {accounts.data.total === 1 ? 'cuenta' : 'cuentas'}
+              </p>
+              <ul
+                className={cn(
+                  'flex flex-col gap-2 transition-opacity',
+                  accounts.isPlaceholderData && 'opacity-50',
+                )}
+              >
+                {accounts.data.items.map((account) => (
+                  <li key={account.id}>
+                    <AccountRow
+                      account={account}
+                      open={openId === account.id}
+                      onOpen={() => setOpenId(account.id === openId ? null : account.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+              <Pager
+                label="Cuentas"
+                page={page}
+                pageSize={accounts.data.pageSize}
+                total={accounts.data.total}
+                onPage={setPage}
+              />
+            </>
           )}
         </div>
 

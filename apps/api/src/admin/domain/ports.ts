@@ -1,3 +1,4 @@
+import type { Page } from '../../shared/page';
 import type { UserId } from '../../shared/identifiers';
 
 /**
@@ -39,7 +40,8 @@ export interface AccountDetail extends AccountSummary {
 }
 
 export interface AccountDirectory {
-  list(): Promise<AccountSummary[]>;
+  /** Una página de cuentas, en el orden en que se crearon, con el total. */
+  list(page: number, pageSize: number): Promise<Page<AccountSummary>>;
   find(userId: UserId): Promise<AccountDetail | null>;
 }
 

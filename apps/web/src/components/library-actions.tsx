@@ -184,7 +184,7 @@ export function LibraryActions({
             <AlertDialogAction
               onClick={onDelete}
               disabled={remove.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-sobre"
             >
               {remove.isPending ? <Spinner /> : null}
               Borrar

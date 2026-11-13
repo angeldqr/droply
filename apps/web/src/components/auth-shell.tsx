@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
- * El marco de las pantallas de sesión. La marca queda arriba en versalitas
- * chicas y el peso visual lo lleva el título, no un logotipo.
+ * El marco de las pantallas de sesión: la noche de la portada con una sola
+ * tarjeta clara en el centro. La marca queda arriba, con su gota, y el peso
+ * visual lo lleva el título.
  */
 export function AuthShell({
   title,
@@ -17,16 +18,17 @@ export function AuthShell({
   footer: React.ReactNode;
 }) {
   return (
-    <main className="flex min-h-dvh flex-col justify-center px-6 py-16">
-      <div className="mx-auto w-full max-w-sm">
+    <main className="bg-noche flex min-h-dvh flex-col justify-center px-4 py-16">
+      <div className="animate-asentar mx-auto w-full max-w-sm">
         <Link
           href="/"
-          className="text-muted-foreground hover:text-foreground font-mono text-xs uppercase tracking-[0.2em] transition-colors"
+          className="text-noche-tinta focus-visible:outline-menta flex w-fit items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4"
         >
-          Reconéctate
+          <span aria-hidden className="bg-menta size-7 rounded-full rounded-tl-sm" />
+          <span className="font-display text-lg font-medium tracking-tight">Reconéctate</span>
         </Link>
 
-        <Card className="border-border mt-6 border">
+        <Card className="mt-8">
           <CardHeader>
             <CardTitle className="text-3xl">{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
@@ -34,7 +36,10 @@ export function AuthShell({
           <CardContent>{children}</CardContent>
         </Card>
 
-        <p className="text-muted-foreground mt-6 text-center text-sm">{footer}</p>
+        {/* Los enlaces del pie llegan con la tinta de la app, que acá no se lee. */}
+        <p className="text-noche-apagado [&_a]:text-noche-tinta! mt-6 text-center text-sm">
+          {footer}
+        </p>
       </div>
     </main>
   );

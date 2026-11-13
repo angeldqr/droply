@@ -19,8 +19,22 @@
   }
 }
 
+/*
+ * La entrada de lo que aparece dentro de una página: llega desenfocado y un
+ * poco más chico, y se asienta. Lleva `transform` y `filter`, así que no va en
+ * nada que contenga elementos fijos: para eso está `aparecer`.
+ */
+@keyframes asentar {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(0.97);
+  }
+}
+
 @theme inline {
-  --animate-aparecer: aparecer 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  --animate-aparecer: aparecer var(--duracion) var(--ease-salida);
+  --animate-asentar: asentar 400ms var(--ease-salida) both;
 }
 
 @source '../../../../packages/ui/src';
@@ -132,67 +146,63 @@
  *
  * Va al final del archivo a propósito: misma especificidad que el `:root` de
  * shadcn, y en un empate gana el último.
+ *
+ * shadcn deja también un bloque `.dark`. Acá no está: la aplicación es de un
+ * solo tema. Se conserva en cambio el `@custom-variant dark` de arriba: mientras
+ * la clase `dark` no se ponga en ningún lado, las variantes `dark:` que traen
+ * los componentes del registro no se activan nunca. Sin él, Tailwind vuelve a
+ * su variante por defecto y se encenderían solas con el sistema en oscuro.
  */
 :root {
-  --background: var(--color-papel-50);
-  --foreground: var(--color-ciruela-900);
+  --background: var(--fondo);
+  --foreground: var(--tinta);
 
-  --card: var(--color-papel);
-  --card-foreground: var(--color-ciruela-900);
-  --popover: var(--color-papel);
-  --popover-foreground: var(--color-ciruela-900);
+  --card: var(--tarjeta);
+  --card-foreground: var(--tinta);
+  --popover: var(--tarjeta);
+  --popover-foreground: var(--tinta);
 
   /*
-   * El morado es la acción principal, y esta vez sí lleva blanco encima: a
-   * diferencia de las paletas pastel anteriores, `#532b88` sobre blanco pasa de
-   * 9:1, así que el botón puede ser sólido sin pelearse con su propio texto.
+   * El negro es la acción principal, con blanco encima. La menta queda de
+   * acento y solo como relleno: como texto sobre este fondo no se lee, así que
+   * para texto de acento se usa `logro`.
    */
-  --primary: var(--color-morado-700);
-  --primary-foreground: var(--color-papel);
+  --primary: var(--tinta);
+  --primary-foreground: var(--sobre);
 
-  --secondary: var(--color-lavanda-200);
-  --secondary-foreground: var(--color-ciruela-900);
-  --muted: var(--color-lavanda-200);
-  --muted-foreground: color-mix(in oklab, var(--color-ciruela-900) 65%, transparent);
-  --accent: var(--color-lavanda-300);
-  --accent-foreground: var(--color-ciruela-900);
+  --secondary: var(--relieve);
+  --secondary-foreground: var(--tinta);
+  --muted: var(--relieve);
+  --muted-foreground: var(--apagado);
+  --accent: var(--relieve-fuerte);
+  --accent-foreground: var(--tinta);
 
-  --destructive: var(--color-alerta-500);
+  --destructive: var(--coral);
 
   /* Un borde con algo de opacidad de la tinta lee como trazo, no como caja. */
-  --border: color-mix(in oklab, var(--color-ciruela-900) 12%, transparent);
-  --input: color-mix(in oklab, var(--color-ciruela-900) 20%, transparent);
+  --border: color-mix(in oklab, var(--tinta) 10%, transparent);
+  --input: color-mix(in oklab, var(--tinta) 18%, transparent);
 
-  --ring: var(--color-morado-700);
+  --ring: var(--tinta);
 
-  /*
-   * El panel lateral va oscuro contra una aplicación clara, y es la decisión
-   * más visible de esta paleta: la ciruela ancla la pantalla por la izquierda y
-   * hace que el contenido —tarjetas blancas sobre papel lavanda— se lea como lo
-   * que importa. El morado marca la página abierta.
-   */
-  --sidebar: var(--color-ciruela-900);
-  --sidebar-foreground: var(--color-papel-50);
-  --sidebar-primary: var(--color-morado-400);
-  --sidebar-primary-foreground: var(--color-ciruela-900);
-  --sidebar-accent: color-mix(in oklab, var(--color-papel-50) 12%, transparent);
-  --sidebar-accent-foreground: var(--color-papel-50);
-  --sidebar-border: color-mix(in oklab, var(--color-papel-50) 16%, transparent);
-  --sidebar-ring: var(--color-morado-400);
+  --chart-1: var(--color-menta);
+  --chart-2: var(--color-aguamarina);
+  --chart-3: var(--violeta);
+  --chart-4: var(--ambar);
+  --chart-5: var(--coral);
 
-  --radius: 0.75rem;
+  /* El panel lateral no tiene color propio: es el fondo, y la menta marca la página abierta. */
+  --sidebar: var(--fondo);
+  --sidebar-foreground: var(--tinta);
+  --sidebar-primary: var(--color-menta);
+  --sidebar-primary-foreground: var(--color-sobre-menta);
+  --sidebar-accent: var(--relieve);
+  --sidebar-accent-foreground: var(--tinta);
+  --sidebar-border: color-mix(in oklab, var(--tinta) 10%, transparent);
+  --sidebar-ring: var(--tinta);
+
+  --radius: 1rem;
 }
-
-/*
- * shadcn deja también un bloque `.dark` con la paleta oscura. Acá no está: la
- * aplicación es de un solo tema —`color-scheme: light` en el paquete de
- * tokens— y ese bloque quedaba tapado por este, que va después y tiene la
- * misma especificidad. Se conserva en cambio el `@custom-variant dark` de
- * arriba: mientras la clase `dark` no se ponga en ningún lado, las variantes
- * `dark:` que traen los componentes del registro no se activan nunca. Sin él,
- * Tailwind vuelve a su variante por defecto y se encenderían solas en cuanto
- * el sistema operativo esté en oscuro.
- */
 
 /*
  * Blendy y Radix no pueden animar el mismo elemento a la vez.
@@ -258,4 +268,28 @@
  */
 [data-blendy-from] {
   z-index: auto !important;
+}
+
+/*
+ * Lo de adentro de un diálogo entra después de que el diálogo creció.
+ *
+ * Blendy hace crecer la caja desde el botón; si el contenido ya está nítido
+ * durante el camino, se ve estirado. Acá cada bloque llega desenfocado y se
+ * asienta, uno detrás de otro, cuando la caja ya casi tiene su tamaño.
+ *
+ * Casi todos los diálogos envuelven su contenido en un `<form>`: se animan sus
+ * hijos y no el formulario entero, para que el escalonado se note.
+ */
+[data-blendy-to] > * > :not(form),
+[data-blendy-to] > * > form > * {
+  animation: asentar 450ms var(--ease-salida) both;
+  animation-delay: 140ms;
+}
+
+[data-blendy-to] > * > form > :nth-child(2) {
+  animation-delay: 200ms;
+}
+
+[data-blendy-to] > * > form > :nth-child(n + 3) {
+  animation-delay: 260ms;
 }

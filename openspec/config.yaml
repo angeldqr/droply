@@ -36,10 +36,15 @@ context: |
   - Cambios de esquema: una migración Prisma nueva, nunca editar una aplicada.
 
   Interfaz:
-  - Todo componente de UI sale de shadcn por CLI (pnpm dlx shadcn@latest add).
-    Nada a mano.
+  - Todo componente de UI sale por CLI (pnpm dlx shadcn@latest add), de shadcn
+    o del registro @aceternity. Nada a mano. Los de Aceternity traen grises
+    fijos: al instalarlos se les cambian por las variables semánticas.
   - Diálogos con transición usan MorphDialogContent y useMorphDialog.
-  - Un solo tema claro; paleta y tipografía en packages/ui/src/tokens.css.
+  - Un solo tema claro; paleta y tipografía en packages/ui/src/tokens.css. Un
+    color nunca se escribe suelto en una clase. `primary` es negro (el botón
+    principal); la menta es acento y solo relleno: como texto se usa `logro`.
+    La excepción es la noche (portada, entrar y el panel relleno), donde la
+    menta sí puede ser texto porque `logro` ahí no se lee.
 
   Flujo de trabajo:
   - Docker solo para el despliegue; en desarrollo todo nativo.

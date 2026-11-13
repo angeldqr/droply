@@ -88,7 +88,7 @@ export const FileUpload = ({ onChange }: { onChange?: (files: File[]) => void })
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       layout
-                      className="bg-lavanda-200 text-ciruela-900 w-fit shrink-0 rounded-md px-2 py-1 text-sm tabular-nums"
+                      className="bg-muted text-foreground w-fit shrink-0 rounded-md px-2 py-1 text-sm tabular-nums"
                     >
                       {(file.size / (1024 * 1024)).toFixed(2)} MB
                     </motion.p>
@@ -115,19 +115,19 @@ export const FileUpload = ({ onChange }: { onChange?: (files: File[]) => void })
                 layoutId="file-upload"
                 variants={mainVariant}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                className="bg-card relative z-40 mx-auto mt-4 flex h-32 w-full max-w-[8rem] items-center justify-center rounded-lg shadow-[0px_10px_40px_rgba(47,24,75,0.12)] group-hover/file:shadow-[0px_16px_48px_rgba(47,24,75,0.18)]"
+                className="bg-card relative z-40 mx-auto mt-4 flex h-32 w-full max-w-[8rem] items-center justify-center rounded-lg shadow-[0px_10px_40px_rgba(0,0,0,0.25)] group-hover/file:shadow-[0px_16px_48px_rgba(47,24,75,0.18)]"
               >
                 {isDragActive ? (
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-primary flex flex-col items-center gap-1 text-sm font-semibold"
+                    className="text-logro flex flex-col items-center gap-1 text-sm font-semibold"
                   >
                     Suéltalo
                     <IconUpload className="size-4" />
                   </motion.p>
                 ) : (
-                  <IconUpload className="text-primary size-5" />
+                  <IconUpload className="text-logro size-5" />
                 )}
               </motion.div>
             )}
@@ -135,7 +135,7 @@ export const FileUpload = ({ onChange }: { onChange?: (files: File[]) => void })
             {!files.length && (
               <motion.div
                 variants={secondaryVariant}
-                className="border-morado-400 absolute inset-0 z-30 mx-auto mt-4 flex h-32 w-full max-w-[8rem] items-center justify-center rounded-lg border border-dashed bg-transparent opacity-0"
+                className="border-logro absolute inset-0 z-30 mx-auto mt-4 flex h-32 w-full max-w-[8rem] items-center justify-center rounded-lg border border-dashed bg-transparent opacity-0"
               />
             )}
           </div>
@@ -156,14 +156,14 @@ export function GridPattern() {
   const columns = 41;
   const rows = 11;
   return (
-    <div className="bg-lavanda-200/60 flex shrink-0 scale-105 flex-wrap items-center justify-center gap-x-px gap-y-px">
+    <div className="bg-muted flex shrink-0 scale-105 flex-wrap items-center justify-center gap-x-px gap-y-px">
       {Array.from({ length: rows }).map((_, row) =>
         Array.from({ length: columns }).map((_, col) => {
           const index = row * columns + col;
           return (
             <div
               key={`${col}-${row}`}
-              className={`bg-papel-50 flex h-10 w-10 shrink-0 rounded-[2px] ${
+              className={`bg-background flex h-10 w-10 shrink-0 rounded-[2px] ${
                 index % 2 === 0 ? '' : 'shadow-[0px_0px_1px_3px_rgba(255,255,255,1)_inset]'
               }`}
             />

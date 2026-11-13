@@ -11,15 +11,23 @@ import {
 } from '@reconectate/contracts';
 import { ChevronLeft, ChevronRight, NotebookPen, Pencil, Play, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/app-shell';
 import { EditEntryDialog } from '@/components/edit-entry-dialog';
 import { HabitCalendar } from '@/components/habit-calendar';
 import { HabitTrend } from '@/components/habit-trend';
 import { HabitYear } from '@/components/habit-year';
-import { cuenta, dayKey, daysAgo, goalLabel, HabitMark } from '@/components/habit-mark';
+import {
+  cuenta,
+  dayKey,
+  daysAgo,
+  goalLabel,
+  HabitMark,
+  SHOW_ALL_DAYS,
+} from '@/components/habit-mark';
 import { RequireSession } from '@/components/require-session';
+import { ShowMore } from '@/components/show-more';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { ApiError } from '@/lib/api';
 import { useDeleteEntry, useHabitEntries, useHabits, useResumeHabit } from '@/lib/journal';
+import { useShown } from '@/lib/use-shown';
 import { cn } from '@/lib/utils';
 
 export default function HabitPage() {
@@ -58,12 +67,27 @@ export default function HabitPage() {
   );
 }
 
+/** De a cuántos días se muestra el diario. */
+const DAYS_PART = 10;
+
 function Contents({ habitId }: { habitId: string }) {
   const habits = useHabits();
   const entries = useHabitEntries(habitId);
   const habit = habits.data?.find((row) => row.id === habitId);
   const name = habit?.name ?? 'Hábito';
   const list = entries.data ?? [];
+  // El diario se dibuja de a diez días. El calendario, el año y la racha de
+  // más abajo siguen contando `list` entera.
+  const days = useShown(byDay(list), DAYS_PART);
+  const showAllDays = days.all;
+
+  // El calendario salta a un día que quizás todavía no está dibujado: avisa, y
+  // acá se muestra el diario completo para que el salto encuentre su destino.
+  useEffect(() => {
+    window.addEventListener(SHOW_ALL_DAYS, showAllDays);
+
+    return () => window.removeEventListener(SHOW_ALL_DAYS, showAllDays);
+  }, [showAllDays]);
   const photoCount = list.reduce((sum, entry) => sum + entry.photos.length, 0);
   const perDay = new Map<string, number>();
   let counted = 0;
@@ -97,7 +121,7 @@ function Contents({ habitId }: { habitId: string }) {
 
   return (
     <AppShell crumbs={[{ label: 'Mi bitácora', href: '/habitos' }, { label: name }]}>
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 md:p-6">
+      <div className="flex w-full max-w-4xl flex-col gap-8 pb-6 pt-2">
         <div className="flex flex-col gap-6">
           <header className="flex items-center gap-4">
             {habit ? (
@@ -107,7 +131,6 @@ function Contents({ habitId }: { habitId: string }) {
             )}
 
             <div className="min-w-0">
-              <h1 className="font-display truncate text-2xl font-bold md:text-3xl">{name}</h1>
               <p className="text-muted-foreground text-sm">
                 {habit
                   ? goalLabel(habit.dailyTarget, habit.activeDays)
@@ -191,7 +214,7 @@ function Contents({ habitId }: { habitId: string }) {
             <AlertDescription>{entries.error.message}</AlertDescription>
           </Alert>
         ) : entries.data.length === 0 ? (
-          <Empty className="border-border border border-dashed">
+          <Empty className="py-16">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <NotebookPen />
@@ -205,7 +228,7 @@ function Contents({ habitId }: { habitId: string }) {
           </Empty>
         ) : (
           <div className="flex flex-col gap-8">
-            {byDay(entries.data).map((day) => (
+            {days.shown.map((day) => (
               <section
                 key={day.key}
                 id={`dia-${day.key}`}
@@ -219,7 +242,7 @@ function Contents({ habitId }: { habitId: string }) {
                   <span className="bg-border h-px flex-1" aria-hidden />
                 </h2>
 
-                <ol className="border-lavanda-300 ml-2 flex flex-col gap-4 border-l-2 pl-5">
+                <ol className="border-border ml-2 flex flex-col gap-4 border-l-2 pl-5">
                   {day.entries.map((entry) => (
                     <EntryCard
                       key={entry.id}
@@ -231,6 +254,12 @@ function Contents({ habitId }: { habitId: string }) {
                 </ol>
               </section>
             ))}
+            <ShowMore
+              remaining={days.remaining}
+              size={DAYS_PART}
+              onMore={days.more}
+              className="self-start"
+            />
           </div>
         )}
       </div>
@@ -325,7 +354,7 @@ function ProgressStrip({
           key={tile.label}
           className={cn(
             'bg-card border-border flex flex-col gap-0.5 rounded-2xl border p-3 md:p-4',
-            tile.done && 'border-logro-600/40 bg-logro-600/10',
+            tile.done && 'border-logro/40 bg-logro/10',
           )}
         >
           <dt className="text-muted-foreground text-[0.7rem] font-semibold uppercase tracking-wide">
@@ -334,7 +363,7 @@ function ProgressStrip({
           <dd
             className={cn(
               'font-display text-lg font-bold tabular-nums md:text-2xl',
-              tile.done && 'text-logro-600',
+              tile.done && 'text-logro',
             )}
           >
             {tile.value}
@@ -376,7 +405,7 @@ function EntryCard({
         aria-hidden
         className={cn(
           'ring-background absolute -left-[27px] top-5 size-3 rounded-full ring-4',
-          open ? 'bg-logro-600 motion-safe:animate-pulse' : 'bg-morado-700',
+          open ? 'bg-logro motion-safe:animate-pulse' : 'bg-menta',
         )}
       />
 
@@ -388,7 +417,7 @@ function EntryCard({
             </time>
 
             {/* Abierta quiere decir que todavía le puede caer algo desde el chat. */}
-            {open ? <span className="text-logro-600 text-xs font-semibold">· En curso</span> : null}
+            {open ? <span className="text-logro text-xs font-semibold">· En curso</span> : null}
           </div>
 
           <div className="-mr-2 flex items-center opacity-100 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100">
@@ -504,7 +533,7 @@ function PhotoMosaic({ photos }: { photos: readonly EntryPhotoView[] }) {
               )}
 
               {hidden > 0 && index === visible.length - 1 ? (
-                <span className="bg-ciruela-900/60 text-papel-50 font-display absolute inset-0 grid place-items-center text-2xl font-bold">
+                <span className="font-display bg-noche/60 text-noche-tinta absolute inset-0 grid place-items-center text-2xl font-bold">
                   +{hidden}
                 </span>
               ) : null}
@@ -553,12 +582,12 @@ function PhotoViewer({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="bg-ciruela-900 grid max-h-[75vh] place-items-center overflow-hidden rounded-lg">
+      <div className="bg-noche grid max-h-[75vh] place-items-center overflow-hidden rounded-lg">
         {photo?.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo.url} alt="" className="max-h-[75vh] w-auto object-contain" />
         ) : (
-          <span className="text-papel-50/70 p-10 text-sm">Esta foto ya no está</span>
+          <span className="text-noche-tinta/70 p-10 text-sm">Esta foto ya no está</span>
         )}
       </div>
 

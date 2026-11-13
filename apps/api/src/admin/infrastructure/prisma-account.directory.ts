@@ -1,4 +1,5 @@
 import type { PrismaService } from '../../platform/prisma/prisma.service';
+import { offsetOf, type Page } from '../../shared/page';
 import type { UserId } from '../../shared/identifiers';
 import type { AccountDetail, AccountDirectory, AccountSummary } from '../domain/ports';
 
@@ -12,23 +13,29 @@ import type { AccountDetail, AccountDirectory, AccountSummary } from '../domain/
 export class PrismaAccountDirectory implements AccountDirectory {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(): Promise<AccountSummary[]> {
-    const rows = await this.prisma.user.findMany({
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        role: true,
-        emailVerifiedAt: true,
-        deactivatedAt: true,
-        createdAt: true,
-        _count: { select: { recipients: true, schedules: true } },
-        libraries: { select: { isVault: true, _count: { select: { items: true } } } },
-      },
-    });
+  async list(page: number, pageSize: number): Promise<Page<AccountSummary>> {
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        // El `id` desempata dos cuentas creadas en el mismo instante.
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: offsetOf(page, pageSize),
+        take: pageSize,
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          role: true,
+          emailVerifiedAt: true,
+          deactivatedAt: true,
+          createdAt: true,
+          _count: { select: { recipients: true, schedules: true } },
+          libraries: { select: { isVault: true, _count: { select: { items: true } } } },
+        },
+      }),
+      this.prisma.user.count(),
+    ]);
 
-    return rows.map((row) => ({
+    const items = rows.map((row) => ({
       id: row.id,
       email: row.email,
       displayName: row.displayName,
@@ -44,6 +51,8 @@ export class PrismaAccountDirectory implements AccountDirectory {
         .filter((library) => library.isVault)
         .reduce((total, library) => total + library._count.items, 0),
     }));
+
+    return { items, total };
   }
 
   async find(userId: UserId): Promise<AccountDetail | null> {

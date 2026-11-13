@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { NewHabitPlanDialog } from '@/components/new-habit-plan-dialog';
 import { RequireSession } from '@/components/require-session';
+import { ShowMore } from '@/components/show-more';
+import { StatRow } from '@/components/stat-row';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHabitPlans } from '@/lib/habits';
+import { useShown } from '@/lib/use-shown';
 
 export default function HabitPlansPage() {
   return (
@@ -38,10 +41,9 @@ function Contents() {
   const done = (data ?? []).filter((plan) => plan.status !== 'ACTIVE');
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-col gap-6 pb-6 pt-2">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Yo en 30 días</h1>
           <p className="text-muted-foreground text-sm">
             Convierte tus bibliotecas en hábitos y mira cuánto se cumplen.
           </p>
@@ -49,6 +51,16 @@ function Contents() {
 
         {data && data.length > 0 ? <NewHabitPlanDialog id="nuevo-plan" plans={data} /> : null}
       </div>
+
+      {data && data.length > 0 ? (
+        <StatRow
+          stats={[
+            { label: 'Planes', value: data.length },
+            { label: 'En marcha', value: running.length, accent: true },
+            { label: 'Terminados', value: done.length },
+          ]}
+        />
+      ) : null}
 
       {isPending ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -62,7 +74,7 @@ function Contents() {
           <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       ) : data.length === 0 ? (
-        <Empty className="border-border border">
+        <Empty className="py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Sparkles />
@@ -95,16 +107,27 @@ function Contents() {
   );
 }
 
+/** De a cuántos planes se muestran: los terminados se acumulan sin tope. */
+const PLANS_PART = 6;
+
 function PlanList({ plans, empty }: { plans: readonly HabitPlanSummary[]; empty: string }) {
+  const { shown, remaining, more } = useShown(plans, PLANS_PART);
+
   if (plans.length === 0) {
     return <p className="text-muted-foreground py-6 text-sm">{empty}</p>;
   }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((plan) => (
+      {shown.map((plan) => (
         <PlanCard key={plan.id} plan={plan} />
       ))}
+      <ShowMore
+        remaining={remaining}
+        size={PLANS_PART}
+        onMore={more}
+        className="justify-self-start sm:col-span-2 lg:col-span-3"
+      />
     </div>
   );
 }

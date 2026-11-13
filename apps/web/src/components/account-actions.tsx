@@ -165,7 +165,7 @@ export function AccountActions({ account }: { account: AccountSummaryView }) {
                 })
               }
               disabled={remove.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-sobre"
             >
               {remove.isPending ? <Spinner /> : null}
               Borrar

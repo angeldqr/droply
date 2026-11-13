@@ -30,7 +30,7 @@ export default function EntrarPage() {
         </>
       }
     >
-      <SignInForm onDone={() => router.push('/bibliotecas')} />
+      <SignInForm onDone={() => router.push('/inicio')} />
     </AuthShell>
   );
 }
