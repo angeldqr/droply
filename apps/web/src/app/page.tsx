@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { AuthDialog } from '@/components/auth-dialog';
+import { BrandMark } from '@/components/brand-mark';
 import { SignatureCard } from '@/components/signature-card';
 import { BentoGrid, BentoGridItem } from '@/components/ui/bento-grid';
 import { FlipWords } from '@/components/ui/flip-words';
@@ -27,7 +28,7 @@ export default function LandingPage() {
             containerClassName="h-full"
             className="flex h-full flex-col justify-between gap-12 p-8 sm:p-10"
           >
-            <span aria-hidden className="bg-menta size-16 rounded-full rounded-tl-xl" />
+            <BrandMark className="size-24 sm:size-28" animated />
 
             <div>
               {/* El tamaño sigue al ancho en el teléfono: el nombre va entero, en un renglón. */}

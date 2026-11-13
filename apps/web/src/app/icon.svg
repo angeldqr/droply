@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- El mismo dibujo de components/brand-mark.tsx, quieto. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#173a26"/><stop offset="1" stop-color="#050b07"/></linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#8dffc0"/><stop offset=".55" stop-color="#3df58a"/><stop offset="1" stop-color="#1fc767"/></linearGradient>
+    <filter id="gloss" x="-25%" y="-25%" width="150%" height="160%">
+      <feOffset in="SourceAlpha" dy="-3.2" result="up"/><feGaussianBlur in="up" stdDeviation="2.2" result="upBlur"/>
+      <feComposite in="SourceAlpha" in2="upBlur" operator="out" result="low"/>
+      <feFlood flood-color="#000" flood-opacity=".22"/><feComposite in2="low" operator="in" result="shade"/>
+      <feOffset in="SourceAlpha" dy="2.2" result="down"/><feGaussianBlur in="down" stdDeviation="1.3" result="downBlur"/>
+      <feComposite in="SourceAlpha" in2="downBlur" operator="out" result="top"/>
+      <feFlood flood-color="#fff" flood-opacity=".5"/><feComposite in2="top" operator="in" result="shine"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3.2" result="dropBlur"/><feOffset in="dropBlur" dy="3.5" result="dropOffset"/>
+      <feFlood flood-color="#000" flood-opacity=".4"/><feComposite in2="dropOffset" operator="in" result="drop"/>
+      <feMerge><feMergeNode in="drop"/><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="shine"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="100" height="100" rx="23" fill="url(#tile)"/>
+  <g filter="url(#gloss)">
+    <circle cx="29" cy="30" r="10" fill="url(#body)"/>
+    <circle cx="71" cy="30" r="10" fill="url(#body)"/>
+    <path d="M34 79 28 87M66 79 72 87" fill="none" stroke="url(#body)" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="50" cy="56" r="29.5" fill="#0c1d14"/>
+    <circle cx="50" cy="56" r="27" fill="url(#body)"/>
+  </g>
+  <path d="M40 49.5 50 56 62.5 43.5" fill="none" stroke="#0c1d14" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="50" cy="56" r="3.6" fill="#0c1d14"/>
+  <rect x=".5" y=".5" width="99" height="99" rx="22.5" fill="none" stroke="#fff" stroke-opacity=".07"/>
+</svg>

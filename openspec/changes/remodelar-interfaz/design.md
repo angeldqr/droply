@@ -87,6 +87,11 @@ van en peso 500, espaciado −0.03em e interlineado 0.95. Las cifras, fechas y h
 La tarjeta firma es un componente propio, `components/signature-card.tsx`, que envuelve
 `noise-background` con el degradado `menta` → `aguamarina`. Regla: una por pantalla.
 
+El logo es un despertador menta sobre un cuadro negro verdoso, con las agujas a las diez y diez
+formando un visto: la hora que uno elige y el hábito cumplido. Sigue el lenguaje de los íconos de
+Stepbro (un objeto que se reconoce, con volumen, y un solo detalle recortado) y reemplaza a la gota.
+En la portada y en la pantalla de entrar, las agujas giran hasta el visto al aparecer.
+
 ### Movimiento
 
 Dos variables en `tokens.css`, `--ease-salida` y `--duracion`, y sus equivalentes en un módulo

@@ -18,6 +18,7 @@ import { motion } from 'motion/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Fragment, useState } from 'react';
+import { BrandMark } from '@/components/brand-mark';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -434,21 +435,15 @@ function Wordmark() {
       href="/inicio"
       className="focus-visible:ring-sidebar-ring flex items-center gap-3 rounded-lg px-1 py-1 outline-none focus-visible:ring-2"
     >
-      {/*
-        La gota del nombre: un círculo al que se le cuadra una esquina. Es lo
-        único gráfico de la marca, y lo que sigue viéndose con el panel plegado.
-      */}
-      <span
-        aria-hidden
-        className="bg-sidebar-primary size-7 shrink-0 rounded-full rounded-tl-sm shadow-sm"
-      />
+      {/* El logo es lo que sigue viéndose con el panel plegado. */}
+      <BrandMark className="size-7" />
       <Reveal className="font-display text-lg font-medium tracking-tight">Reconéctate</Reveal>
     </Link>
   );
 }
 
 /**
- * La marca en la barra del teléfono: la gota y el nombre, siempre a la vista.
+ * La marca en la barra del teléfono: el logo y el nombre, siempre a la vista.
  * No usa `Reveal`, que la escondería con el panel cerrado.
  */
 function MobileBrand() {
@@ -457,10 +452,7 @@ function MobileBrand() {
       href="/inicio"
       className="focus-visible:ring-sidebar-ring flex items-center gap-2 rounded-lg outline-none focus-visible:ring-2"
     >
-      <span
-        aria-hidden
-        className="bg-sidebar-primary size-6 shrink-0 rounded-full rounded-tl-sm shadow-sm"
-      />
+      <BrandMark className="size-8" />
       <span className="font-display text-base font-medium tracking-tight">Reconéctate</span>
     </Link>
   );

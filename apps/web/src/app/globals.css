@@ -32,6 +32,36 @@
   }
 }
 
+/*
+ * El logo al aparecer: las agujas del despertador giran hasta quedar en el
+ * visto. El minutero da una vuelta entera; la de la hora, un tramo. Con
+ * movimiento reducido no giran: la regla de `tokens.css` les quita la animación.
+ */
+@keyframes aguja-minutos {
+  from {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes aguja-hora {
+  from {
+    transform: rotate(-60deg);
+  }
+}
+
+.brand-mark-animated :is(.brand-mark-hour, .brand-mark-minute) {
+  transform-origin: 50px 56px;
+  animation: 1.4s var(--ease-salida) 0.2s both;
+}
+
+.brand-mark-animated .brand-mark-minute {
+  animation-name: aguja-minutos;
+}
+
+.brand-mark-animated .brand-mark-hour {
+  animation-name: aguja-hora;
+}
+
 @theme inline {
   --animate-aparecer: aparecer var(--duracion) var(--ease-salida);
   --animate-asentar: asentar 400ms var(--ease-salida) both;

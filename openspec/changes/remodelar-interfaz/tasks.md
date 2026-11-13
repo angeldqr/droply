@@ -58,6 +58,7 @@
 
 - [x] 8.9 Detalle de un hábito de Mi bitácora: panel negro con hoy, racha y últimos 30 días (y la pausa con su botón); calendario fijo a la izquierda junto al diario; historial del año y la tendencia en un panel abajo cuando ya hay tres semanas. Se verificó en el navegador: el calendario se queda fijo al bajar.
 - [x] 8.10 Coherencia entre pantallas: el botón «Nuevo …» va en la barra en Bibliotecas, Destinatarios, Horarios, Yo en 30 días, Mi bitácora y Admin; la fila de cifras usa una columna por cifra; la guía de Telegram de Mi bitácora queda en una línea cuando el chat ya está conectado; «Tu semana» y la cuadrícula del plan llenan su panel; Destinatarios en cuadrícula; el detalle de un plan con el mismo panel negro que un hábito, fechas en palabras y sus acciones en la barra; las miniaturas del tablero usan todo el ancho de la tarjeta. Se verificó en el navegador en escritorio; la ventana no se dejó achicar para ver el teléfono.
+- [x] 8.11 Logo propio: un despertador con las agujas a las diez y diez que forman un visto, en el lenguaje de los íconos de Stepbro (un objeto con volumen sobre un cuadro con degradado). `components/brand-mark.tsx` reemplaza la gota en la barra, la barra del teléfono, la pantalla de entrar y la portada; en las dos últimas las agujas giran hasta el visto al aparecer. Favicon en `app/icon.svg` e ícono del celular en `app/apple-icon.png`. La foto del bot se sube a mano en @BotFather.
 
 ## 9. Paginación
 
