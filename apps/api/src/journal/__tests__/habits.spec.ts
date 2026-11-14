@@ -99,7 +99,7 @@ describe('la meta', () => {
   it('la lista trae la semana de lunes a domingo, sin contar las vacías', async () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await world.bot.tap({
       chatId: CHAT,
       callbackId: 'tap-1',
@@ -139,7 +139,7 @@ describe('borrar', () => {
   it('el hábito se lleva sus anotaciones y sus fotos', async () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await world.bot.tap({
       chatId: CHAT,
       callbackId: 'tap-1',
@@ -255,7 +255,7 @@ describe('pausar', () => {
     const id = await unHabito(world, 'Lectura');
 
     const anotar = async () => {
-      await world.bot.handle({ chatId: CHAT, text: '/habits' });
+      await world.bot.handle({ chatId: CHAT, text: '/habitos' });
       await world.bot.tap({
         chatId: CHAT,
         callbackId: 't',
@@ -282,7 +282,7 @@ describe('corregir una anotación', () => {
 
   /** Anota algo y devuelve el identificador de lo anotado. */
   async function anotado(indice = 0): Promise<string> {
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await world.bot.tap({
       chatId: CHAT,
       callbackId: 't',
@@ -345,7 +345,7 @@ describe('corregir una anotación', () => {
 
   it('una anotación abierta en el chat no se corrige', async () => {
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await world.bot.tap({
       chatId: CHAT,
       callbackId: 't',
@@ -410,7 +410,7 @@ describe('corregir una anotación', () => {
    */
   it('corregir una caducada la deja cerrada', async () => {
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await world.bot.tap({
       chatId: CHAT,
       callbackId: 't',

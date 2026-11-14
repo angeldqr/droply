@@ -18,10 +18,19 @@ const PREFIX = 'j';
  * `limits.spec.ts` es lo único que impide que las dos se separen. Si se
  * separaran, el menú del bot ofrecería un comando que el bot no atiende.
  */
-export const COMMAND = '/habits';
+export const COMMAND = '/habitos';
 
 /** El que dice cómo va el día. Misma copia, mismo guardián. */
 export const TODAY_COMMAND = '/hoy';
+
+/** El que cierra la anotación abierta. Misma copia, mismo guardián. */
+export const END_COMMAND = '/fin';
+
+/**
+ * El nombre viejo de `COMMAND`, de cuando el bot lo tenía en inglés. Se sigue
+ * atendiendo para quien ya lo aprendió, pero no sale en el menú ni en ningún texto.
+ */
+export const LEGACY_COMMAND = '/habits';
 
 export interface ChatButton {
   readonly label: string;

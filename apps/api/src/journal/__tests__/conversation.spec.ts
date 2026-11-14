@@ -40,19 +40,19 @@ describe('el chat que no es de nadie', () => {
    * siempre, en vez de la lista de hábitos de un desconocido.
    */
   it('no se hace cargo de nada', async () => {
-    expect(await world.bot.handle({ chatId: '999', text: '/habits' })).toBe(false);
+    expect(await world.bot.handle({ chatId: '999', text: '/habitos' })).toBe(false);
     expect(await world.bot.handle({ chatId: '999', text: 'hola' })).toBe(false);
     expect(world.voice.said).toHaveLength(0);
   });
 });
 
-describe('/habits', () => {
+describe('/habitos', () => {
   beforeEach(() => {
     chatVinculado(world);
   });
 
   it('sin hábitos manda a la aplicación', async () => {
-    expect(await world.bot.handle({ chatId: CHAT, text: '/habits' })).toBe(true);
+    expect(await world.bot.handle({ chatId: CHAT, text: '/habitos' })).toBe(true);
     expect(world.voice.last()).toContain('Todavía no tienes hábitos');
   });
 
@@ -61,7 +61,7 @@ describe('/habits', () => {
     await unHabito(world, 'Alimentación');
     await unHabito(world, 'Lectura');
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
 
     const botones = world.voice.said.at(-1)?.buttons ?? [];
 
@@ -75,7 +75,14 @@ describe('/habits', () => {
   it('acepta el comando con el nombre del bot detrás, como en los grupos', async () => {
     await unHabito(world, 'Ejercicio');
 
-    expect(await world.bot.handle({ chatId: CHAT, text: '/habits@reconectatebot' })).toBe(true);
+    expect(await world.bot.handle({ chatId: CHAT, text: '/habitos@reconectatebot' })).toBe(true);
+    expect(world.voice.last()).toContain('cuál');
+  });
+
+  it('sigue atendiendo /habits, el nombre viejo, para quien ya lo aprendió', async () => {
+    await unHabito(world, 'Ejercicio');
+
+    expect(await world.bot.handle({ chatId: CHAT, text: '/habits' })).toBe(true);
     expect(world.voice.last()).toContain('cuál');
   });
 });
@@ -84,7 +91,7 @@ describe('anotar', () => {
   beforeEach(async () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
   });
 
   /*
@@ -160,7 +167,7 @@ describe('anotar', () => {
     await elegir(world);
     await world.bot.handle({ chatId: CHAT, text: 'bici' });
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world, 1);
     await world.bot.handle({ chatId: CHAT, text: 'un capítulo' });
     await world.bot.handle({ chatId: CHAT, text: '/fin' });
@@ -272,7 +279,7 @@ describe('las fotos', () => {
   beforeEach(async () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world);
   });
 
@@ -340,7 +347,7 @@ describe('cada quien ve lo suyo', () => {
     await unHabito(world, 'Lo de Ana', ANA);
     await unHabito(world, 'Lo de Beto', BETO);
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
 
     const etiquetas = (world.voice.said.at(-1)?.buttons ?? []).map((boton) => boton.label);
 
@@ -355,7 +362,7 @@ describe('pasar la anotación a otro hábito', () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
     lectura = await unHabito(world, 'Lectura');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world);
     await world.bot.handle({ chatId: CHAT, text: 'veinte páginas' });
   });
@@ -386,7 +393,7 @@ describe('pasar la anotación a otro hábito', () => {
     await tocar(`j:m:${ajeno}`);
 
     expect([...world.entries.rows.values()][0]?.habitId).not.toBe(ajeno);
-    expect(world.voice.last()).toContain('Escribe /habits');
+    expect(world.voice.last()).toContain('Escribe /habitos');
   });
 });
 
@@ -394,7 +401,7 @@ describe('miniaturas', () => {
   beforeEach(async () => {
     chatVinculado(world);
     await unHabito(world, 'Ejercicio');
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world);
   });
 
@@ -439,7 +446,7 @@ describe('la meta del día', () => {
   });
 
   async function anotar(texto: string): Promise<void> {
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world);
     await world.bot.handle({ chatId: CHAT, text: texto });
     await world.bot.handle({ chatId: CHAT, text: '/fin' });
@@ -452,7 +459,7 @@ describe('la meta del día', () => {
   it('cuenta anotaciones y felicita al llegar', async () => {
     await unHabito(world, 'Comidas', ANA, { dailyTarget: 2 });
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world);
     await world.bot.handle({ chatId: CHAT, text: 'Desayuno' });
     await world.bot.handle({ chatId: CHAT, text: 'con fruta' });
@@ -464,7 +471,7 @@ describe('la meta del día', () => {
 
     expect(world.voice.last()).toContain('¡Meta de hoy cumplida!');
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
 
     expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Comidas · ✓');
 
@@ -480,7 +487,7 @@ describe('la meta del día', () => {
     // AHORA es miércoles; el hábito es solo de sábado y domingo.
     await unHabito(world, 'Paseo', ANA, { activeDays: 0b110_0000 });
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
 
     expect(world.voice.said.at(-1)?.buttons[0]?.label).toBe('1 · Paseo · día libre');
 
@@ -500,7 +507,7 @@ describe('rachas, /hoy y pausa', () => {
   });
 
   async function anotar(indice = 0): Promise<void> {
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world, indice);
     await world.bot.handle({ chatId: CHAT, text: 'Hecho' });
     await world.bot.handle({ chatId: CHAT, text: '/fin' });
@@ -562,12 +569,12 @@ describe('rachas, /hoy y pausa', () => {
     const gimnasio = await unHabito(world, 'Gimnasio');
     await unHabito(world, 'Lectura');
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     const viejo = botonDe(world, 0);
 
     await world.pauseHabit.execute(ANA, gimnasio);
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     expect(world.voice.said.at(-1)?.buttons.map((boton) => boton.label)).toEqual([
       '1 · Lectura · 0/1',
     ]);
@@ -583,7 +590,7 @@ describe('rachas, /hoy y pausa', () => {
     await unHabito(world, 'Gimnasio');
     const lectura = await unHabito(world, 'Lectura');
 
-    await world.bot.handle({ chatId: CHAT, text: '/habits' });
+    await world.bot.handle({ chatId: CHAT, text: '/habitos' });
     await elegir(world, 0);
     await world.bot.handle({ chatId: CHAT, text: 'Pesas' });
     await world.pauseHabit.execute(ANA, lectura);

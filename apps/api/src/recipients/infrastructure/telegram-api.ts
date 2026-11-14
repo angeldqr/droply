@@ -116,7 +116,7 @@ export class TelegramApi {
   /**
    * Deja los comandos en el menú del bot.
    *
-   * Sin esto `/habits` existe pero nadie lo descubre: Telegram solo ofrece lo
+   * Sin esto `/habitos` existe pero nadie lo descubre: Telegram solo ofrece lo
    * que el bot declara, y quien no sepa el comando de memoria no lo va a usar.
    */
   setCommands(commands: readonly { command: string; description: string }[]): Promise<unknown> {

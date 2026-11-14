@@ -72,6 +72,11 @@ export class RefreshToken {
     return 'active';
   }
 
+  /** Si se canjeó hace menos de `ms`: el margen de las pestañas que refrescan a la vez. */
+  rotatedWithin(now: Date, ms: number): boolean {
+    return this.rotatedAt !== null && now.getTime() - this.rotatedAt.getTime() < ms;
+  }
+
   markRotated(now: Date): void {
     this.rotatedAt = now;
   }

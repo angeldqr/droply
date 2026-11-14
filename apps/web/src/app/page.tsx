@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { AuthDialog } from '@/components/auth-dialog';
 import { BrandMark } from '@/components/brand-mark';
+import { RedirectIfSignedIn } from '@/components/require-session';
 import { SignatureCard } from '@/components/signature-card';
 import { BentoGrid, BentoGridItem } from '@/components/ui/bento-grid';
 import { FlipWords } from '@/components/ui/flip-words';
@@ -22,6 +23,7 @@ const KINDS = ['audios', 'videos', 'imágenes', 'textos'];
 export default function LandingPage() {
   return (
     <main className="bg-noche text-noche-tinta flex min-h-dvh flex-col p-2 md:p-3">
+      <RedirectIfSignedIn />
       <BentoGrid className="mx-auto w-full max-w-6xl flex-1 gap-2 md:auto-rows-[minmax(20rem,auto)] md:grid-cols-3">
         <Enter delay={0} className="md:col-span-3">
           <WobbleCard

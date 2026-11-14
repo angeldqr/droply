@@ -4,6 +4,18 @@ import { SessionCompromised, SessionExpired } from '../domain/errors';
 import type { RefreshTokenRepository, SecretTokenFactory, UserRepository } from '../domain/ports';
 import type { AuthenticatedSession, SessionIssuer } from './session-issuer';
 
+/**
+ * Cuánto después de canjearse un token se lo toma por otra pestaña y no por un
+ * robo. Al reabrir el navegador con varias pestañas, cada una manda la misma
+ * cookie en el mismo instante; la que pierde reintenta a los 400 ms (`lib/api.ts`
+ * de la web), ya con la cookie nueva que dejó la que ganó.
+ *
+ * Corto a propósito: si quien robó el token lo canjea primero y la víctima llega
+ * dentro del margen, la familia no cae. Cinco segundos sobran para las pestañas
+ * y dejan muy poco para eso.
+ */
+export const CONCURRENT_REFRESH_GRACE_MS = 5_000;
+
 export class RefreshSessionUseCase {
   constructor(
     private readonly refreshTokens: RefreshTokenRepository,
@@ -23,6 +35,15 @@ export class RefreshSessionUseCase {
 
     switch (verdict) {
       case 'reused': {
+        /*
+         * Canjeado hace un instante: otra pestaña del mismo navegador. Se
+         * rechaza sin tumbar la familia. Quien robó el token tampoco obtiene
+         * sesión en ese margen; solo no consigue cerrarla.
+         */
+        if (stored.rotatedWithin(now, CONCURRENT_REFRESH_GRACE_MS)) {
+          return err(new SessionExpired());
+        }
+
         /*
          * Este token ya se canjeó una vez y alguien lo está presentando de
          * nuevo. O se filtró, o el cliente legítimo reintentó; no hay forma de

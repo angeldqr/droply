@@ -587,7 +587,7 @@ model HabitDayScore {
 ///
 /// `chatId` es unico **globalmente**, y ahi esta la diferencia con `Recipient`:
 /// aquel admite el mismo chat en varias cuentas porque su índice lleva el dueño
-/// dentro. Acá no puede: si un chat resolviera a dos cuentas, `/habits` no
+/// dentro. Acá no puede: si un chat resolviera a dos cuentas, `/habitos` no
 /// sabría de quién son los hábitos que está mostrando.
 model AccountChat {
   userId String @id @map("user_id") @db.Uuid

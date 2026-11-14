@@ -29,3 +29,19 @@ export function RequireSession({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+
+/**
+ * Lo contrario, para la portada y «Entrar»: quien vuelve con su sesión viva
+ * (la cookie dura 30 días) va directo a Inicio en vez de ver «Iniciar sesión»,
+ * que le haría creer que lo sacaron. Mientras se resuelve, la página se ve igual.
+ */
+export function RedirectIfSignedIn() {
+  const { user, loading } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) router.replace('/inicio');
+  }, [loading, user, router]);
+
+  return null;
+}

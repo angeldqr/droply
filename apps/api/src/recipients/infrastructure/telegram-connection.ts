@@ -1,5 +1,9 @@
 import { Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import { JOURNAL_COMMAND, JOURNAL_TODAY_COMMAND } from '@reconectate/contracts';
+import {
+  JOURNAL_COMMAND,
+  JOURNAL_END_COMMAND,
+  JOURNAL_TODAY_COMMAND,
+} from '@reconectate/contracts';
 import type { HandleTelegramCallback } from '../application/handle-telegram-callback';
 import type { HandleTelegramMessage } from '../application/handle-telegram-message';
 import { parseCallback, parseIncoming, type TelegramApi } from './telegram-api';
@@ -114,7 +118,7 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
    * Los comandos que el bot ofrece en su menú.
    *
    * Es "lo mejor que se pueda": si Telegram no contesta, el bot sigue
-   * atendiendo `/habits` igual, solo que sin salir en la lista.
+   * atendiendo `/habitos` igual, solo que sin salir en la lista.
    */
   private async publishCommands(): Promise<void> {
     try {
@@ -128,6 +132,10 @@ export class TelegramConnection implements OnApplicationBootstrap, OnApplication
         {
           command: JOURNAL_TODAY_COMMAND.replace('/', ''),
           description: 'Cómo vas hoy con tus hábitos',
+        },
+        {
+          command: JOURNAL_END_COMMAND.replace('/', ''),
+          description: 'Terminar la anotación',
         },
       ]);
     } catch {

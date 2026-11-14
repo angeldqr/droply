@@ -162,7 +162,10 @@ export interface AccountChatView {
  * pantalla se lo explica al usuario. Escrito dos veces, se separan el día que
  * alguien lo cambie.
  */
-export const JOURNAL_COMMAND = '/habits';
+export const JOURNAL_COMMAND = '/habitos';
 
 /** El comando que dice cómo va el día. Mismo motivo para vivir acá. */
 export const JOURNAL_TODAY_COMMAND = '/hoy';
+
+/** El que cierra la anotación abierta, igual que el botón Listo. */
+export const JOURNAL_END_COMMAND = '/fin';

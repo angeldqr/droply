@@ -44,7 +44,7 @@ export class HandleTelegramMessage {
     /*
      * La bitácora tiene **primera opción** sobre todo lo que entra.
      *
-     * Se queda con su `/start`, con `/habits` y con lo que llegue mientras haya
+     * Se queda con su `/start`, con `/habitos` y con lo que llegue mientras haya
      * una anotación abierta; para cualquier otra cosa devuelve `false` y el
      * camino de los destinatarios corre exactamente como antes. Preguntar
      * primero acá y no al revés es lo que permite que el orden no cambie la

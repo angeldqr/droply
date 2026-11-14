@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { BrandMark } from '@/components/brand-mark';
 import { MorphDialogContent } from '@/components/morph-dialog-content';
 import { SignInForm } from '@/components/sign-in-form';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ export function AuthDialog({ modo }: { modo: 'entrar' }) {
       <MorphDialogContent toProps={dialog.toProps} className="sm:max-w-md">
         <div className="flex flex-col gap-6">
           <DialogHeader>
-            <span aria-hidden className="bg-menta mb-3 size-10 rounded-full rounded-tl-md" />
+            <BrandMark className="mb-3 size-12" animated />
             <DialogTitle className="text-2xl">Iniciar sesión</DialogTitle>
             <DialogDescription>Entra con tu cuenta de Reconéctate.</DialogDescription>
           </DialogHeader>

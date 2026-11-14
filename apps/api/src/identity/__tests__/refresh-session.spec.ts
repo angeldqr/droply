@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CONCURRENT_REFRESH_GRACE_MS } from '../application/refresh-session.use-case';
 import { SessionCompromised } from '../domain/errors';
 import { buildIdentity, REFRESH_LIFETIME_MS, validRegistration } from './support';
 
@@ -49,7 +50,9 @@ describe('refresco de sesión', () => {
     const rotated = await world.refresh.execute(first.refreshToken);
     if (!rotated.ok) throw new Error('El primer refresco debería haber funcionado.');
 
-    // El atacante presenta el token viejo, que ya fue canjeado.
+    // El atacante presenta el token viejo, que ya fue canjeado, pasado el margen
+    // de las pestañas.
+    world.clock.advanceBy(CONCURRENT_REFRESH_GRACE_MS);
     const reuse = await world.refresh.execute(first.refreshToken);
 
     expect(reuse.ok).toBe(false);
@@ -70,6 +73,7 @@ describe('refresco de sesión', () => {
 
     const reusado = await loggedIn();
     await reusado.world.refresh.execute(reusado.first.refreshToken);
+    reusado.world.clock.advanceBy(CONCURRENT_REFRESH_GRACE_MS);
     const porReuso = await reusado.world.refresh.execute(reusado.first.refreshToken);
 
     expect(porVencimiento.ok).toBe(false);
@@ -85,6 +89,7 @@ describe('refresco de sesión', () => {
     const { world, first } = await loggedIn();
 
     await world.refresh.execute(first.refreshToken);
+    world.clock.advanceBy(CONCURRENT_REFRESH_GRACE_MS);
     const reuse = await world.refresh.execute(first.refreshToken);
 
     expect(reuse.ok).toBe(false);
@@ -92,6 +97,27 @@ describe('refresco de sesión', () => {
 
     // Idéntico hacia afuera, distinguible hacia adentro.
     expect(reuse.error).toBeInstanceOf(SessionCompromised);
+  });
+
+  it('otra pestaña que canjea la misma cookie a la vez no cierra la sesión', async () => {
+    const { world, first } = await loggedIn();
+
+    const ganadora = await world.refresh.execute(first.refreshToken);
+    if (!ganadora.ok) throw new Error('El primer refresco debería haber funcionado.');
+
+    // La segunda pestaña llega con la cookie vieja dentro del margen: se la
+    // rechaza como vencida, sin revocar nada.
+    world.clock.advanceBy(CONCURRENT_REFRESH_GRACE_MS - 1000);
+    const perdedora = await world.refresh.execute(first.refreshToken);
+
+    expect(perdedora.ok).toBe(false);
+    if (perdedora.ok) return;
+    expect(perdedora.error).not.toBeInstanceOf(SessionCompromised);
+
+    // Y al reintentar con la cookie nueva, la sesión sigue viva.
+    const reintento = await world.refresh.execute(ganadora.value.session.refreshToken);
+
+    expect(reintento.ok).toBe(true);
   });
 
   it('mantiene la misma familia mientras la cadena sea legítima', async () => {

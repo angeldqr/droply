@@ -11,6 +11,8 @@ import { detectMimeType, SIGNATURE_BYTES } from '../../shared/media-signature';
 import type { AccountChat } from '../domain/account-chat';
 import {
   COMMAND,
+  END_COMMAND,
+  LEGACY_COMMAND,
   TODAY_COMMAND,
   doneButton,
   moveButton,
@@ -36,22 +38,22 @@ import type { LinkAccountChat } from './account-chat-use-cases';
  * que el usuario ve de todo este archivo.
  */
 const SAYS = {
-  linked: 'Listo, ya estás conectado. Escribe /habits cuando quieras anotar algo.',
+  linked: `Listo, ya estás conectado. Escribe ${COMMAND} cuando quieras anotar algo.`,
   noHabits:
     'Todavía no tienes hábitos. Créalos en la aplicación, en Hábitos › Mi bitácora, y vuelve.',
   pick: '¿De cuál quieres contarme?',
   telling: (name: string) =>
-    `${name}. Cuéntame qué hiciste: puedes mandarme texto y fotos. Cuando termines, aprieta Listo o escribe /fin.`,
+    `${name}. Cuéntame qué hiciste: puedes mandarme texto y fotos. Cuando termines, aprieta Listo o escribe ${END_COMMAND}.`,
   restarted: (name: string) =>
     `Pasó un rato, así que empecé una anotación nueva en ${name} con esto. Si era de otro hábito, cámbialo abajo.`,
   pickTarget: '¿A cuál lo paso?',
   noOtherHabit: 'No tienes otro hábito al que pasarlo.',
   moved: (name: string) => `Listo, lo pasé a ${name}. Sigue contándome o aprieta Listo.`,
-  needPick: 'Escribe /habits y elige un hábito para que sepa dónde anotarlo.',
+  needPick: `Escribe ${COMMAND} y elige un hábito para que sepa dónde anotarlo.`,
   tooManyPhotos: `Ya van ${PHOTOS_MAX} fotos en esta anotación, que es el tope. El texto sí lo sigo tomando.`,
   badPhoto: 'Esa no la pude guardar: solo entiendo fotos (jpg, png o webp).',
   photoFailed: 'No pude bajar esa foto. Vuelve a mandarla.',
-  nothing: 'No anoté nada porque no me contaste nada. Escribe /habits cuando quieras.',
+  nothing: `No anoté nada porque no me contaste nada. Escribe ${COMMAND} cuando quieras.`,
   saved: (name: string, notes: boolean, photos: number) => {
     const parts = [notes ? 'lo que escribiste' : null, photos > 0 ? fotos(photos) : null].filter(
       (part): part is string => part !== null,
@@ -119,11 +121,13 @@ export class JournalConversation implements JournalInbox {
     // Un chat que no es de ninguna cuenta nunca ve la lista de hábitos de nadie.
     if (!chat || !chat.isLinked) return false;
 
-    if (isCommand(message.text, COMMAND)) return this.offerHabits(chat, message.chatId);
+    if (isCommand(message.text, COMMAND) || isCommand(message.text, LEGACY_COMMAND)) {
+      return this.offerHabits(chat, message.chatId);
+    }
 
     if (isCommand(message.text, TODAY_COMMAND)) return this.showToday(chat, message.chatId);
 
-    if (isCommand(message.text, '/fin')) return this.closeOpen(chat, message.chatId);
+    if (isCommand(message.text, END_COMMAND)) return this.closeOpen(chat, message.chatId);
 
     return this.collect(chat, message);
   }

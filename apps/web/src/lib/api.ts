@@ -99,10 +99,18 @@ function send(path: string, options: RequestOptions): Promise<Response> {
  *
  * Sin esto, dos llamadas que reciben 401 a la vez piden dos refrescos con la
  * misma cookie. El servidor rota el token en el primero y ve el segundo como un
- * token ya canjeado, o sea un reuso, y por diseño revoca la familia entera: el
- * usuario queda afuera por haber tenido dos pestañas cargando.
+ * token ya canjeado, o sea un reuso: si llega pasados unos segundos, revoca la
+ * familia entera y el usuario queda afuera.
  */
 let renewal: Promise<SessionResponse | null> | null = null;
+
+/**
+ * La espera antes de reintentar un refresco rechazado. Tiene que quedar bien
+ * dentro del margen que la API le da a las pestañas simultáneas
+ * (`CONCURRENT_REFRESH_GRACE_MS`, 5 s): pasado ese margen, el reintento ya no
+ * llega a tiempo y la otra pestaña cuenta como un robo.
+ */
+const RETRY_AFTER_MS = 400;
 
 /** Se avisa cuando la sesión se termina de verdad, para no dejar la interfaz
  *  mostrando a un usuario que ya no existe. */
@@ -118,9 +126,9 @@ export function setSessionLostHandler(handler: (() => void) | null): void {
  *
  * Tiene que pasar **todo el mundo** por acá, incluida la restauración al abrir
  * la aplicación. Dos canjes simultáneos mandan la misma cookie: el servidor rota
- * el token con el primero, lee el segundo como un token ya usado y revoca la
- * familia entera, que es su defensa contra un token robado. El usuario aparece
- * deslogueado sin haber hecho nada.
+ * el token con el primero y rechaza el segundo como un token ya usado (pasados
+ * unos segundos, además revoca la familia entera: es su defensa contra un token
+ * robado). El usuario aparece deslogueado sin haber hecho nada.
  *
  * Pasa de verdad en desarrollo: con `reactStrictMode` React monta los efectos
  * dos veces, así que la restauración se dispara dos veces en el mismo instante.
@@ -128,7 +136,18 @@ export function setSessionLostHandler(handler: (() => void) | null): void {
 export function renewSession(): Promise<SessionResponse | null> {
   renewal ??= (async () => {
     try {
-      const response = await send('/auth/refresh', { method: 'POST' });
+      let response = await send('/auth/refresh', { method: 'POST' });
+
+      /*
+       * Otra pestaña del mismo navegador pudo canjear la misma cookie un
+       * instante antes (pasa al reabrir el navegador con varias pestañas). El
+       * servidor rechaza la segunda sin cerrar la sesión, y para cuando se
+       * reintenta la cookie nueva ya llegó. Si la sesión venció, falla igual.
+       */
+      if (response.status === 401) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_AFTER_MS));
+        response = await send('/auth/refresh', { method: 'POST' });
+      }
 
       if (!response.ok) {
         accessToken = null;

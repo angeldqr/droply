@@ -16,7 +16,7 @@ export interface AccountChatSnapshot {
  *
  * Es lo que hoy no existía: la aplicación conocía el chat de sus destinatarios
  * —otras personas— pero nunca el del propio usuario, y por eso los avisos al
- * dueño viven dentro de la aplicación en la tabla `notices`. Sin esto, `/habits`
+ * dueño viven dentro de la aplicación en la tabla `notices`. Sin esto, `/habitos`
  * no tendría forma de saber de quién son los hábitos que le están pidiendo.
  *
  * El código se guarda hasheado, igual que el de los destinatarios: quien lea la

@@ -69,7 +69,7 @@ describe('conectar el Telegram de la cuenta', () => {
 
   /*
    * Un chat resuelve a una sola cuenta, y de ahí sale toda la seguridad de
-   * `/habits`. Sin esto, dos cuentas se pelearían por el mismo chat y el bot no
+   * `/habitos`. Sin esto, dos cuentas se pelearían por el mismo chat y el bot no
    * sabría de quién son los hábitos que está enseñando.
    */
   it('no deja robarle el chat a otra cuenta', async () => {
@@ -100,7 +100,7 @@ describe('conectar el Telegram de la cuenta', () => {
     await world.unlink.execute(ANA);
 
     expect((await world.readLink.execute(ANA)).linked).toBe(false);
-    expect(await world.bot.handle({ chatId: CHAT, text: '/habits' })).toBe(false);
+    expect(await world.bot.handle({ chatId: CHAT, text: '/habitos' })).toBe(false);
   });
 
   it('sin el correo confirmado no hay enlace', async () => {

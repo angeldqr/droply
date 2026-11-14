@@ -59,7 +59,7 @@ Planes de hábitos (Yo en 30 días):
 Mi bitácora:
 - Se conecta el chat propio de Telegram una sola vez desde la pantalla.
 - Cada hábito tiene una meta diaria (cuántas veces al día) y los días de la semana en que aplica. Los otros días son día libre y no cuentan como fallo.
-- Se anota escribiéndole al bot; se pueden agregar notas y fotos. El comando /hoy muestra cómo va cada hábito y ofrece botones para los pendientes.
+- Se anota escribiéndole al bot: el comando /habitos muestra la lista para elegir el hábito, y después se mandan notas y fotos; /fin (o el botón Listo) cierra la anotación. El comando /hoy muestra cómo va cada hábito y ofrece botones para los pendientes.
 - Racha: días seguidos cumpliendo la meta. Un hábito se puede pausar (vacaciones) y no cuenta como fallo.
 - Si se cambia la meta, los días pasados se vuelven a medir con la nueva.
 
